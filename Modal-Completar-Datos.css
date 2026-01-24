@@ -1,0 +1,457 @@
+/* Estilos para Modal de Completar Datos */
+
+.modal-completar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-completar-content {
+    background: white;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.4s ease;
+}
+
+.modal-completar-header {
+    padding: 32px 32px 24px 32px;
+    border-bottom: 2px solid #f5f5f7;
+    text-align: center;
+}
+
+.modal-completar-header h2 {
+    font-size: 26px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin: 0 0 8px 0;
+}
+
+.modal-completar-header p {
+    font-size: 15px;
+    color: #86868b;
+    margin: 0;
+}
+
+/* Steps */
+.modal-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 32px;
+    background: #fafafa;
+}
+
+.modal-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e0e0e0;
+    color: #86868b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.modal-step.active .step-circle {
+    background: #801931;
+    color: white;
+}
+
+.modal-step.completed .step-circle {
+    background: #2d7a4b;
+    color: white;
+}
+
+.modal-step span {
+    font-size: 12px;
+    color: #86868b;
+    font-weight: 500;
+}
+
+.modal-step.active span {
+    color: #1d1d1f;
+    font-weight: 600;
+}
+
+.modal-step-line {
+    width: 80px;
+    height: 2px;
+    background: #e0e0e0;
+    margin: 0 12px;
+}
+
+/* Sections */
+.modal-section {
+    display: none;
+    padding: 32px;
+}
+
+.modal-section.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-section h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin: 0 0 24px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f5f5f7;
+}
+
+/* Form */
+.modal-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.modal-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-field.full-width {
+    grid-column: 1 / -1;
+}
+
+.modal-field label,
+.label-main {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin-bottom: 8px;
+}
+
+.modal-field input,
+.modal-field select {
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1d1d1f;
+    transition: all 0.3s ease;
+}
+
+.modal-field input:focus,
+.modal-field select:focus {
+    outline: none;
+    border-color: #801931;
+    box-shadow: 0 0 0 3px rgba(128, 25, 49, 0.1);
+}
+
+/* Radio Buttons */
+.modal-radio-group {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-radio {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-radio:hover {
+    border-color: #801931;
+    background: rgba(128, 25, 49, 0.02);
+}
+
+.modal-radio input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #801931;
+}
+
+.modal-radio span {
+    font-size: 14px;
+    color: #1d1d1f;
+}
+
+/* Checkboxes */
+.modal-iva-options {
+    background: #f9f9fa;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.modal-checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.modal-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-checkbox:hover {
+    border-color: #801931;
+    background: white;
+}
+
+.modal-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #801931;
+}
+
+.modal-checkbox span {
+    font-size: 13px;
+    color: #1d1d1f;
+}
+
+/* Búsqueda CIIU */
+.modal-resultados-ciiu {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: calc(100% - 64px);
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.ciiu-item {
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+    border-bottom: 1px solid #f5f5f7;
+    transition: all 0.2s ease;
+}
+
+.ciiu-item:hover {
+    background: #f9f9fa;
+}
+
+.ciiu-codigo {
+    font-weight: 600;
+    color: #801931;
+    min-width: 60px;
+}
+
+.ciiu-desc {
+    color: #1d1d1f;
+    font-size: 14px;
+}
+
+.ciiu-no-result {
+    padding: 12px;
+    color: #86868b;
+    text-align: center;
+    font-size: 14px;
+}
+
+.modal-actividad-display {
+    margin-top: 12px;
+}
+
+.actividad-seleccionada {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #e6f7ed;
+    border: 1px solid #a5d6a7;
+    border-radius: 10px;
+}
+
+.act-codigo {
+    font-weight: 600;
+    color: #2d7a4b;
+    min-width: 60px;
+}
+
+.act-desc {
+    flex: 1;
+    color: #1d1d1f;
+    font-size: 14px;
+}
+
+.act-remove {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: #c62828;
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    transition: all 0.3s ease;
+}
+
+.act-remove:hover {
+    background: #b71c1c;
+    transform: scale(1.1);
+}
+
+/* Actions */
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #f5f5f7;
+}
+
+.btn-modal-prev,
+.btn-modal-next,
+.btn-modal-submit {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-modal-prev {
+    background: #f5f5f7;
+    color: #1d1d1f;
+}
+
+.btn-modal-prev:hover {
+    background: #e8e8ea;
+}
+
+.btn-modal-next {
+    background: #801931;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-modal-next:hover {
+    background: #a02244;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(128, 25, 49, 0.3);
+}
+
+.btn-modal-submit {
+    background: #2d7a4b;
+    color: white;
+    margin-left: auto;
+}
+
+.btn-modal-submit:hover {
+    background: #256029;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 122, 75, 0.3);
+}
+
+/* Mensajes */
+.modal-mensaje-error {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-top: 16px;
+    font-size: 14px;
+}
+
+/* Notificación global */
+.notificacion-global {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 10001;
+    font-weight: 600;
+    animation: slideInRight 0.3s ease;
+}
+
+.notificacion-global.success {
+    background: #2d7a4b;
+    color: white;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-completar-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .modal-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-checkbox-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .btn-modal-next,
+    .btn-modal-submit {
+        margin-left: 0;
+    }
+
+    .modal-steps {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .modal-step-line {
+        display: none;
+    }
+}

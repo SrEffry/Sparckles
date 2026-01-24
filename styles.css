@@ -1,0 +1,420 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f5f5f5;
+}
+
+.container {
+    display: flex;
+    max-width: 900px;
+    margin: 40px auto 0 auto;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px #0001;
+    background: #fff;
+    min-height: 550px;
+    animation: fadeIn 1s ease-out;
+}
+
+/* Animaciones */
+@keyframes slideInLeft {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.left-panel {
+    flex: 0 0 340px;
+    background: #801931;
+    color: #fff;
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 40px;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+    animation: slideInLeft 1s ease-out;
+}
+
+.left-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("imagenes/fondo1.png") repeat;
+    background-size: 120px;
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 0;
+    animation: movePattern 30s linear infinite;
+}
+
+.left-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.5));
+    z-index: 0;
+}
+
+@keyframes movePattern {
+    from { background-position: 0 0; }
+    to { background-position: 300px 300px; }
+}
+
+.left-panel * {
+    position: relative;
+    z-index: 1;
+}
+
+.logo-img {
+    width: 160px;
+    margin-bottom: 5px;
+    transition: transform 0.4s ease;
+}
+.logo-img:hover {
+    transform: rotate(-5deg) scale(1.05);
+}
+
+.left-panel h1 {
+    font-size: 40px;
+    margin: 4px 0 12px 0;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.desc {
+    font-size: 18px;
+    margin-top: 12px;
+    font-weight: 400;
+    line-height: 1.4em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.support-links {
+    font-size: 15px;
+    color: #fff;
+    margin-top: auto;
+    padding-top: 30px;
+}
+
+.right-panel {
+    flex: 1;
+    padding: 42px 32px 32px 42px;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+}
+
+.right-panel h2 {
+    font-size: 32px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #242325;
+}
+
+.right-panel p {
+    font-size: 18px;
+    margin: 0 0 20px 0;
+    color: #565555;
+}
+
+/* Botones */
+.btn {
+    border: none;
+    padding: 18px;
+    font-size: 20px;
+    margin: 7px 0;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 300px;
+    max-width: 100%;
+    display: block;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #801931;
+    color: #fff;
+    margin-bottom: 14px;
+}
+.btn-primary:hover {
+    background: #a02244;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(128, 25, 49, 0.6);
+}
+
+.btn-secondary {
+    background: #232323;
+    color: #fff;
+    margin-bottom: 18px;
+}
+.btn-secondary:hover {
+    background: #333;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+}
+
+.first-time {
+    font-size: 17px;
+    color: #232323;
+    margin-top: 24px;
+}
+
+.illus {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+}
+
+.chica-img {
+    width: 280px;
+    max-width: 100%;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+footer {
+    text-align: center;
+    background: #fff;
+    color: #801931;
+    padding: 18px 0 10px 0;
+    font-size: 17px;
+    border-radius: 0 0 24px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    box-shadow: 0 2px 12px #0001;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        max-width: 95%;
+    }
+    .left-panel {
+        flex: none;
+        width: 100%;
+        min-height: 250px;
+        border-radius: 24px 24px 0 0;
+    }
+    .right-panel {
+        padding: 24px;
+    }
+    .btn {
+        width: 100%;
+    }
+    footer {
+        font-size: 15px;
+    }
+}
+
+/* === Formularios === */
+.view input, .view select {
+    padding: 14px;
+    margin: 8px 0;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0;
+}
+
+.form-row input, .form-row select {
+    flex: 1;
+}
+
+/* Progreso registro */
+.progress {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.progress-step {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+}
+.progress-step.active {
+    background: #801931;
+}
+
+/* Ocultar vistas */
+.hidden {
+    display: none;
+}
+
+/* Inputs más compactos en el primer registro */
+#registro1 input {
+    padding: 10px;
+    font-size: 15px;
+    max-width: 300px;
+}
+
+/* === Estilo global para placeholders === */
+input::placeholder,
+select::placeholder,
+textarea::placeholder {
+    color: #7a7a7a;
+    font-size: 15px;
+    font-style: 'Poppins';
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+/* === NUEVO: estilo para enlaces volver === */
+.volver {
+    display: inline-block;
+    margin-top: 12px;
+    color: #801931;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+.volver:hover {
+    color: #a02244;
+    transform: translateX(-3px);
+    text-decoration: underline;
+}
+
+/* === NUEVO: mensajes de error === */
+.mensaje-error {
+    background: #fce4ec;
+    color: #801931;
+    border: 1px solid #f8bbd0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    animation: fadeIn 0.4s ease;
+}
+
+/* Ocultos por defecto */
+.hidden {
+    display: none;
+}
+
+/* Mensajes de éxito */
+.mensaje-exito {
+    background: #e8f5e9;
+    color: #256029;
+    border: 1px solid #a5d6a7;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    animation: fadeIn 0.4s ease;
+}
+
+/* === Radio buttons para tipo de entidad === */
+.form-group-radio {
+    margin: 20px 0 30px 0;
+}
+
+.radio-label-main {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: #232323;
+    margin-bottom: 16px;
+}
+
+.radio-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.radio-option-card {
+    display: block;
+    cursor: pointer;
+}
+
+.radio-option-card input[type="radio"] {
+    display: none;
+}
+
+.radio-card-content {
+    padding: 24px 20px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.radio-card-content::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.radio-option-card input[type="radio"]:checked + .radio-card-content::before {
+    background: #801931;
+    border-color: #801931;
+    box-shadow: inset 0 0 0 3px white;
+}
+
+.radio-option-card input[type="radio"]:checked + .radio-card-content {
+    border-color: #801931;
+    background: rgba(128, 25, 49, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(128, 25, 49, 0.2);
+}
+
+.radio-card-content:hover {
+    border-color: #801931;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.radio-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #232323;
+    margin-top: 8px;
+}
+
+.radio-option-card input[type="radio"]:checked + .radio-card-content .radio-title {
+    color: #801931;
+}
+
+.radio-desc {
+    font-size: 14px;
+    color: #565555;
+}
+
+@media (max-width: 480px) {
+    .radio-options {
+        grid-template-columns: 1fr;
+    }
+}

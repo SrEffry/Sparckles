@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Empresa - Sparkles</title>
+    <link rel="stylesheet" href="./dasboard.css">
+    <link rel="stylesheet" href="nueva-empresa.css">
+    <script defer src="dashboard.js"></script>
+    <script defer src="nueva-empresa.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="../imagenes/Logo.png" alt="Logo" class="sidebar-logo">
+            <div class="sidebar-title">
+                <strong>Sparkles</strong>
+                <span>Software Contable</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="dashboard.html" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Dashboard
+            </a>
+            <a href="empresas.html" class="nav-item active">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                </svg>
+                Empresas
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                Operaciones
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                Finanzas
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Recursos
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                Reportes
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">JP</div>
+                <div class="user-details">
+                    <strong>Juan Pérez</strong>
+                    <span>juan@empresa.com</span>
+                </div>
+            </div>
+            <div class="footer-links">
+                <button class="footer-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2 5.2l-4.2-4.2m-6 0l-4.2 4.2"></path>
+                    </svg>
+                    Ajustes
+                </button>
+                <button class="footer-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Salir
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="search-bar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input type="text" placeholder="Buscar empresas, facturas, reportes...">
+            </div>
+            <div class="header-actions">
+                <button class="notification-btn">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="badge">3</span>
+                </button>
+                <div class="user-menu">
+                    <div class="user-avatar-small">JP</div>
+                    <div class="user-info-header">
+                        <strong>Juan Pérez</strong>
+                        <span>Administrador</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Form Content -->
+        <section class="form-container">
+            <!-- Header -->
+            <div class="form-page-header">
+                <button class="back-btn" onclick="window.location.href='empresas.html'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <div class="form-title-section">
+                    <h1>Registrar Nueva Empresa</h1>
+                    <p>Complete la información de la empresa cliente</p>
+                </div>
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="progress-steps">
+                <div class="step active">
+                    <div class="step-number">1</div>
+                    <span>Información Básica</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <span>Ubicación</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <span>Configuración Tributaria</span>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="empresaForm" class="empresa-form">
+                <!-- Sección 1: Información Básica -->
+                <div class="form-section active" id="section1">
+                    <h2 class="section-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        Información Básica
+                    </h2>
+
+                    <div class="form-grid">
+                        <div class="form-field full-width">
+                            <label>Tipo de Persona *</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoPersona" value="Jurídica" checked>
+                                    <span>Jurídica</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="tipoPersona" value="Natural">
+                                    <span>Natural</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-field full-width">
+                            <label for="nombreEmpresa">Nombre de la Empresa *</label>
+                            <input type="text" id="nombreEmpresa" placeholder="Ej: Comercial XYZ S.A.S" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="nit">NIT *</label>
+                            <input type="text" id="nit" placeholder="900.123.456" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="dv">DV *</label>
+                            <input type="text" id="dv" placeholder="7" maxlength="1" required>
+                        </div>
+
+                        <div class="form-field full-width">
+                            <label for="razonSocial">Razón Social *</label>
+                            <input type="text" id="razonSocial" placeholder="Razón social de la empresa" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="matriculaMercantil">Número de Matrícula Mercantil</label>
+                            <input type="text" id="matriculaMercantil" placeholder="Ej: 123456">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="telefono">Teléfono *</label>
+                            <input type="tel" id="telefono" placeholder="(+57) 300 123 4567" required>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-next" onclick="nextSection(2)">
+                            Siguiente
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Ubicación -->
+                <div class="form-section" id="section2">
+                    <h2 class="section-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Ubicación
+                    </h2>
+
+                    <div class="form-grid">
+                        <div class="form-field full-width">
+                            <label for="pais">País *</label>
+                            <select id="pais" required>
+                                <option value="">Seleccione un país</option>
+                                <option value="Colombia" selected>Colombia</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="departamento">Departamento *</label>
+                            <select id="departamento" required>
+                                <option value="">Seleccione departamento</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="ciudad">Ciudad *</label>
+                            <select id="ciudad" disabled required>
+                                <option value="">Seleccione ciudad</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field full-width">
+                            <label for="direccion">Dirección *</label>
+                            <input type="text" id="direccion" placeholder="Calle 123 #45-67" required>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="codigoPostal">Código Postal</label>
+                            <input type="text" id="codigoPostal" placeholder="110111">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-prev" onclick="prevSection(1)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Anterior
+                        </button>
+                        <button type="button" class="btn-next" onclick="nextSection(3)">
+                            Siguiente
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Configuración Tributaria -->
+                <div class="form-section" id="section3">
+                    <h2 class="section-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        Configuración Tributaria
+                    </h2>
+
+                    <div class="form-grid">
+                        <div class="form-field full-width">
+                            <label for="tarifaIvaRetenido">Tarifa de IVA Retenido *</label>
+                            <select id="tarifaIvaRetenido" required>
+                                <option value="">Seleccione tarifa</option>
+                                <option value="No aplica">No aplica</option>
+                                <option value="15%">15%</option>
+                                <option value="50%">50%</option>
+                                <option value="100%">100%</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field full-width">
+                            <label>¿La empresa está sujeta a IVA? *</label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="aplicaIva" value="Si" onchange="toggleIvaOptions(true)">
+                                    <span>Sí, aplica</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="aplicaIva" value="No" checked onchange="toggleIvaOptions(false)">
+                                    <span>No aplica</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-field full-width iva-options" id="ivaOptions" style="display: none;">
+                            <label class="field-label-main">Seleccione las características tributarias que aplican:</label>
+                            <div class="checkbox-grid">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="autoretenedora">
+                                    <span>La empresa es autoretenedora</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="exentoRetencion">
+                                    <span>Exento a retención</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="agenteRetenedor">
+                                    <span>La empresa es agente retenedor</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="industriaComercio">
+                                    <span>Industria y comercio</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="entidadAnimoLucro">
+                                    <span>Entidad ánimo de lucro</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="unionTemporal">
+                                    <span>Unión temporal</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="granContribuyente">
+                                    <span>La empresa es gran contribuyente</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="autorretenedorRenta">
+                                    <span>Autorretenedor de renta</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" name="caracteristicasIva" value="autorretenedorIca">
+                                    <span>Autorretenedor de ICA</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="mensajeError" class="mensaje-error" style="display: none;"></div>
+                    <div id="mensajeExito" class="mensaje-exito" style="display: none;"></div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-prev" onclick="prevSection(2)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Anterior
+                        </button>
+                        <button type="button" class="btn-submit" onclick="guardarEmpresa()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                            Guardar Empresa
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

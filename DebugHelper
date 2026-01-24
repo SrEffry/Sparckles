@@ -1,0 +1,100 @@
+// ========== HELPER DE DEPURACIÓN ==========
+// Copia y pega esto en la consola del navegador (F12) para ver qué está pasando
+
+function debugSparkles() {
+    console.clear();
+    console.log('========== DEBUG SPARKLES ==========\n');
+    
+    // 1. Usuario actual
+    const usuarioActual = sessionStorage.getItem('usuarioActual');
+    console.log('1. USUARIO ACTUAL EN SESIÓN:');
+    if (usuarioActual) {
+        const usuario = JSON.parse(usuarioActual);
+        console.log('   Email:', usuario.email);
+        console.log('   Nombre:', usuario.nombre, usuario.apellido);
+        console.log('   Tipo:', usuario.tipoEntidad || 'No especificado');
+        console.log('   Datos completos:', usuario.datosCompletos);
+    } else {
+        console.log('   ❌ No hay usuario en sesión');
+    }
+    
+    console.log('\n');
+    
+    // 2. Todos los usuarios
+    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
+    console.log('2. TODOS LOS USUARIOS REGISTRADOS:');
+    console.log('   Total usuarios:', usuarios.length);
+    usuarios.forEach((u, i) => {
+        console.log(`   ${i+1}. ${u.email} - ${u.nombre} ${u.apellido} (${u.tipoEntidad || 'no especificado'})`);
+    });
+    
+    console.log('\n');
+    
+    // 3. Todas las empresas
+    const empresas = JSON.parse(localStorage.getItem('empresas')) || [];
+    console.log('3. TODAS LAS EMPRESAS EN LOCALSTORAGE:');
+    console.log('   Total empresas:', empresas.length);
+    empresas.forEach((e, i) => {
+        console.log(`   ${i+1}. ${e.nombre}`);
+        console.log(`      - ID: ${e.id}`);
+        console.log(`      - Usuario: ${e.usuarioId}`);
+        console.log(`      - Régimen: ${e.regimen}`);
+        console.log(`      - Estado: ${e.estado}`);
+        console.log(`      - Inicial: ${e.esEmpresaInicial ? 'Sí' : 'No'}`);
+    });
+    
+    console.log('\n');
+    
+    // 4. Empresas del usuario actual
+    if (usuarioActual) {
+        const usuario = JSON.parse(usuarioActual);
+        const empresasUsuario = empresas.filter(e => e.usuarioId === usuario.email);
+        console.log('4. EMPRESAS DEL USUARIO ACTUAL:');
+        console.log('   Total:', empresasUsuario.length);
+        empresasUsuario.forEach((e, i) => {
+            console.log(`   ${i+1}. ${e.nombre} - ${e.regimen}`);
+        });
+    }
+    
+    console.log('\n========== FIN DEBUG ==========');
+}
+
+// También puedes limpiar todo:
+function limpiarTodo() {
+    if (confirm('¿Estás seguro? Esto borrará TODOS los datos (usuarios y empresas)')) {
+        localStorage.removeItem('usuarios');
+        localStorage.removeItem('empresas');
+        sessionStorage.removeItem('usuarioActual');
+        console.log('✅ Todos los datos han sido eliminados');
+        console.log('Recarga la página para empezar de nuevo');
+    }
+}
+
+// Para limpiar solo empresas:
+function limpiarEmpresas() {
+    if (confirm('¿Borrar todas las empresas?')) {
+        localStorage.removeItem('empresas');
+        console.log('✅ Empresas eliminadas');
+        location.reload();
+    }
+}
+
+// Para ver estructura de una empresa específica:
+function verEmpresa(index) {
+    const empresas = JSON.parse(localStorage.getItem('empresas')) || [];
+    if (empresas[index]) {
+        console.log('Empresa #' + index + ':');
+        console.table(empresas[index]);
+    } else {
+        console.log('❌ No existe empresa en ese índice');
+    }
+}
+
+console.log('🔧 HERRAMIENTAS DE DEPURACIÓN CARGADAS');
+console.log('Usa estas funciones en la consola:');
+console.log('  - debugSparkles()     : Ver todo el estado actual');
+console.log('  - limpiarTodo()       : Borrar usuarios y empresas');
+console.log('  - limpiarEmpresas()   : Borrar solo empresas');
+console.log('  - verEmpresa(0)       : Ver detalles de empresa por índice');
+console.log('');
+console.log('Ejecuta: debugSparkles()');

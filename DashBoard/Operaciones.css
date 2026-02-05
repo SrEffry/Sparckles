@@ -97,7 +97,7 @@
 /* Facturación Actions */
 .facturacion-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 24px;
 }
 
@@ -139,6 +139,11 @@
     color: white;
 }
 
+.card-blue .factura-icon {
+    background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+    color: white;
+}
+
 .card-purple .factura-icon {
     background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
     color: white;
@@ -175,6 +180,16 @@
 
 .card-red .factura-btn:hover {
     background: #b91c1c;
+    transform: scale(1.02);
+}
+
+.card-blue .factura-btn {
+    background: #1976d2;
+    color: white;
+}
+
+.card-blue .factura-btn:hover {
+    background: #1565c0;
     transform: scale(1.02);
 }
 

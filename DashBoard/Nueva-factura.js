@@ -1,4 +1,5 @@
 // Nueva Factura Electrónica - Sparkles
+// SUBTOTAL MUESTRA: Precio + IVA (lo que el cliente paga por esa línea)
 
 let configuracionFacturacion = null;
 let itemsFactura = [];
@@ -162,7 +163,7 @@ function agregarItem(esPrimero = false) {
             </div>
             <div class="item-field">
                 <label>Precio Unit. *</label>
-                <input type="number" id="precio-${itemId}" value="0" min="0" step="0.01" onchange="calcularItem(${itemId})">
+                <input type="number" id="precio-${itemId}" value="0" min="0" step="0.01" onchange="calcularItem(${itemId})" title="Precio sin IVA">
             </div>
             <div class="item-field">
                 <label>IVA %</label>
@@ -174,7 +175,7 @@ function agregarItem(esPrimero = false) {
             </div>
             <div class="item-field">
                 <label>Subtotal</label>
-                <input type="text" id="subtotal-${itemId}" value="$0.00" readonly>
+                <input type="text" id="subtotal-${itemId}" value="$0.00" readonly title="Precio + IVA">
             </div>
             <button type="button" class="btn-remove-item" onclick="removerItem(${itemId})" ${esPrimero ? 'style="visibility: hidden;"' : ''}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -284,21 +285,31 @@ function removerItem(itemId) {
     actualizarPreview();
 }
 
-// ========== CALCULAR ITEM ==========
+// ========== CALCULAR ITEM (SUBTOTAL = PRECIO + IVA) ==========
 function calcularItem(itemId) {
     const cantidad = parseFloat(document.getElementById(`cant-${itemId}`).value) || 0;
-    const precio = parseFloat(document.getElementById(`precio-${itemId}`).value) || 0;
-    const subtotal = cantidad * precio;
+    const precioUnitario = parseFloat(document.getElementById(`precio-${itemId}`).value) || 0;
+    const tasaIva = parseFloat(document.getElementById(`iva-${itemId}`).value) || 0;
     
-    document.getElementById(`subtotal-${itemId}`).value = `$${formatearNumero(subtotal)}`;
+    // Base sin IVA
+    const baseItem = cantidad * precioUnitario;
+    
+    // IVA del item
+    const ivaItem = baseItem * (tasaIva / 100);
+    
+    // SUBTOTAL = BASE + IVA (esto es lo que ve el usuario)
+    const subtotalConIva = baseItem + ivaItem;
+    
+    // Mostrar el subtotal CON IVA en el campo
+    document.getElementById(`subtotal-${itemId}`).value = `$${formatearNumero(subtotalConIva)}`;
     
     // Actualizar en el array
     const item = itemsFactura.find(i => i.id === itemId);
     if (item) {
         item.cantidad = cantidad;
-        item.precioUnitario = precio;
-        item.iva = parseFloat(document.getElementById(`iva-${itemId}`).value);
-        item.subtotal = subtotal;
+        item.precioUnitario = precioUnitario;
+        item.iva = tasaIva;
+        item.subtotal = subtotalConIva; // Guardamos el subtotal con IVA
     }
     
     actualizarPreview();
@@ -311,13 +322,16 @@ function actualizarPreview() {
     
     itemsFactura.forEach(item => {
         const cantidad = parseFloat(document.getElementById(`cant-${item.id}`).value) || 0;
-        const precio = parseFloat(document.getElementById(`precio-${item.id}`).value) || 0;
-        const iva = parseFloat(document.getElementById(`iva-${item.id}`).value) || 0;
+        const precioUnitario = parseFloat(document.getElementById(`precio-${item.id}`).value) || 0;
+        const tasaIva = parseFloat(document.getElementById(`iva-${item.id}`).value) || 0;
         
-        const subtotal = cantidad * precio;
-        const ivaItem = subtotal * (iva / 100);
+        // Base sin IVA
+        const base = cantidad * precioUnitario;
         
-        subtotalTotal += subtotal;
+        // IVA del item
+        const ivaItem = base * (tasaIva / 100);
+        
+        subtotalTotal += base;
         ivaTotal += ivaItem;
     });
     
@@ -365,7 +379,7 @@ function generarFactura() {
         const cant = parseFloat(document.getElementById(`cant-${item.id}`).value);
         const precio = parseFloat(document.getElementById(`precio-${item.id}`).value);
         
-        if (cant <= 0 || precio <= 0) {
+        if (cant <= 0 || precio < 0) {
             itemsValidos = false;
         }
     });
@@ -405,22 +419,22 @@ function generarFactura() {
         }
         
         const cant = parseFloat(document.getElementById(`cant-${item.id}`).value);
-        const precio = parseFloat(document.getElementById(`precio-${item.id}`).value);
+        const precioUnitario = parseFloat(document.getElementById(`precio-${item.id}`).value);
         const iva = parseFloat(document.getElementById(`iva-${item.id}`).value);
         
-        const subtotal = cant * precio;
-        const ivaItem = subtotal * (iva / 100);
-        const total = subtotal + ivaItem;
+        const base = cant * precioUnitario;
+        const ivaItem = base * (iva / 100);
+        const total = base + ivaItem;
         
-        subtotalTotal += subtotal;
+        subtotalTotal += base;
         ivaTotal += ivaItem;
         
         itemsCompletos.push({
             descripcion: desc,
             cantidad: cant,
-            precioUnitario: precio,
+            precioUnitario: precioUnitario,
             iva: iva,
-            subtotal: subtotal,
+            subtotal: base,
             ivaValor: ivaItem,
             total: total
         });
@@ -484,6 +498,21 @@ function actualizarNumeracion() {
 function mostrarFacturaGenerada(factura) {
     const numeroCompleto = `${factura.prefijo}-${String(factura.numero).padStart(5, '0')}`;
     
+    // Agrupar IVAs por tasa
+    const ivasPorTasa = {};
+    factura.items.forEach(item => {
+        if (!ivasPorTasa[item.iva]) {
+            ivasPorTasa[item.iva] = 0;
+        }
+        ivasPorTasa[item.iva] += item.ivaValor;
+    });
+    
+    // Crear HTML del desglose de IVAs
+    const desgloseIVA = Object.keys(ivasPorTasa).map(tasa => {
+        if (parseFloat(tasa) === 0) return '';
+        return `<div><strong>IVA (${tasa}%):</strong> $${formatearNumero(ivasPorTasa[tasa])}</div>`;
+    }).filter(Boolean).join('');
+    
     const facturaHTML = `
         <div class="factura-generada">
             <div class="factura-generada-header">
@@ -529,7 +558,8 @@ function mostrarFacturaGenerada(factura) {
                             <th>DESCRIPCIÓN</th>
                             <th>CANT.</th>
                             <th>PRECIO UNIT.</th>
-                            <th>IVA</th>
+                            <th>IVA %</th>
+                            <th>VALOR IVA</th>
                             <th>TOTAL</th>
                         </tr>
                     </thead>
@@ -540,6 +570,7 @@ function mostrarFacturaGenerada(factura) {
                                 <td>${item.cantidad}</td>
                                 <td>$${formatearNumero(item.precioUnitario)}</td>
                                 <td>${item.iva}%</td>
+                                <td>$${formatearNumero(item.ivaValor)}</td>
                                 <td>$${formatearNumero(item.total)}</td>
                             </tr>
                         `).join('')}
@@ -548,9 +579,10 @@ function mostrarFacturaGenerada(factura) {
             </div>
             
             <div class="factura-generada-totales">
-                <div><strong>Subtotal:</strong> $${formatearNumero(factura.subtotal)}</div>
-                <div><strong>IVA (19%):</strong> $${formatearNumero(factura.iva)}</div>
-                <div class="total-final"><strong>TOTAL:</strong> $${formatearNumero(factura.total)}</div>
+                <div><strong>Subtotal (sin IVA):</strong> $${formatearNumero(factura.subtotal)}</div>
+                ${desgloseIVA}
+                <div style="margin-top: 8px;"><strong>IVA Total:</strong> $${formatearNumero(factura.iva)}</div>
+                <div class="total-final"><strong>TOTAL A PAGAR:</strong> $${formatearNumero(factura.total)}</div>
             </div>
             
             ${factura.observaciones ? `

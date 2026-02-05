@@ -1,0 +1,42 @@
+.historial-container {padding: 30px 40px; max-width: 1400px; margin: 0 auto;}
+.historial-header {display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; gap: 20px;}
+.historial-header-left {display: flex; align-items: center; gap: 20px;}
+.historial-header h1 {font-size: 28px; font-weight: 600; color: #1d1d1f; margin: 0 0 4px 0;}
+.historial-header p {font-size: 15px; color: #86868b; margin: 0;}
+.historial-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 32px;}
+.stat-historial {background: white; padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: all 0.3s ease;}
+.stat-historial:hover {transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
+.stat-historial-icon {width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
+.stat-historial-icon.blue {background: #e3f2fd; color: #1976d2;}
+.stat-historial-icon.green {background: #e6f7ed; color: #2d7a4b;}
+.stat-historial-icon.purple {background: #f3e5f5; color: #7b1fa2;}
+.stat-historial p {font-size: 13px; color: #86868b; margin: 0 0 4px 0;}
+.stat-historial h3 {font-size: 24px; font-weight: 700; color: #1d1d1f; margin: 0;}
+.historial-toolbar {display: flex; gap: 16px; margin-bottom: 24px;}
+.search-historial {flex: 1; display: flex; align-items: center; gap: 12px; background: white; padding: 12px 20px; border-radius: 12px; border: 1px solid #e0e0e0; transition: all 0.3s ease;}
+.search-historial:focus-within {border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);}
+.search-historial input {border: none; outline: none; width: 100%; font-size: 14px;}
+.historial-table-container {background: white; border-radius: 16px; padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow-x: auto;}
+.historial-table {width: 100%; border-collapse: collapse;}
+.historial-table thead tr {border-bottom: 2px solid #f5f5f7;}
+.historial-table th {text-align: left; padding: 16px; font-size: 12px; font-weight: 600; color: #86868b; text-transform: uppercase;}
+.historial-table tbody tr {border-bottom: 1px solid #f5f5f7; transition: all 0.3s ease;}
+.historial-table tbody tr:hover {background: #fafafa;}
+.historial-table td {padding: 16px; font-size: 14px; color: #1d1d1f;}
+.factura-numero {font-weight: 600; color: #1976d2;}
+.empty-state {text-align: center; padding: 60px 20px;}
+.empty-state svg {color: #d1d1d6; margin-bottom: 24px;}
+.empty-state h3 {font-size: 20px; font-weight: 600; color: #1d1d1f; margin: 0 0 8px 0;}
+.empty-state p {font-size: 15px; color: #86868b; margin: 0 0 24px 0;}
+.btn-primary {background: #1976d2; color: white; border: none; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease;}
+.btn-primary:hover {background: #1565c0; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(25, 118, 210, 0.3);}
+.action-buttons {display: flex; gap: 8px;}
+.action-btn {width: 36px; height: 36px; border: none; border-radius: 8px; background: #f5f5f7; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;}
+.action-btn:hover {background: #e8e8ea;}
+.action-btn.view:hover {background: #e3f2fd; color: #1976d2;}
+.action-btn.delete:hover {background: #ffebee; color: #c62828;}
+@media (max-width: 968px) {
+  .historial-container {padding: 20px;}
+  .historial-header {flex-direction: column; align-items: flex-start;}
+  .historial-toolbar {flex-direction: column;}
+}

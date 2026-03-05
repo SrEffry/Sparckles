@@ -1886,4 +1886,403 @@
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
 }
+/* ========== DESCUENTOS Y RETENCIONES - CSS ADICIONAL ========== */
+
+/* ===== DESCUENTOS EN PRODUCTOS ===== */
+
+.producto-campo input[type="number"].campo-descuento {
+    background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+    border-color: #ffd700;
+    font-weight: 600;
+}
+
+.producto-campo input[type="number"].campo-descuento:focus {
+    background: white;
+    border-color: #ff9800;
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+}
+
+.producto-campo input[type="number"].campo-descuento:not([value="0"]) {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffffff 100%);
+    border-color: #ff9800;
+    color: #e65100;
+    font-weight: 700;
+}
+
+/* Producto con descuento aplicado */
+.producto-item.con-descuento {
+    background: linear-gradient(135deg, #fffbea 0%, #ffffff 100%);
+    border-color: #ffd700;
+}
+
+/* ===== LÍNEA DE DESCUENTOS EN RESUMEN ===== */
+
+.resumen-linea.linea-descuentos {
+    padding: 8px 0;
+    background: linear-gradient(90deg, transparent 0%, #fff3e0 50%, transparent 100%);
+    margin: 0 -10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 6px;
+}
+
+.resumen-linea.linea-descuentos .resumen-label {
+    color: #e65100;
+    font-weight: 600;
+}
+
+.resumen-linea.linea-descuentos .resumen-valor {
+    color: #e65100;
+    font-weight: 700;
+}
+
+/* ===== BOTÓN DE RETENCIONES EN RESUMEN ===== */
+
+.btn-gestionar-retenciones {
+    width: 100%;
+    padding: 10px 14px;
+    background: white;
+    border: 2px dashed #801931;
+    color: #801931;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    margin: 10px 0;
+}
+
+.btn-gestionar-retenciones:hover {
+    background: rgba(128, 25, 49, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(128, 25, 49, 0.15);
+}
+
+.btn-gestionar-retenciones svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ===== MODAL DE RETENCIONES ===== */
+
+.modal-retenciones {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-retenciones-contenido {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-retenciones-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-retenciones-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1d1d1f;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-retenciones-header svg {
+    color: #801931;
+}
+
+.btn-cerrar-modal-retenciones {
+    width: 32px;
+    height: 32px;
+    background: #f8f9fa;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.btn-cerrar-modal-retenciones:hover {
+    background: #c62828;
+    color: white;
+    transform: rotate(90deg);
+}
+
+.modal-retenciones-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-retenciones-body::-webkit-scrollbar {
+    width: 5px;
+}
+
+.modal-retenciones-body::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+
+.modal-retenciones-body::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 3px;
+}
+
+/* ===== RETENCION ITEM ===== */
+
+.retencion-item {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e5e5e7;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+}
+
+.retencion-item.activa {
+    background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+    border-color: #2d7a4b;
+}
+
+.retencion-item:hover {
+    border-color: #801931;
+    box-shadow: 0 2px 8px rgba(128, 25, 49, 0.08);
+}
+
+.retencion-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.retencion-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #801931;
+}
+
+.retencion-nombre {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d1d1f;
+    flex: 1;
+}
+
+.retencion-badge {
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #801931 0%, #a02244 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.retencion-campos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.retencion-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.retencion-campo label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.retencion-campo input {
+    padding: 8px 12px;
+    border: 2px solid #e5e5e7;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d1d1f;
+    transition: all 0.3s ease;
+}
+
+.retencion-campo input:focus {
+    outline: none;
+    border-color: #801931;
+    box-shadow: 0 0 0 3px rgba(128, 25, 49, 0.1);
+}
+
+.retencion-campo input:read-only {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.retencion-campo input:disabled {
+    background: #f8f9fa;
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.retencion-valor {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2d7a4b;
+}
+
+/* ===== RESUMEN DE RETENCIONES EN MODAL ===== */
+
+.modal-retenciones-footer {
+    padding: 16px 24px;
+    border-top: 2px solid #f0f0f0;
+    background: #f8f9fa;
+}
+
+.resumen-retenciones-modal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid #e5e5e7;
+}
+
+.resumen-retenciones-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.resumen-retenciones-valor {
+    font-size: 18px;
+    font-weight: 700;
+    color: #c62828;
+}
+
+.modal-retenciones-acciones {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-cancelar-retenciones {
+    flex: 1;
+    padding: 10px 20px;
+    background: white;
+    border: 2px solid #e5e5e7;
+    color: #6c757d;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancelar-retenciones:hover {
+    border-color: #6c757d;
+    background: #f8f9fa;
+}
+
+.btn-aplicar-retenciones {
+    flex: 1;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #801931 0%, #a02244 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(128, 25, 49, 0.25);
+}
+
+.btn-aplicar-retenciones:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(128, 25, 49, 0.35);
+}
+
+.btn-aplicar-retenciones:active {
+    transform: translateY(0);
+}
+
+/* ===== DESGLOSE DE RETENCIONES EN RESUMEN PRINCIPAL ===== */
+
+.resumen-retenciones-desglose {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 16px;
+    margin-top: -5px;
+    margin-bottom: 8px;
+}
+
+.resumen-retencion-detalle {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.resumen-retencion-nombre {
+    font-weight: 600;
+}
+
+.resumen-retencion-valor {
+    font-weight: 700;
+    color: #c62828;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+    .modal-retenciones-contenido {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .retencion-campos {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-retenciones-acciones {
+        flex-direction: column;
+    }
+}
 }

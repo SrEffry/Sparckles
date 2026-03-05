@@ -457,7 +457,7 @@
                     </div>
                 </div>
 
-                <!-- Columna Derecha: Panel de Resumen (FASE 3) -->
+                <!-- ========== PANEL DE RESUMEN LATERAL - COMPLETO CON DESCUENTOS Y RETENCIONES ========== -->
                 <aside class="panel-resumen">
                     <div class="resumen-header">
                         <h3>Resumen de Factura</h3>
@@ -476,6 +476,7 @@
                         </div>
 
                         <div id="resumenValores" style="display: none;">
+                            <!-- SUBTOTAL -->
                             <div class="resumen-linea">
                                 <span class="resumen-label">
                                     Subtotal
@@ -484,6 +485,16 @@
                                 <span class="resumen-valor" id="resumenSubtotal">$0.00</span>
                             </div>
 
+                            <!-- DESCUENTOS (NUEVO) -->
+                            <div class="resumen-linea linea-descuentos" id="lineaDescuentos" style="display: flex;">
+                                <span class="resumen-label">
+                                    Descuentos
+                                    <span class="resumen-help" title="Descuentos aplicados a productos">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor" id="resumenDescuentos">$0.00</span>
+                            </div>
+
+                            <!-- IVA -->
                             <div class="resumen-linea">
                                 <span class="resumen-label">
                                     Total IVA
@@ -492,20 +503,23 @@
                                 <span class="resumen-valor" id="resumenTotalIva">$0.00</span>
                             </div>
 
+                            <!-- DESGLOSE IVA -->
                             <div class="resumen-desglose" id="desgIoseIva" style="display: none;"></div>
 
                             <div class="resumen-divider"></div>
 
+                            <!-- RETENCIONES DE PRODUCTOS -->
                             <div class="resumen-linea" id="lineaRetenciones" style="display: none;">
                                 <span class="resumen-label">
-                                    Retenciones
-                                    <span class="resumen-help" title="Retención en la fuente aplicada">ⓘ</span>
+                                    Retenciones Productos
+                                    <span class="resumen-help" title="Retención en la fuente de productos">ⓘ</span>
                                 </span>
                                 <span class="resumen-valor resumen-negativo" id="resumenRetenciones">-$0.00</span>
                             </div>
 
                             <div class="resumen-desglose" id="desgIoseRetenciones" style="display: none;"></div>
 
+                            <!-- OTROS IMPUESTOS -->
                             <div class="resumen-linea" id="lineaOtrosImpuestos" style="display: none;">
                                 <span class="resumen-label">
                                     Otros Impuestos
@@ -516,11 +530,25 @@
 
                             <div class="resumen-divider"></div>
 
+                            <!-- TOTAL FACTURA -->
                             <div class="resumen-linea resumen-total">
                                 <span class="resumen-label-total">Total Factura</span>
                                 <span class="resumen-valor-total" id="resumenTotal">$0.00</span>
                             </div>
 
+                            <!-- RETENCIONES FISCALES (NUEVO) -->
+                            <div class="resumen-linea" id="lineaRetencionesFiscales" style="display: none;">
+                                <span class="resumen-label">
+                                    Retenciones Fiscales
+                                    <span class="resumen-help" title="ReteFuente, ReteIVA, ReteICA">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor resumen-negativo" id="resumenRetencionesFiscales">-$0.00</span>
+                            </div>
+
+                            <!-- DESGLOSE RETENCIONES FISCALES (NUEVO) -->
+                            <div class="resumen-retenciones-desglose" id="desgIoseRetencionesFiscales" style="display: none;"></div>
+
+                            <!-- TOTAL A COBRAR -->
                             <div class="resumen-linea resumen-cobrar" id="lineaCobrar" style="display: none;">
                                 <span class="resumen-label-cobrar">
                                     Total a Cobrar
@@ -530,6 +558,15 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- BOTÓN GESTIONAR RETENCIONES (NUEVO) -->
+                    <button type="button" class="btn-gestionar-retenciones" onclick="abrirModalRetenciones()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2-2v16"></path>
+                        </svg>
+                        Gestionar Retenciones Fiscales
+                    </button>
 
                     <div class="resumen-footer">
                         <p class="resumen-nota">Los valores se actualizan automáticamente</p>
@@ -686,6 +723,118 @@
             </div>
         </div>
     </div>
-</body>
 
+    <!-- ========== MODAL DE RETENCIONES FISCALES (NUEVO) ========== -->
+    <div id="modalRetenciones" class="modal-retenciones" style="display: none;"
+        onclick="cerrarModalRetencionesClickFuera(event)">
+        <div class="modal-retenciones-contenido" onclick="event.stopPropagation()">
+            <div class="modal-retenciones-header">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2-2v16"></path>
+                    </svg>
+                    Retenciones Fiscales
+                </h2>
+                <button type="button" class="btn-cerrar-modal-retenciones" onclick="cerrarModalRetenciones()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-retenciones-body">
+                <!-- RETEFUENTE -->
+                <div class="retencion-item" id="retencionReteFuente">
+                    <div class="retencion-header">
+                        <input type="checkbox" class="retencion-checkbox" id="checkReteFuente"
+                            onchange="toggleRetencion('retefuente')">
+                        <span class="retencion-nombre">Retención en la Fuente</span>
+                        <span class="retencion-badge">ReteFuente</span>
+                    </div>
+                    <div class="retencion-campos">
+                        <div class="retencion-campo">
+                            <label>Tarifa (%)</label>
+                            <input type="number" id="tarifaReteFuente" min="0" max="100" step="0.1" value="4"
+                                onchange="calcularRetencion('retefuente')" disabled>
+                        </div>
+                        <div class="retencion-campo">
+                            <label>Base de Cálculo</label>
+                            <input type="text" id="baseReteFuente" value="$0.00" readonly>
+                        </div>
+                        <div class="retencion-campo" style="grid-column: span 2;">
+                            <label>Valor a Retener</label>
+                            <input type="text" class="retencion-valor" id="valorReteFuente" value="$0.00" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RETEIVA -->
+                <div class="retencion-item" id="retencionReteIVA">
+                    <div class="retencion-header">
+                        <input type="checkbox" class="retencion-checkbox" id="checkReteIVA"
+                            onchange="toggleRetencion('reteiva')">
+                        <span class="retencion-nombre">Retención de IVA</span>
+                        <span class="retencion-badge">ReteIVA</span>
+                    </div>
+                    <div class="retencion-campos">
+                        <div class="retencion-campo">
+                            <label>Tarifa (%)</label>
+                            <input type="number" id="tarifaReteIVA" min="0" max="100" step="0.1" value="15"
+                                onchange="calcularRetencion('reteiva')" disabled>
+                        </div>
+                        <div class="retencion-campo">
+                            <label>Base de Cálculo</label>
+                            <input type="text" id="baseReteIVA" value="$0.00" readonly>
+                        </div>
+                        <div class="retencion-campo" style="grid-column: span 2;">
+                            <label>Valor a Retener</label>
+                            <input type="text" class="retencion-valor" id="valorReteIVA" value="$0.00" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RETEICA -->
+                <div class="retencion-item" id="retencionReteICA">
+                    <div class="retencion-header">
+                        <input type="checkbox" class="retencion-checkbox" id="checkReteICA"
+                            onchange="toggleRetencion('reteica')">
+                        <span class="retencion-nombre">Retención de ICA</span>
+                        <span class="retencion-badge">ReteICA</span>
+                    </div>
+                    <div class="retencion-campos">
+                        <div class="retencion-campo">
+                            <label>Tarifa (%)</label>
+                            <input type="number" id="tarifaReteICA" min="0" max="100" step="0.001" value="0.414"
+                                onchange="calcularRetencion('reteica')" disabled>
+                        </div>
+                        <div class="retencion-campo">
+                            <label>Base de Cálculo</label>
+                            <input type="text" id="baseReteICA" value="$0.00" readonly>
+                        </div>
+                        <div class="retencion-campo" style="grid-column: span 2;">
+                            <label>Valor a Retener</label>
+                            <input type="text" class="retencion-valor" id="valorReteICA" value="$0.00" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-retenciones-footer">
+                <div class="resumen-retenciones-modal">
+                    <span class="resumen-retenciones-label">Total Retenciones</span>
+                    <span class="resumen-retenciones-valor" id="totalRetencionesModal">$0.00</span>
+                </div>
+                <div class="modal-retenciones-acciones">
+                    <button type="button" class="btn-cancelar-retenciones"
+                        onclick="cerrarModalRetenciones()">Cancelar</button>
+                    <button type="button" class="btn-aplicar-retenciones" onclick="aplicarRetenciones()">Aplicar
+                        Retenciones</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
 </html>

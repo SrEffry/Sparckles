@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Sparkles</title>
+    <title>Sparkles - Software Contable</title>
     <link rel="stylesheet" href="styles.css">
     <script defer src="main.js"></script>
 </head>
@@ -24,7 +24,7 @@
             <div id="home" class="view">
                 <h2>Bienvenido a Sparkles</h2>
                 <p>Accede a tu cuenta o crea una nueva para comenzar</p>
-                <button class="btn btn-primary" onclick="mostrarVista('registro1')">Crea tu cuenta</button>
+                <button class="btn btn-primary" onclick="mostrarVista('registro')">Crea tu cuenta</button>
                 <button class="btn btn-secondary" onclick="mostrarVista('login')">Iniciar sesión</button>
                 <p class="first-time">
                     ¿Primera vez? ¡Crea tu cuenta y empieza a simplificar tu contabilidad!
@@ -38,122 +38,32 @@
             <div id="login" class="view hidden">
                 <h2>Iniciar sesión</h2>
                 <div id="mensajeErrorLogin" class="mensaje-error hidden"></div>
-                <input type="text" placeholder="Usuario" id="usuario_login">
-                <input type="password" placeholder="Contraseña" id="loginPassword">
-                <button class="btn btn-primary">Entrar</button>
+                <input type="email" placeholder="Correo electrónico" id="usuario_login" autocomplete="email">
+                <input type="password" placeholder="Contraseña" id="loginPassword" autocomplete="current-password">
+                <button class="btn btn-primary" onclick="iniciarSesion()">Entrar</button>
                 <p><a href="#" class="volver" onclick="mostrarVista('home')">Volver</a></p>
             </div>
 
-            <!-- Registro Paso 1 -->
-            <div id="registro1" class="view hidden">
-                <div class="progress">
-                    <div class="progress-step active"></div>
-                    <div class="progress-step"></div>
+            <!-- Vista Registro (SIMPLIFICADA) -->
+            <div id="registro" class="view hidden">
+                <h2>Crea tu cuenta</h2>
+                <p class="registro-subtitle">Completa los datos básicos para empezar</p>
+                <div id="mensajeErrorRegistro" class="mensaje-error hidden"></div>
+                
+                <input type="text" placeholder="Nombre completo" id="nombreCompleto" autocomplete="name">
+                <input type="email" placeholder="Correo electrónico" id="email" autocomplete="email">
+                <input type="password" placeholder="Contraseña (mínimo 6 caracteres)" id="password" autocomplete="new-password">
+                <input type="password" placeholder="Confirmar contraseña" id="confirmPassword" autocomplete="new-password">
+                
+                <div class="terminos-checkbox">
+                    <input type="checkbox" id="aceptarTerminos">
+                    <label for="aceptarTerminos">Acepto los términos y condiciones</label>
                 </div>
-                <h2>Crea tu cuenta - Datos personales</h2>
-                <div id="mensajeErrorRegistro1" class="mensaje-error hidden"></div>
-                <input type="text" placeholder="Nombres" id="nombre">
-                <input type="text" placeholder="Apellidos" id="apellido">
-                <input type="email" placeholder="Correo electrónico" id="email">
-                <input type="password" placeholder="Contraseña" id="password">
-                <input type="password" placeholder="Confirmar contraseña" id="confirmPassword">
-                <button class="btn btn-primary" onclick="validarRegistro1()">Siguiente</button>
+                
+                <button class="btn btn-primary" onclick="registrarUsuario()">Crear cuenta</button>
                 <p><a href="#" class="volver" onclick="mostrarVista('home')">Volver</a></p>
-            </div>
-
-            <!-- Registro Paso 2 -->
-            <div id="registro2" class="view hidden">
-                <div class="progress">
-                    <div class="progress-step"></div>
-                    <div class="progress-step active"></div>
-                </div>
-                <h2>Crea tu cuenta - Datos de la entidad</h2>
-                <div id="mensajeErrorRegistro2" class="mensaje-error hidden"></div>
-                <div id="mensajeExitoRegistro2" class="mensaje-exito hidden"></div>
-
-                <!-- Selección tipo de entidad -->
-                <div class="form-group-radio">
-                    <label class="radio-label-main">Seleccione su tipo de entidad: *</label>
-                    <div class="radio-options">
-                        <label class="radio-option-card">
-                            <input type="radio" name="tipoEntidad" value="juridica" checked onchange="cambiarTipoEntidad()">
-                            <div class="radio-card-content">
-                                <span class="radio-title">Persona Jurídica</span>
-                            </div>
-                        </label>
-                        <label class="radio-option-card">
-                            <input type="radio" name="tipoEntidad" value="natural" onchange="cambiarTipoEntidad()">
-                            <div class="radio-card-content">
-                                <span class="radio-title">Persona Natural</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Campos para Persona Jurídica -->
-                <div id="camposJuridica">
-                    <div class="form-row">
-                        <input type="text" placeholder="NIT" id="nit">
-                        <input type="text" placeholder="Confirmar NIT" id="confirmNit">
-                    </div>
-
-                    <div class="form-row">
-                        <input type="text" placeholder="DV" id="dv" maxlength="1">
-                        <input type="text" placeholder="Confirmar DV" id="confirmDv" maxlength="1">
-                    </div>
-
-                    <input type="text" placeholder="Razón social" id="razon">
-
-                    <select id="pais">
-                        <option value="">Seleccione país</option>
-                        <option value="Colombia">Colombia</option>
-                    </select>
-
-                    <div class="form-row">
-                        <select id="departamento">
-                            <option value="">Seleccione departamento</option>
-                        </select>
-                        <select id="ciudad" disabled>
-                            <option value="">Seleccione ciudad</option>
-                        </select>
-                    </div>
-
-                    <div class="form-row">
-                        <input type="text" placeholder="Dirección" id="direccion">
-                        <input type="text" placeholder="Teléfono" id="telefono">
-                    </div>
-                </div>
-
-                <!-- Campos para Persona Natural -->
-                <div id="camposNatural" style="display: none;">
-                    <div class="form-row">
-                        <input type="text" placeholder="Nombres" id="nombresNatural">
-                        <input type="text" placeholder="Apellidos" id="apellidosNatural">
-                    </div>
-
-                    <div class="form-row">
-                        <select id="tipoDocumento">
-                            <option value="">Tipo de documento</option>
-                            <option value="CC">Cédula de Ciudadanía</option>
-                            <option value="CE">Cédula de Extranjería</option>
-                            <option value="PA">Pasaporte</option>
-                            <option value="TI">Tarjeta de Identidad</option>
-                        </select>
-                        <input type="text" placeholder="Número de documento" id="numeroDocumento">
-                    </div>
-
-                    <div class="form-row">
-                        <select id="departamentoNatural">
-                            <option value="">Seleccione departamento</option>
-                        </select>
-                        <select id="municipioNatural" disabled>
-                            <option value="">Seleccione municipio</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" onclick="finalizarRegistro()">Finalizar registro</button>
-                <p><a href="#" class="volver" onclick="mostrarVista('registro1')">Atrás</a></p>
+                
+                <p class="login-link">¿Ya tienes cuenta? <a href="#" onclick="mostrarVista('login')">Inicia sesión</a></p>
             </div>
         </div>
     </div>

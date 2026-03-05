@@ -1,14 +1,15 @@
-// Funcionalidad de Nueva Empresa - Sparkles
+// Funcionalidad de Nueva Empresa - Sparkles (CON REPRESENTANTE LEGAL)
 
 let currentSection = 1;
 let departamentosCiudades = {};
+let tipoEntidadActual = 'juridica'; // Por defecto
 
 document.addEventListener('DOMContentLoaded', function() {
     verificarSesion();
     cargarDatosUsuario();
     cargarDepartamentosCiudades();
     setupLogout();
-    crearEmpresaInicial();
+    // NO ejecutar crearEmpresaInicial - ya no es necesario
 });
 
 // ========== VERIFICAR SESIÓN ==========
@@ -28,7 +29,7 @@ function cargarDatosUsuario() {
         
         const userNameElements = document.querySelectorAll('.user-details strong');
         userNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
         const userEmailElements = document.querySelectorAll('.user-details span');
@@ -38,15 +39,23 @@ function cargarDatosUsuario() {
         
         const headerNameElements = document.querySelectorAll('.user-info-header strong');
         headerNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
-        const iniciales = usuario.nombre.charAt(0) + usuario.apellido.charAt(0);
+        const iniciales = obtenerIniciales(usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`);
         const avatarElements = document.querySelectorAll('.user-avatar, .user-avatar-small');
         avatarElements.forEach(el => {
-            el.textContent = iniciales.toUpperCase();
+            el.textContent = iniciales;
         });
     }
+}
+
+function obtenerIniciales(nombreCompleto) {
+    const partes = nombreCompleto.trim().split(' ');
+    if (partes.length === 1) {
+        return partes[0].substring(0, 2).toUpperCase();
+    }
+    return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
 }
 
 // ========== CONFIGURAR BOTÓN DE SALIR ==========
@@ -62,49 +71,89 @@ function setupLogout() {
     }
 }
 
-// ========== CREAR EMPRESA INICIAL ==========
-function crearEmpresaInicial() {
-    const usuarioActual = sessionStorage.getItem('usuarioActual');
-    if (!usuarioActual) return;
-
-    const usuario = JSON.parse(usuarioActual);
+// ========== NUEVO: CAMBIAR TIPO DE ENTIDAD ==========
+function cambiarTipoEntidad() {
+    const tipoEntidad = document.querySelector('input[name="tipoEntidad"]:checked').value;
+    tipoEntidadActual = tipoEntidad;
     
-    // Solo crear si el usuario tiene datosCompletos === false
-    // (esto significa que aún no ha pasado por el modal de completar datos)
-    if (usuario.datosCompletos !== false) {
-        console.log('Usuario ya tiene datos completos, no crear empresa inicial aquí');
-        return;
+    const camposJuridica = document.getElementById('camposJuridica');
+    const camposNatural = document.getElementById('camposNatural');
+    const step2LabelTop = document.getElementById('step2Label');
+    const section2Title = document.getElementById('section2Title');
+    const camposRepresentante = document.getElementById('camposRepresentante');
+    const mensajePersonaNatural = document.getElementById('mensajePersonaNatural');
+    
+    // Actualizar también el marker del paso 2
+    const marker2 = document.getElementById('marker2');
+    
+    console.log('Cambiando a tipo de entidad:', tipoEntidad);
+    
+    if (tipoEntidad === 'juridica') {
+        // Mostrar campos de empresa
+        camposJuridica.style.display = 'grid';
+        camposNatural.style.display = 'none';
+        
+        // En paso 2: Mostrar campos de representante legal
+        camposRepresentante.style.display = 'grid';
+        mensajePersonaNatural.style.display = 'none';
+        
+        // Cambiar etiqueta del paso 2 a "Representante Legal"
+        step2LabelTop.textContent = 'Representante';
+        section2Title.textContent = 'Datos del Representante Legal';
+        if (marker2) {
+            marker2.setAttribute('title', 'Representante Legal');
+        }
+        
+        // Hacer campos de persona jurídica requeridos
+        document.getElementById('razonSocial').required = true;
+        document.getElementById('nit').required = true;
+        document.getElementById('dv').required = true;
+        document.getElementById('telefonoJuridica').required = true;
+        document.getElementById('emailJuridica').required = true;
+        
+        // Quitar requerimiento de campos de persona natural
+        document.getElementById('nombresNatural').required = false;
+        document.getElementById('apellidosNatural').required = false;
+        document.getElementById('tipoDocumentoNatural').required = false;
+        document.getElementById('numeroDocumentoNatural').required = false;
+        document.getElementById('telefonoNatural').required = false;
+        document.getElementById('emailNatural').required = false;
+        
+    } else {
+        // Mostrar campos de persona natural
+        camposJuridica.style.display = 'none';
+        camposNatural.style.display = 'grid';
+        
+        // En paso 2: Mostrar mensaje en lugar de campos
+        camposRepresentante.style.display = 'none';
+        mensajePersonaNatural.style.display = 'block';
+        
+        // Cambiar etiqueta del paso 2 a "Confirmación"
+        step2LabelTop.textContent = 'Confirmación';
+        section2Title.textContent = 'Confirmación de Datos';
+        if (marker2) {
+            marker2.setAttribute('title', 'Confirmación de Datos');
+        }
+        
+        // Quitar requerimiento de campos de persona jurídica
+        document.getElementById('razonSocial').required = false;
+        document.getElementById('nit').required = false;
+        document.getElementById('dv').required = false;
+        document.getElementById('telefonoJuridica').required = false;
+        document.getElementById('emailJuridica').required = false;
+        
+        // Hacer campos de persona natural requeridos
+        document.getElementById('nombresNatural').required = true;
+        document.getElementById('apellidosNatural').required = true;
+        document.getElementById('tipoDocumentoNatural').required = true;
+        document.getElementById('numeroDocumentoNatural').required = true;
+        document.getElementById('telefonoNatural').required = true;
+        document.getElementById('emailNatural').required = true;
     }
-
-    const empresas = JSON.parse(localStorage.getItem('empresas')) || [];
-
-    // Verificar si ya existe la empresa inicial del usuario
-    const empresaExiste = empresas.some(e => e.esEmpresaInicial && e.usuarioId === usuario.email);
-
-    if (!empresaExiste && usuario.razonSocial) {
-        const empresaInicial = {
-            id: 'inicial-' + Date.now(),
-            esEmpresaInicial: true,
-            usuarioId: usuario.email,
-            nombre: usuario.razonSocial,
-            nit: usuario.nit || '',
-            dv: usuario.dv || '',
-            razonSocial: usuario.razonSocial,
-            pais: usuario.pais || 'Colombia',
-            departamento: usuario.departamento || '',
-            ciudad: usuario.ciudad || '',
-            direccion: usuario.direccion || '',
-            telefono: usuario.telefono || '',
-            tipoPersona: 'Jurídica',
-            estado: 'Activo',
-            regimen: 'Común',
-            datosCompletos: false,
-            fechaCreacion: new Date().toISOString()
-        };
-
-        empresas.push(empresaInicial);
-        localStorage.setItem('empresas', JSON.stringify(empresas));
-        console.log('Empresa inicial creada desde datos de registro');
+    
+    // Actualizar el progress bar si estamos en el paso 2
+    if (currentSection === 2) {
+        actualizarProgressBar();
     }
 }
 
@@ -153,18 +202,14 @@ function nextSection(section) {
 
     // Ocultar sección actual
     document.getElementById(`section${currentSection}`).classList.remove('active');
-    
-    // Marcar paso como completado
-    const steps = document.querySelectorAll('.step');
-    steps[currentSection - 1].classList.add('completed');
-    
+
     // Mostrar nueva sección
     currentSection = section;
-    document.getElementById(`section${section}`).classList.add('active');
-    
-    // Marcar paso como activo
-    steps[currentSection - 1].classList.add('active');
-    
+    document.getElementById(`section${currentSection}`).classList.add('active');
+
+    // Actualizar progress bar
+    actualizarProgressBar();
+
     // Scroll al inicio
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -172,222 +217,334 @@ function nextSection(section) {
 function prevSection(section) {
     // Ocultar sección actual
     document.getElementById(`section${currentSection}`).classList.remove('active');
-    
-    // Quitar active del paso actual
-    const steps = document.querySelectorAll('.step');
-    steps[currentSection - 1].classList.remove('active');
-    
+
     // Mostrar sección anterior
     currentSection = section;
-    document.getElementById(`section${section}`).classList.add('active');
-    
-    // Marcar paso como activo
-    steps[currentSection - 1].classList.add('active');
-    
+    document.getElementById(`section${currentSection}`).classList.add('active');
+
+    // Actualizar progress bar
+    actualizarProgressBar();
+
     // Scroll al inicio
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ========== VALIDACIÓN DE SECCIONES ==========
-function validarSeccion(section) {
-    let valido = true;
-    let mensaje = '';
+// ========== ACTUALIZAR PROGRESS BAR ==========
+function actualizarProgressBar() {
+    // Actualizar el texto del paso actual
+    document.getElementById('currentStep').textContent = currentSection;
+    
+    // Actualizar la etiqueta del paso actual
+    const labels = {
+        1: 'Información Básica',
+        2: tipoEntidadActual === 'juridica' ? 'Representante Legal' : 'Confirmación de Datos',
+        3: 'Ubicación',
+        4: 'Configuración Tributaria'
+    };
+    document.getElementById('currentStepLabel').textContent = labels[currentSection];
+    
+    // Actualizar el ancho de la barra de progreso
+    const progressFill = document.getElementById('progressFill');
+    const percentage = (currentSection / 4) * 100;
+    progressFill.style.width = percentage + '%';
+    
+    // Actualizar markers
+    const markers = document.querySelectorAll('.marker');
+    const stepLabels = document.querySelectorAll('.step-label');
+    
+    markers.forEach((marker, index) => {
+        const step = index + 1;
+        marker.classList.remove('active', 'completed');
+        if (stepLabels[index]) {
+            stepLabels[index].classList.remove('active', 'completed');
+        }
+        
+        if (step < currentSection) {
+            marker.classList.add('completed');
+            if (stepLabels[index]) {
+                stepLabels[index].classList.add('completed');
+            }
+        } else if (step === currentSection) {
+            marker.classList.add('active');
+            if (stepLabels[index]) {
+                stepLabels[index].classList.add('active');
+            }
+        }
+    });
+}
 
-    if (section === 1) {
-        const nombre = document.getElementById('nombreEmpresa').value.trim();
+// ========== VALIDACIÓN POR SECCIÓN ==========
+function validarSeccion(section) {
+    switch(section) {
+        case 1:
+            return validarSeccion1();
+        case 2:
+            return validarSeccion2();
+        case 3:
+            return validarSeccion3();
+        default:
+            return true;
+    }
+}
+
+function validarSeccion1() {
+    const tipoEntidad = document.querySelector('input[name="tipoEntidad"]:checked').value;
+    
+    if (tipoEntidad === 'juridica') {
+        const razonSocial = document.getElementById('razonSocial').value.trim();
         const nit = document.getElementById('nit').value.trim();
         const dv = document.getElementById('dv').value.trim();
-        const razonSocial = document.getElementById('razonSocial').value.trim();
-        const telefono = document.getElementById('telefono').value.trim();
-
-        if (!nombre) {
-            mensaje = 'El nombre de la empresa es obligatorio';
-            valido = false;
-        } else if (!nit) {
-            mensaje = 'El NIT es obligatorio';
-            valido = false;
-        } else if (!dv) {
-            mensaje = 'El DV es obligatorio';
-            valido = false;
-        } else if (dv.length !== 1 || isNaN(dv)) {
-            mensaje = 'El DV debe ser un solo dígito numérico';
-            valido = false;
-        } else if (!razonSocial) {
-            mensaje = 'La razón social es obligatoria';
-            valido = false;
-        } else if (!telefono) {
-            mensaje = 'El teléfono es obligatorio';
-            valido = false;
+        const telefono = document.getElementById('telefonoJuridica').value.trim();
+        const email = document.getElementById('emailJuridica').value.trim();
+        
+        if (!razonSocial) {
+            mostrarError('Por favor ingrese la razón social');
+            return false;
         }
-    } else if (section === 2) {
-        const pais = document.getElementById('pais').value;
-        const departamento = document.getElementById('departamento').value;
-        const ciudad = document.getElementById('ciudad').value;
-        const direccion = document.getElementById('direccion').value.trim();
-
-        if (!pais) {
-            mensaje = 'Debe seleccionar un país';
-            valido = false;
-        } else if (!departamento) {
-            mensaje = 'Debe seleccionar un departamento';
-            valido = false;
-        } else if (!ciudad) {
-            mensaje = 'Debe seleccionar una ciudad';
-            valido = false;
-        } else if (!direccion) {
-            mensaje = 'La dirección es obligatoria';
-            valido = false;
+        if (!nit) {
+            mostrarError('Por favor ingrese el NIT');
+            return false;
         }
-    }
-
-    if (!valido) {
-        mostrarError(mensaje);
-    }
-
-    return valido;
-}
-
-// ========== TOGGLE IVA OPTIONS ==========
-function toggleIvaOptions(mostrar) {
-    const ivaOptions = document.getElementById('ivaOptions');
-    if (mostrar) {
-        ivaOptions.style.display = 'block';
+        if (!dv || dv.length !== 1) {
+            mostrarError('Por favor ingrese el dígito de verificación (1 carácter)');
+            return false;
+        }
+        if (!telefono) {
+            mostrarError('Por favor ingrese el teléfono de la empresa');
+            return false;
+        }
+        if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            mostrarError('Por favor ingrese un correo electrónico válido');
+            return false;
+        }
     } else {
-        ivaOptions.style.display = 'none';
-        // Desmarcar todos los checkboxes
-        const checkboxes = document.querySelectorAll('input[name="caracteristicasIva"]');
-        checkboxes.forEach(cb => cb.checked = false);
+        const nombres = document.getElementById('nombresNatural').value.trim();
+        const apellidos = document.getElementById('apellidosNatural').value.trim();
+        const tipoDoc = document.getElementById('tipoDocumentoNatural').value;
+        const numeroDoc = document.getElementById('numeroDocumentoNatural').value.trim();
+        const telefono = document.getElementById('telefonoNatural').value.trim();
+        const email = document.getElementById('emailNatural').value.trim();
+        
+        if (!nombres) {
+            mostrarError('Por favor ingrese los nombres');
+            return false;
+        }
+        if (!apellidos) {
+            mostrarError('Por favor ingrese los apellidos');
+            return false;
+        }
+        if (!tipoDoc) {
+            mostrarError('Por favor seleccione el tipo de documento');
+            return false;
+        }
+        if (!numeroDoc) {
+            mostrarError('Por favor ingrese el número de documento');
+            return false;
+        }
+        if (!telefono) {
+            mostrarError('Por favor ingrese el teléfono');
+            return false;
+        }
+        if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            mostrarError('Por favor ingrese un correo electrónico válido');
+            return false;
+        }
     }
+    
+    return true;
 }
 
-// ========== GUARDAR EMPRESA ==========
-function guardarEmpresa() {
-    if (!validarSeccion(3)) {
-        return;
+function validarSeccion2() {
+    // Si es persona natural, no hay nada que validar (solo pasa automáticamente)
+    if (tipoEntidadActual === 'natural') {
+        console.log('Persona natural: paso 2 omitido automáticamente');
+        return true;
     }
-
-    // Recopilar datos del formulario
-    const tipoPersona = document.querySelector('input[name="tipoPersona"]:checked').value;
-    const nombre = document.getElementById('nombreEmpresa').value.trim();
-    const nit = document.getElementById('nit').value.trim();
-    const dv = document.getElementById('dv').value.trim();
-    const razonSocial = document.getElementById('razonSocial').value.trim();
-    const matriculaMercantil = document.getElementById('matriculaMercantil').value.trim();
-    const telefono = document.getElementById('telefono').value.trim();
     
+    // Solo validar si es persona jurídica (representante legal)
+    const nombres = document.getElementById('nombresRepresentante').value.trim();
+    const apellidos = document.getElementById('apellidosRepresentante').value.trim();
+    const tipoDoc = document.getElementById('tipoDocumentoRepresentante').value;
+    const numeroDoc = document.getElementById('numeroDocumentoRepresentante').value.trim();
+    
+    if (!nombres) {
+        mostrarError('Por favor ingrese los nombres del representante legal');
+        return false;
+    }
+    if (!apellidos) {
+        mostrarError('Por favor ingrese los apellidos del representante legal');
+        return false;
+    }
+    if (!tipoDoc) {
+        mostrarError('Por favor seleccione el tipo de documento del representante legal');
+        return false;
+    }
+    if (!numeroDoc) {
+        mostrarError('Por favor ingrese el número de documento del representante legal');
+        return false;
+    }
+    
+    return true;
+}
+
+function validarSeccion3() {
     const pais = document.getElementById('pais').value;
     const departamento = document.getElementById('departamento').value;
     const ciudad = document.getElementById('ciudad').value;
     const direccion = document.getElementById('direccion').value.trim();
-    const codigoPostal = document.getElementById('codigoPostal').value.trim();
     
-    const tarifaIvaRetenido = document.getElementById('tarifaIvaRetenido').value;
-    const aplicaIva = document.querySelector('input[name="aplicaIva"]:checked').value;
-    
-    // Obtener características de IVA seleccionadas
-    const caracteristicasIva = [];
-    if (aplicaIva === 'Si') {
-        const checkboxes = document.querySelectorAll('input[name="caracteristicasIva"]:checked');
-        checkboxes.forEach(cb => caracteristicasIva.push(cb.value));
+    if (!pais) {
+        mostrarError('Por favor seleccione el país');
+        return false;
     }
+    if (!departamento) {
+        mostrarError('Por favor seleccione el departamento');
+        return false;
+    }
+    if (!ciudad) {
+        mostrarError('Por favor seleccione la ciudad');
+        return false;
+    }
+    if (!direccion) {
+        mostrarError('Por favor ingrese la dirección');
+        return false;
+    }
+    
+    return true;
+}
 
-    // Validar tarifa IVA
-    if (!tarifaIvaRetenido) {
-        mostrarError('Debe seleccionar una tarifa de IVA retenido');
+// ========== TOGGLE IVA OPTIONS ==========
+function toggleIvaOptions(show) {
+    const ivaOptions = document.getElementById('ivaOptions');
+    ivaOptions.style.display = show ? 'block' : 'none';
+}
+
+// ========== GUARDAR EMPRESA ==========
+function guardarEmpresa() {
+    console.log('🚀 Iniciando guardado de empresa...');
+    
+    // Validar todas las secciones
+    if (!validarSeccion(1) || !validarSeccion(2) || !validarSeccion(3)) {
+        console.error('❌ Validación fallida');
         return;
     }
-
-    // Determinar régimen basado en características
-    let regimen = 'Común';
-    if (caracteristicasIva.includes('granContribuyente')) {
-        regimen = 'Gran Contribuyente';
-    } else if (!aplicaIva || aplicaIva === 'No') {
-        regimen = 'Simplificado';
+    
+    // Validar sección 4 (tributaria)
+    const tarifaIvaRetenido = document.getElementById('tarifaIvaRetenido').value;
+    const aplicaIva = document.querySelector('input[name="aplicaIva"]:checked');
+    
+    if (!tarifaIvaRetenido) {
+        mostrarError('Por favor seleccione la tarifa de IVA retenido');
+        return;
     }
-
+    if (!aplicaIva) {
+        mostrarError('Por favor indique si la empresa está sujeta a IVA');
+        return;
+    }
+    
+    console.log('✅ Validaciones completadas');
+    
+    // Obtener características tributarias seleccionadas
+    const caracteristicasIva = [];
+    document.querySelectorAll('input[name="caracteristicasIva"]:checked').forEach(checkbox => {
+        caracteristicasIva.push(checkbox.value);
+    });
+    
     // Obtener usuario actual
     const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
-
-    // Crear objeto empresa
-    const nuevaEmpresa = {
-        id: Date.now().toString(),
-        tipoPersona: tipoPersona,
-        nombre: nombre,
-        nit: nit,
-        dv: dv,
-        razonSocial: razonSocial,
-        matriculaMercantil: matriculaMercantil,
-        telefono: telefono,
-        pais: pais,
-        departamento: departamento,
-        ciudad: ciudad,
-        direccion: direccion,
-        codigoPostal: codigoPostal,
-        tarifaIvaRetenido: tarifaIvaRetenido,
-        aplicaIva: aplicaIva,
-        caracteristicasIva: caracteristicasIva,
-        regimen: regimen,
-        estado: 'Activo',
-        datosCompletos: true,
-        fechaCreacion: new Date().toISOString(),
-        usuarioId: usuarioActual.email
-    };
-
-    // Obtener todas las empresas del localStorage
-    const todasLasEmpresas = JSON.parse(localStorage.getItem('empresas')) || [];
     
-    // Agregar nueva empresa
-    todasLasEmpresas.push(nuevaEmpresa);
+    // Construir objeto empresa según tipo
+    const tipoEntidad = document.querySelector('input[name="tipoEntidad"]:checked').value;
+    let empresa = {
+        id: Date.now().toString(),
+        usuarioId: usuarioActual.email,
+        tipoEntidad: tipoEntidad,
+        fechaCreacion: new Date().toISOString(),
+        estado: 'Activo'
+    };
+    
+    if (tipoEntidad === 'juridica') {
+        // Datos de Persona Jurídica
+        empresa.razonSocial = document.getElementById('razonSocial').value.trim();
+        empresa.nit = document.getElementById('nit').value.trim();
+        empresa.dv = document.getElementById('dv').value.trim();
+        empresa.telefono = document.getElementById('telefonoJuridica').value.trim();
+        empresa.email = document.getElementById('emailJuridica').value.trim();
+        
+        // Datos del Representante Legal
+        empresa.representanteLegal = {
+            nombres: document.getElementById('nombresRepresentante').value.trim(),
+            apellidos: document.getElementById('apellidosRepresentante').value.trim(),
+            tipoDocumento: document.getElementById('tipoDocumentoRepresentante').value,
+            numeroDocumento: document.getElementById('numeroDocumentoRepresentante').value.trim(),
+            telefono: document.getElementById('telefonoRepresentante').value.trim() || '',
+            email: document.getElementById('emailRepresentante').value.trim() || ''
+        };
+        
+    } else {
+        // Datos de Persona Natural
+        empresa.nombres = document.getElementById('nombresNatural').value.trim();
+        empresa.apellidos = document.getElementById('apellidosNatural').value.trim();
+        empresa.nombreCompleto = `${empresa.nombres} ${empresa.apellidos}`;
+        empresa.tipoDocumento = document.getElementById('tipoDocumentoNatural').value;
+        empresa.numeroDocumento = document.getElementById('numeroDocumentoNatural').value.trim();
+        empresa.telefono = document.getElementById('telefonoNatural').value.trim();
+        empresa.email = document.getElementById('emailNatural').value.trim();
+    }
+    
+    // Datos de ubicación (comunes)
+    empresa.pais = document.getElementById('pais').value;
+    empresa.departamento = document.getElementById('departamento').value;
+    empresa.ciudad = document.getElementById('ciudad').value;
+    empresa.direccion = document.getElementById('direccion').value.trim();
+    empresa.codigoPostal = document.getElementById('codigoPostal').value.trim() || '';
+    
+    // Datos tributarios (comunes)
+    empresa.tarifaIvaRetenido = tarifaIvaRetenido;
+    empresa.aplicaIva = aplicaIva.value === 'Si';
+    empresa.caracteristicasTributarias = caracteristicasIva;
+    
+    console.log('📄 Empresa creada:', empresa);
     
     // Guardar en localStorage
-    localStorage.setItem('empresas', JSON.stringify(todasLasEmpresas));
-
-    console.log('Empresa guardada:', nuevaEmpresa);
-    console.log('Total empresas en localStorage:', todasLasEmpresas.length);
-
+    let empresas = JSON.parse(localStorage.getItem('empresas')) || [];
+    empresas.push(empresa);
+    localStorage.setItem('empresas', JSON.stringify(empresas));
+    
+    console.log('✅ Empresa guardada en localStorage');
+    console.log(`📊 Total de empresas: ${empresas.length}`);
+    
     // Mostrar mensaje de éxito
-    mostrarExito('¡Empresa registrada exitosamente!');
-
+    mostrarExito('✅ Empresa guardada exitosamente');
+    
     // Redirigir después de 2 segundos
     setTimeout(() => {
         window.location.href = 'empresas.html';
     }, 2000);
 }
 
-// ========== MOSTRAR ERROR ==========
+// ========== MENSAJES ==========
 function mostrarError(mensaje) {
     const errorDiv = document.getElementById('mensajeError');
-    const exitoDiv = document.getElementById('mensajeExito');
+    errorDiv.textContent = mensaje;
+    errorDiv.style.display = 'block';
     
-    if (exitoDiv) exitoDiv.style.display = 'none';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
     
-    if (errorDiv) {
-        errorDiv.textContent = mensaje;
-        errorDiv.style.display = 'block';
-        
-        // Scroll al mensaje
-        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        
-        setTimeout(() => {
-            errorDiv.style.display = 'none';
-        }, 5000);
-    }
+    // Scroll al mensaje
+    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// ========== MOSTRAR ÉXITO ==========
 function mostrarExito(mensaje) {
     const exitoDiv = document.getElementById('mensajeExito');
-    const errorDiv = document.getElementById('mensajeError');
+    exitoDiv.textContent = mensaje;
+    exitoDiv.style.display = 'block';
     
-    if (errorDiv) errorDiv.style.display = 'none';
-    
-    if (exitoDiv) {
-        exitoDiv.textContent = mensaje;
-        exitoDiv.style.display = 'block';
-        
-        // Scroll al mensaje
-        exitoDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    setTimeout(() => {
+        exitoDiv.style.display = 'none';
+    }, 5000);
 }
 
-console.log('Nueva Empresa - Módulo cargado correctamente ✨');
+console.log('✨ Nueva Empresa - Módulo cargado correctamente');

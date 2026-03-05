@@ -95,6 +95,7 @@ body {
     font-weight: 400;
     line-height: 1.4em;
     text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    text-align: center;
 }
 
 .support-links {
@@ -114,7 +115,7 @@ body {
 
 .right-panel h2 {
     font-size: 32px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-weight: 600;
     color: #242325;
 }
@@ -123,6 +124,13 @@ body {
     font-size: 18px;
     margin: 0 0 20px 0;
     color: #565555;
+}
+
+/* Nuevo: Subtítulo del registro */
+.registro-subtitle {
+    font-size: 15px;
+    color: #86868b;
+    margin: -10px 0 20px 0;
 }
 
 /* Botones */
@@ -222,65 +230,43 @@ footer {
 }
 
 /* === Formularios === */
-.view input, .view select {
+.view input[type="text"],
+.view input[type="email"],
+.view input[type="password"] {
     padding: 14px;
     margin: 8px 0;
     width: 100%;
+    max-width: 350px;
     border-radius: 8px;
     border: 1px solid #ccc;
     font-size: 16px;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
 }
 
-.form-row {
-    display: flex;
-    gap: 12px;
-    margin: 10px 0;
+.view input:focus {
+    outline: none;
+    border-color: #801931;
+    box-shadow: 0 0 0 3px rgba(128, 25, 49, 0.1);
 }
 
-.form-row input, .form-row select {
-    flex: 1;
-}
-
-/* Progreso registro */
-.progress {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-.progress-step {
-    flex: 1;
-    height: 8px;
-    border-radius: 4px;
-    background: #ddd;
-}
-.progress-step.active {
-    background: #801931;
-}
-
-/* Ocultar vistas */
-.hidden {
-    display: none;
-}
-
-/* Inputs más compactos en el primer registro */
-#registro1 input {
-    padding: 10px;
+/* === Inputs más compactos === */
+#registro input,
+#login input {
+    padding: 12px;
     font-size: 15px;
-    max-width: 300px;
+    max-width: 350px;
 }
 
 /* === Estilo global para placeholders === */
-input::placeholder,
-select::placeholder,
-textarea::placeholder {
+input::placeholder {
     color: #7a7a7a;
     font-size: 15px;
-    font-style: 'Poppins';
     letter-spacing: 0.5px;
     opacity: 0.9;
 }
 
-/* === NUEVO: estilo para enlaces volver === */
+/* === Enlaces volver === */
 .volver {
     display: inline-block;
     margin-top: 12px;
@@ -295,7 +281,7 @@ textarea::placeholder {
     text-decoration: underline;
 }
 
-/* === NUEVO: mensajes de error === */
+/* === Mensajes de error === */
 .mensaje-error {
     background: #fce4ec;
     color: #801931;
@@ -305,11 +291,7 @@ textarea::placeholder {
     margin-bottom: 16px;
     font-size: 15px;
     animation: fadeIn 0.4s ease;
-}
-
-/* Ocultos por defecto */
-.hidden {
-    display: none;
+    max-width: 350px;
 }
 
 /* Mensajes de éxito */
@@ -322,99 +304,68 @@ textarea::placeholder {
     margin-bottom: 16px;
     font-size: 15px;
     animation: fadeIn 0.4s ease;
+    max-width: 350px;
 }
 
-/* === Radio buttons para tipo de entidad === */
-.form-group-radio {
-    margin: 20px 0 30px 0;
-}
-
-.radio-label-main {
-    display: block;
-    font-size: 16px;
-    font-weight: 600;
-    color: #232323;
-    margin-bottom: 16px;
-}
-
-.radio-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.radio-option-card {
-    display: block;
-    cursor: pointer;
-}
-
-.radio-option-card input[type="radio"] {
+/* Ocultos por defecto */
+.hidden {
     display: none;
 }
 
-.radio-card-content {
-    padding: 24px 20px;
-    border: 2px solid #ddd;
-    border-radius: 12px;
-    background: #fff;
-    transition: all 0.3s ease;
+/* === NUEVO: Checkbox de términos === */
+.terminos-checkbox {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    text-align: center;
-    position: relative;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+    max-width: 350px;
 }
 
-.radio-card-content::before {
-    content: "";
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 20px;
-    height: 20px;
-    border: 2px solid #ddd;
-    border-radius: 50%;
-    transition: all 0.3s ease;
+.terminos-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #801931;
+    cursor: pointer;
 }
 
-.radio-option-card input[type="radio"]:checked + .radio-card-content::before {
-    background: #801931;
-    border-color: #801931;
-    box-shadow: inset 0 0 0 3px white;
-}
-
-.radio-option-card input[type="radio"]:checked + .radio-card-content {
-    border-color: #801931;
-    background: rgba(128, 25, 49, 0.05);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(128, 25, 49, 0.2);
-}
-
-.radio-card-content:hover {
-    border-color: #801931;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.radio-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #232323;
-    margin-top: 8px;
-}
-
-.radio-option-card input[type="radio"]:checked + .radio-card-content .radio-title {
-    color: #801931;
-}
-
-.radio-desc {
+.terminos-checkbox label {
     font-size: 14px;
     color: #565555;
+    cursor: pointer;
+    user-select: none;
 }
 
+/* === NUEVO: Link de login en registro === */
+.login-link {
+    font-size: 14px;
+    color: #565555;
+    margin-top: 20px;
+}
+
+.login-link a {
+    color: #801931;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.login-link a:hover {
+    text-decoration: underline;
+}
+
+/* === Mejoras responsive === */
 @media (max-width: 480px) {
-    .radio-options {
-        grid-template-columns: 1fr;
+    .view input[type="text"],
+    .view input[type="email"],
+    .view input[type="password"] {
+        max-width: 100%;
+    }
+    
+    .mensaje-error,
+    .mensaje-exito {
+        max-width: 100%;
+    }
+    
+    .terminos-checkbox {
+        max-width: 100%;
     }
 }

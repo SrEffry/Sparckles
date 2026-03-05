@@ -1,16 +1,21 @@
+// Sparkles - Sistema de Autenticación Simplificado
+
+// ========== MOSTRAR VISTAS ==========
 function mostrarVista(id) {
     document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
     document.getElementById(id).classList.remove("hidden");
     document.querySelectorAll(".mensaje-error, .mensaje-exito").forEach(m => m.classList.add("hidden"));
 }
 
+// ========== MOSTRAR ERROR ==========
 function mostrarError(idContenedor, mensaje) {
     const errorBox = document.getElementById(idContenedor);
     errorBox.textContent = mensaje;
     errorBox.classList.remove("hidden");
-    setTimeout(() => errorBox.classList.add("hidden"), 4000);
+    setTimeout(() => errorBox.classList.add("hidden"), 5000);
 }
 
+// ========== MOSTRAR ÉXITO ==========
 function mostrarExito(idContenedor, mensaje) {
     const exitoBox = document.getElementById(idContenedor);
     exitoBox.textContent = mensaje;
@@ -18,186 +23,96 @@ function mostrarExito(idContenedor, mensaje) {
     setTimeout(() => exitoBox.classList.add("hidden"), 4000);
 }
 
-function validarRegistro1() {
-    const nombre = document.getElementById("nombre").value.trim();
-    const apellido = document.getElementById("apellido").value.trim();
+// ========== REGISTRAR USUARIO ==========
+function registrarUsuario() {
+    const nombreCompleto = document.getElementById("nombreCompleto").value.trim();
     const email = document.getElementById("email").value.trim();
-    const pass = document.getElementById("password").value;
-    const confirmPass = document.getElementById("confirmPassword").value;
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
+    const aceptarTerminos = document.getElementById("aceptarTerminos").checked;
 
-    if (!nombre || !apellido || !email || !pass || !confirmPass) {
-        mostrarError("mensajeErrorRegistro1", "Por favor complete todos los campos.");
-        return;
-    }
-    if (!email.match(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)) {
-        mostrarError("mensajeErrorRegistro1", "Ingrese un correo electrónico válido.");
-        return;
-    }
-    if (pass.length < 6) {
-        mostrarError("mensajeErrorRegistro1", "La contraseña debe tener al menos 6 caracteres.");
-        return;
-    }
-    if (pass !== confirmPass) {
-        mostrarError("mensajeErrorRegistro1", "Las contraseñas no coinciden.");
+    // Validaciones
+    if (!nombreCompleto || !email || !password || !confirmPassword) {
+        mostrarError("mensajeErrorRegistro", "Por favor complete todos los campos.");
         return;
     }
 
-    // Guardar datos temporalmente para el paso 2
-    sessionStorage.setItem('registro_nombre', nombre);
-    sessionStorage.setItem('registro_apellido', apellido);
-    sessionStorage.setItem('registro_email', email);
-    sessionStorage.setItem('registro_password', pass);
-
-    mostrarVista("registro2");
-}
-
-// ========== CAMBIAR TIPO DE ENTIDAD ==========
-function cambiarTipoEntidad() {
-    const tipoEntidad = document.querySelector('input[name="tipoEntidad"]:checked').value;
-    const camposJuridica = document.getElementById('camposJuridica');
-    const camposNatural = document.getElementById('camposNatural');
-
-    if (tipoEntidad === 'juridica') {
-        camposJuridica.style.display = 'block';
-        camposNatural.style.display = 'none';
-    } else {
-        camposJuridica.style.display = 'none';
-        camposNatural.style.display = 'block';
-    }
-}
-
-function finalizarRegistro() {
-    const tipoEntidad = document.querySelector('input[name="tipoEntidad"]:checked').value;
-    
-    if (tipoEntidad === 'juridica') {
-        finalizarRegistroJuridica();
-    } else {
-        finalizarRegistroNatural();
-    }
-}
-
-function finalizarRegistroJuridica() {
-    const nit = document.getElementById('nit').value.trim();
-    const confirmNit = document.getElementById('confirmNit').value.trim();
-    const dv = document.getElementById('dv').value.trim();
-    const confirmDv = document.getElementById('confirmDv').value.trim();
-    const razon = document.getElementById('razon').value.trim();
-    const pais = document.getElementById('pais').value;
-    const dep = document.getElementById('departamento').value;
-    const ciudad = document.getElementById('ciudad').value;
-    const direccion = document.getElementById('direccion').value.trim();
-    const telefono = document.getElementById('telefono').value.trim();
-
-    if (!nit || !confirmNit || !dv || !confirmDv || !razon || !pais || !dep || !ciudad || !direccion || !telefono) {
-        mostrarError("mensajeErrorRegistro2", "Todos los campos son obligatorios.");
-        return;
-    }
-    if (nit !== confirmNit) {
-        mostrarError("mensajeErrorRegistro2", "El NIT no coincide.");
-        return;
-    }
-    if (dv !== confirmDv) {
-        mostrarError("mensajeErrorRegistro2", "El DV no coincide.");
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        mostrarError("mensajeErrorRegistro", "Ingrese un correo electrónico válido.");
         return;
     }
 
-    // Obtener datos del paso 1
-    const nombre = sessionStorage.getItem('registro_nombre');
-    const apellido = sessionStorage.getItem('registro_apellido');
-    const email = sessionStorage.getItem('registro_email');
-    const password = sessionStorage.getItem('registro_password');
+    if (password.length < 6) {
+        mostrarError("mensajeErrorRegistro", "La contraseña debe tener al menos 6 caracteres.");
+        return;
+    }
 
-    // Crear objeto usuario completo
+    if (password !== confirmPassword) {
+        mostrarError("mensajeErrorRegistro", "Las contraseñas no coinciden.");
+        return;
+    }
+
+    if (!aceptarTerminos) {
+        mostrarError("mensajeErrorRegistro", "Debes aceptar los términos y condiciones.");
+        return;
+    }
+
+    // Verificar si el email ya existe
+    const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
+    const emailExiste = usuarios.some(u => u.email === email);
+
+    if (emailExiste) {
+        mostrarError("mensajeErrorRegistro", "Este correo electrónico ya está registrado.");
+        return;
+    }
+
+    // Dividir nombre completo en nombre y apellido
+    const partesNombre = nombreCompleto.split(' ');
+    const nombre = partesNombre[0];
+    const apellido = partesNombre.slice(1).join(' ') || partesNombre[0];
+
+    // Crear objeto usuario simplificado
     const usuario = {
+        id: Date.now().toString(),
         nombre: nombre,
         apellido: apellido,
+        nombreCompleto: nombreCompleto,
         email: email,
         password: password,
-        tipoEntidad: 'juridica',
-        nit: nit,
-        dv: dv,
-        razonSocial: razon,
-        pais: pais,
-        departamento: dep,
-        ciudad: ciudad,
-        direccion: direccion,
-        telefono: telefono,
-        datosCompletos: false, // IMPORTANTE: Explícitamente false
-        fechaRegistro: new Date().toISOString()
+        fechaRegistro: new Date().toISOString(),
+        activo: true
     };
 
-    console.log('Guardando usuario jurídica con datosCompletos:', usuario.datosCompletos);
-    guardarUsuario(usuario);
-}
-
-function finalizarRegistroNatural() {
-    const nombresNat = document.getElementById('nombresNatural').value.trim();
-    const apellidosNat = document.getElementById('apellidosNatural').value.trim();
-    const tipoDoc = document.getElementById('tipoDocumento').value;
-    const numeroDoc = document.getElementById('numeroDocumento').value.trim();
-    const dep = document.getElementById('departamentoNatural').value;
-    const municipio = document.getElementById('municipioNatural').value;
-
-    if (!nombresNat || !apellidosNat || !tipoDoc || !numeroDoc || !dep || !municipio) {
-        mostrarError("mensajeErrorRegistro2", "Todos los campos son obligatorios.");
-        return;
-    }
-
-    // Obtener datos del paso 1
-    const nombre = sessionStorage.getItem('registro_nombre');
-    const apellido = sessionStorage.getItem('registro_apellido');
-    const email = sessionStorage.getItem('registro_email');
-    const password = sessionStorage.getItem('registro_password');
-
-    // Crear objeto usuario completo
-    const usuario = {
-        nombre: nombre,
-        apellido: apellido,
-        email: email,
-        password: password,
-        tipoEntidad: 'natural',
-        nombresCompletos: nombresNat,
-        apellidosCompletos: apellidosNat,
-        tipoDocumento: tipoDoc,
-        numeroDocumento: numeroDoc,
-        departamento: dep,
-        municipio: municipio,
-        datosCompletos: false, // IMPORTANTE: Explícitamente false
-        fechaRegistro: new Date().toISOString()
-    };
-
-    console.log('Guardando usuario natural con datosCompletos:', usuario.datosCompletos);
-    guardarUsuario(usuario);
-}
-
-function guardarUsuario(usuario) {
-    // Guardar en localStorage
-    let usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
+    // Guardar usuario
     usuarios.push(usuario);
     localStorage.setItem('usuarios', JSON.stringify(usuarios));
 
-    // Limpiar datos temporales
-    sessionStorage.removeItem('registro_nombre');
-    sessionStorage.removeItem('registro_apellido');
-    sessionStorage.removeItem('registro_email');
-    sessionStorage.removeItem('registro_password');
+    console.log('✅ Usuario registrado:', usuario);
 
-    mostrarExito("mensajeExitoRegistro2", "🎉 Registro completado con éxito. Redirigiendo...");
-    
-    // Limpiar formularios
+    // Mostrar mensaje de éxito
+    mostrarExito("mensajeErrorRegistro", "🎉 ¡Cuenta creada exitosamente! Redirigiendo al login...");
+
+    // Limpiar formulario
+    document.getElementById('nombreCompleto').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('confirmPassword').value = '';
+    document.getElementById('aceptarTerminos').checked = false;
+
+    // Redirigir al login después de 2 segundos
     setTimeout(() => {
-        document.querySelectorAll('input').forEach(input => input.value = '');
-        document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
-        mostrarVista("home");
+        mostrarVista('login');
+        // Pre-llenar el email en el login
+        document.getElementById('usuario_login').value = email;
     }, 2000);
 }
 
-// ========== FUNCIÓN DE LOGIN ==========
+// ========== INICIAR SESIÓN ==========
 function iniciarSesion() {
-    const usuario = document.getElementById("usuario_login").value.trim();
+    const email = document.getElementById("usuario_login").value.trim();
     const password = document.getElementById("loginPassword").value;
 
-    if (!usuario || !password) {
+    if (!email || !password) {
         mostrarError("mensajeErrorLogin", "Por favor complete todos los campos.");
         return;
     }
@@ -205,39 +120,41 @@ function iniciarSesion() {
     // Obtener usuarios registrados
     const usuarios = JSON.parse(localStorage.getItem('usuarios')) || [];
     
-    // Buscar usuario (puede ser email o nombre)
+    // Buscar usuario por email y contraseña
     const usuarioEncontrado = usuarios.find(u => 
-        (u.email === usuario || u.nombre === usuario) && u.password === password
+        u.email === email && u.password === password && u.activo
     );
 
     if (usuarioEncontrado) {
         // Guardar sesión actual
         sessionStorage.setItem('usuarioActual', JSON.stringify({
+            id: usuarioEncontrado.id,
             nombre: usuarioEncontrado.nombre,
             apellido: usuarioEncontrado.apellido,
-            email: usuarioEncontrado.email,
-            razonSocial: usuarioEncontrado.razonSocial
+            nombreCompleto: usuarioEncontrado.nombreCompleto,
+            email: usuarioEncontrado.email
         }));
 
-        mostrarExito("mensajeErrorLogin", "✅ Inicio de sesión exitoso. Redirigiendo al dashboard...");
+        console.log('✅ Sesión iniciada:', usuarioEncontrado.email);
+
+        // Mostrar mensaje de éxito
+        const mensajeBox = document.getElementById("mensajeErrorLogin");
+        mensajeBox.className = "mensaje-exito";
+        mensajeBox.textContent = "✅ Inicio de sesión exitoso. Redirigiendo al dashboard...";
+        mensajeBox.classList.remove("hidden");
         
-        // Redirigir al dashboard después de 1.5 segundos
+        // Redirigir al dashboard después de 1 segundo
         setTimeout(() => {
             window.location.href = "./dashboard/dashboard.html";
-        }, 1500);
+        }, 1000);
     } else {
-        mostrarError("mensajeErrorLogin", "Usuario o contraseña incorrectos.");
+        mostrarError("mensajeErrorLogin", "Correo electrónico o contraseña incorrectos.");
     }
 }
 
-// Agregar evento al botón de login
+// ========== PERMITIR LOGIN CON ENTER ==========
 window.addEventListener("DOMContentLoaded", () => {
-    const loginBtn = document.querySelector("#login .btn-primary");
-    if (loginBtn) {
-        loginBtn.addEventListener("click", iniciarSesion);
-    }
-
-    // Permitir login con Enter
+    // Login con Enter
     const loginInputs = document.querySelectorAll("#login input");
     loginInputs.forEach(input => {
         input.addEventListener("keypress", (e) => {
@@ -246,68 +163,16 @@ window.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
-});
 
-// ======= Departamentos y ciudades =======
-let departamentosCiudades = {};
-
-window.addEventListener("DOMContentLoaded", async () => {
-    const depSelect = document.getElementById("departamento");
-    const citySelect = document.getElementById("ciudad");
-    const depNaturalSelect = document.getElementById("departamentoNatural");
-    const munNaturalSelect = document.getElementById("municipioNatural");
-
-    try {
-        const response = await fetch("colombia.json");
-        departamentosCiudades = await response.json();
-
-        // Cargar departamentos para Jurídica
-        for (let dep in departamentosCiudades) {
-            const option = document.createElement("option");
-            option.value = dep;
-            option.textContent = dep;
-            depSelect.appendChild(option);
-            
-            // También para Natural
-            const optionNat = document.createElement("option");
-            optionNat.value = dep;
-            optionNat.textContent = dep;
-            depNaturalSelect.appendChild(optionNat);
-        }
-
-        // Event listener para Jurídica
-        depSelect.addEventListener("change", () => {
-            citySelect.innerHTML = "<option value=''>Seleccione ciudad</option>";
-            if (depSelect.value !== "") {
-                citySelect.disabled = false;
-                departamentosCiudades[depSelect.value].forEach(ciudad => {
-                    const option = document.createElement("option");
-                    option.value = ciudad;
-                    option.textContent = ciudad;
-                    citySelect.appendChild(option);
-                });
-            } else {
-                citySelect.disabled = true;
+    // Registro con Enter
+    const registroInputs = document.querySelectorAll("#registro input");
+    registroInputs.forEach(input => {
+        input.addEventListener("keypress", (e) => {
+            if (e.key === "Enter" && input.type !== "checkbox") {
+                registrarUsuario();
             }
         });
-
-        // Event listener para Natural
-        depNaturalSelect.addEventListener("change", () => {
-            munNaturalSelect.innerHTML = "<option value=''>Seleccione municipio</option>";
-            if (depNaturalSelect.value !== "") {
-                munNaturalSelect.disabled = false;
-                departamentosCiudades[depNaturalSelect.value].forEach(ciudad => {
-                    const option = document.createElement("option");
-                    option.value = ciudad;
-                    option.textContent = ciudad;
-                    munNaturalSelect.appendChild(option);
-                });
-            } else {
-                munNaturalSelect.disabled = true;
-            }
-        });
-
-    } catch (error) {
-        console.error("Error cargando departamentos y ciudades:", error);
-    }
+    });
 });
+
+console.log('✨ Sistema de autenticación Sparkles cargado');

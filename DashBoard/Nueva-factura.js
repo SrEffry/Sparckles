@@ -1,21 +1,40 @@
-// Nueva Factura Electrónica - Sparkles
-// SUBTOTAL MUESTRA: Precio + IVA (lo que el cliente paga por esa línea)
+// ========== NUEVA FACTURA ELECTRÓNICA - SPARKLES ==========
+// FASE 1: Clientes + FASE 2: Productos + FASE 3: Resumen + FASE 4: Formas de Pago + FECHAS
 
+// Variables globales
 let configuracionFacturacion = null;
+
+// Clientes (FASE 1)
+let todosLosClientes = [];
+let clienteSeleccionadoGlobal = null;
+let clienteSeleccionadoTemp = null;
+let indiceSeleccionado = -1;
+
+// Productos (FASE 2)
+let todosLosProductos = [];
+let productoSeleccionadoTemp = null;
+let indiceSeleccionadoProducto = -1;
 let itemsFactura = [];
+
+// Pago (FASE 4)
+let formaPagoSeleccionada = '';
+let medioPagoSeleccionado = '';
+let instrumentosCobro = [];
+
 let numeroFacturaActual = null;
 
+// ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', function() {
     verificarSesion();
     cargarDatosUsuario();
     cargarConfiguracionFacturacion();
+    cargarClientes();
+    cargarProductos();
+    restaurarEstadoFactura();
     setupLogout();
-    
-    // Agregar primer item automáticamente
-    agregarItem(true);
+    inicializarFormaPago();
 });
 
-// ========== VERIFICAR SESIÓN ==========
 function verificarSesion() {
     const usuarioActual = sessionStorage.getItem('usuarioActual');
     if (!usuarioActual) {
@@ -24,7 +43,6 @@ function verificarSesion() {
     }
 }
 
-// ========== CARGAR DATOS DEL USUARIO ==========
 function cargarDatosUsuario() {
     const usuarioActual = sessionStorage.getItem('usuarioActual');
     if (usuarioActual) {
@@ -32,7 +50,7 @@ function cargarDatosUsuario() {
         
         const userNameElements = document.querySelectorAll('.user-details strong');
         userNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
         const userEmailElements = document.querySelectorAll('.user-details span');
@@ -42,18 +60,25 @@ function cargarDatosUsuario() {
         
         const headerNameElements = document.querySelectorAll('.user-info-header strong');
         headerNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
-        const iniciales = usuario.nombre.charAt(0) + usuario.apellido.charAt(0);
+        const iniciales = obtenerIniciales(usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`);
         const avatarElements = document.querySelectorAll('.user-avatar, .user-avatar-small');
         avatarElements.forEach(el => {
-            el.textContent = iniciales.toUpperCase();
+            el.textContent = iniciales;
         });
     }
 }
 
-// ========== CONFIGURAR BOTÓN DE SALIR ==========
+function obtenerIniciales(nombreCompleto) {
+    const partes = nombreCompleto.trim().split(' ');
+    if (partes.length === 1) {
+        return partes[0].substring(0, 2).toUpperCase();
+    }
+    return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
+}
+
 function setupLogout() {
     const logoutBtn = document.querySelector('.footer-btn:last-child');
     if (logoutBtn) {
@@ -66,7 +91,6 @@ function setupLogout() {
     }
 }
 
-// ========== CARGAR CONFIGURACIÓN DE FACTURACIÓN ==========
 function cargarConfiguracionFacturacion() {
     const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
     if (!usuarioActual) return;
@@ -75,581 +99,1377 @@ function cargarConfiguracionFacturacion() {
     const configGuardada = localStorage.getItem(claveConfig);
     
     if (!configGuardada) {
-        mostrarError('No se ha configurado la facturación. Por favor, configure primero en Operaciones > Configurar Facturación.');
-        setTimeout(() => {
-            window.location.href = 'Configurar-facturacion.html';
-        }, 3000);
+        console.warn('⚠️ No hay configuración de facturación');
         return;
     }
     
     try {
         configuracionFacturacion = JSON.parse(configGuardada);
         
-        // Calcular próximo número de factura
         if (configuracionFacturacion.resolucion) {
             const numeracionActual = configuracionFacturacion.resolucion.numeracionActual || 
                                    configuracionFacturacion.resolucion.numeracionDesde;
             numeroFacturaActual = parseInt(numeracionActual);
         }
         
-        console.log('Configuración cargada:', configuracionFacturacion);
-        console.log('Próximo número de factura:', numeroFacturaActual);
+        console.log('✅ Configuración cargada:', configuracionFacturacion);
+        console.log('📊 Próximo número de factura:', numeroFacturaActual);
+        
+        actualizarNumeroFacturaResumen();
         
     } catch (error) {
-        console.error('Error al cargar configuración:', error);
-        mostrarError('Error al cargar la configuración de facturación');
+        console.error('❌ Error al cargar configuración:', error);
     }
 }
 
-// ========== TOGGLE TIPO DOCUMENTO ==========
-function toggleTipoDocumento() {
-    const tipoCliente = document.getElementById('tipoCliente').value;
-    const tipoDocumento = document.getElementById('tipoDocumento');
+// ==========================================
+// FASE 1: CLIENTES
+// ==========================================
+
+function cargarClientes() {
+    const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
+    const claveClientes = `clientes_${usuarioActual.email}`;
     
-    if (tipoCliente === 'empresa') {
-        tipoDocumento.value = 'NIT';
+    console.log('📋 Cargando clientes desde:', claveClientes);
+    
+    todosLosClientes = JSON.parse(localStorage.getItem(claveClientes)) || [];
+    
+    console.log(`✅ ${todosLosClientes.length} clientes cargados`);
+}
+
+function abrirModalClientes() {
+    const modal = document.getElementById('modalBusquedaClientes');
+    const input = document.getElementById('inputBusquedaCliente');
+    
+    modal.style.display = 'flex';
+    
+    limpiarBusqueda();
+    clienteSeleccionadoTemp = null;
+    indiceSeleccionado = -1;
+    
+    mostrarEstadoInicial();
+    
+    document.getElementById('btnConfirmarSeleccion').disabled = true;
+    
+    setTimeout(() => {
+        input.focus();
+    }, 100);
+    
+    console.log('🔍 Modal de clientes abierto');
+}
+
+function cerrarModalClientes() {
+    const modal = document.getElementById('modalBusquedaClientes');
+    modal.style.display = 'none';
+    
+    console.log('❌ Modal de clientes cerrado');
+}
+
+function cerrarModalSiClickFuera(event) {
+    if (event.target.id === 'modalBusquedaClientes') {
+        cerrarModalClientes();
+    }
+}
+
+function limpiarBusqueda() {
+    const input = document.getElementById('inputBusquedaCliente');
+    const btnLimpiar = document.querySelector('.btn-limpiar-busqueda');
+    
+    input.value = '';
+    btnLimpiar.style.display = 'none';
+    
+    mostrarEstadoInicial();
+    input.focus();
+}
+
+function mostrarEstadoInicial() {
+    document.getElementById('estadoInicial').style.display = 'flex';
+    document.getElementById('listaResultados').style.display = 'none';
+    document.getElementById('sinResultados').style.display = 'none';
+}
+
+function buscarClientesEnTiempoReal() {
+    const input = document.getElementById('inputBusquedaCliente');
+    const btnLimpiar = document.querySelector('.btn-limpiar-busqueda');
+    const termino = input.value.trim().toLowerCase();
+    
+    btnLimpiar.style.display = termino ? 'flex' : 'none';
+    
+    if (!termino) {
+        mostrarEstadoInicial();
+        return;
+    }
+    
+    const resultados = todosLosClientes.filter(cliente => {
+        const nombre = (cliente.nombreCompleto || cliente.razonSocial || '').toLowerCase();
+        const documento = (cliente.numeroDocumento || cliente.nit || '').toLowerCase();
+        const email = (cliente.email || '').toLowerCase();
+        
+        return nombre.includes(termino) || 
+               documento.includes(termino) || 
+               email.includes(termino);
+    });
+    
+    console.log(`🔍 Búsqueda: "${termino}" → ${resultados.length} resultados`);
+    
+    mostrarResultados(resultados);
+}
+
+function mostrarResultados(resultados) {
+    const estadoInicial = document.getElementById('estadoInicial');
+    const listaResultados = document.getElementById('listaResultados');
+    const sinResultados = document.getElementById('sinResultados');
+    
+    estadoInicial.style.display = 'none';
+    
+    if (resultados.length === 0) {
+        listaResultados.style.display = 'none';
+        sinResultados.style.display = 'flex';
+        return;
+    }
+    
+    let html = '';
+    
+    resultados.forEach((cliente, index) => {
+        const nombre = cliente.nombreCompleto || cliente.razonSocial || 'Sin nombre';
+        const tipo = cliente.tipo === 'natural' ? 'Natural' : 'Jurídica';
+        
+        let documento = '';
+        if (cliente.tipo === 'natural') {
+            documento = `${cliente.tipoDocumento} ${cliente.numeroDocumento}`;
+        } else {
+            documento = `NIT ${cliente.nit}-${cliente.dv || ''}`;
+        }
+        
+        const telefono = cliente.telefono || 'Sin teléfono';
+        const email = cliente.email || 'Sin email';
+        
+        html += `
+            <div class="resultado-item" data-index="${index}" onclick="seleccionarResultado(${index})">
+                <div class="resultado-header">
+                    <span class="resultado-nombre">${nombre}</span>
+                    <span class="resultado-badge">${tipo}</span>
+                </div>
+                <div class="resultado-documento">${documento}</div>
+                <div class="resultado-contacto">
+                    <span>📞 ${telefono}</span>
+                    <span>✉️ ${email}</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    listaResultados.innerHTML = html;
+    listaResultados.style.display = 'flex';
+    sinResultados.style.display = 'none';
+    
+    indiceSeleccionado = -1;
+    clienteSeleccionadoTemp = null;
+    document.getElementById('btnConfirmarSeleccion').disabled = true;
+}
+
+function seleccionarResultado(index) {
+    const termino = document.getElementById('inputBusquedaCliente').value.trim().toLowerCase();
+    
+    const resultados = todosLosClientes.filter(cliente => {
+        const nombre = (cliente.nombreCompleto || cliente.razonSocial || '').toLowerCase();
+        const documento = (cliente.numeroDocumento || cliente.nit || '').toLowerCase();
+        const email = (cliente.email || '').toLowerCase();
+        
+        return nombre.includes(termino) || 
+               documento.includes(termino) || 
+               email.includes(termino);
+    });
+    
+    if (index < 0 || index >= resultados.length) {
+        console.error('❌ Índice fuera de rango');
+        return;
+    }
+    
+    document.querySelectorAll('.resultado-item').forEach(item => {
+        item.classList.remove('seleccionado');
+    });
+    
+    const item = document.querySelector(`[data-index="${index}"]`);
+    if (item) {
+        item.classList.add('seleccionado');
+    }
+    
+    clienteSeleccionadoTemp = resultados[index];
+    indiceSeleccionado = index;
+    
+    document.getElementById('btnConfirmarSeleccion').disabled = false;
+    
+    console.log('✅ Cliente seleccionado:', clienteSeleccionadoTemp);
+}
+
+function navegarResultadosTeclado(event) {
+    const items = document.querySelectorAll('.resultado-item');
+    
+    if (items.length === 0) return;
+    
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        indiceSeleccionado = Math.min(indiceSeleccionado + 1, items.length - 1);
+        seleccionarResultado(indiceSeleccionado);
+        items[indiceSeleccionado].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } 
+    else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        indiceSeleccionado = Math.max(indiceSeleccionado - 1, 0);
+        seleccionarResultado(indiceSeleccionado);
+        items[indiceSeleccionado].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } 
+    else if (event.key === 'Enter' && clienteSeleccionadoTemp) {
+        event.preventDefault();
+        confirmarSeleccionCliente();
+    }
+    else if (event.key === 'Escape') {
+        event.preventDefault();
+        cerrarModalClientes();
+    }
+}
+
+function confirmarSeleccionCliente() {
+    if (!clienteSeleccionadoTemp) {
+        console.error('❌ No hay cliente seleccionado');
+        return;
+    }
+    
+    clienteSeleccionadoGlobal = clienteSeleccionadoTemp;
+    
+    console.log('✅ Cliente confirmado:', clienteSeleccionadoGlobal);
+    
+    mostrarClienteEnCard();
+    cerrarModalClientes();
+}
+
+function mostrarClienteEnCard() {
+    const cliente = clienteSeleccionadoGlobal;
+    
+    if (!cliente) return;
+    
+    document.getElementById('btnSeleccionarCliente').style.display = 'none';
+    
+    const card = document.getElementById('clienteSeleccionadoCard');
+    card.style.display = 'block';
+    
+    const nombre = cliente.nombreCompleto || cliente.razonSocial || 'Sin nombre';
+    const tipo = cliente.tipo === 'natural' ? 'Persona Natural' : 'Persona Jurídica';
+    
+    let documento = '';
+    if (cliente.tipo === 'natural') {
+        documento = `${cliente.tipoDocumento} ${cliente.numeroDocumento}`;
     } else {
-        tipoDocumento.value = 'CC';
+        documento = `NIT ${cliente.nit}-${cliente.dv || ''}`;
+    }
+    
+    document.getElementById('cardNombreCliente').textContent = nombre;
+    document.getElementById('cardTipoCliente').textContent = tipo;
+    document.getElementById('cardDocumentoCliente').textContent = documento;
+    document.getElementById('cardTelefonoCliente').textContent = cliente.telefono || 'No registrado';
+    document.getElementById('cardEmailCliente').textContent = cliente.email || 'No registrado';
+    document.getElementById('cardDireccionCliente').textContent = cliente.direccion || 'No registrada';
+    
+    console.log('📋 Cliente mostrado en tarjeta');
+}
+
+function irACrearClienteDesdeModal() {
+    console.log('➕ Redirigiendo a crear cliente...');
+    
+    guardarEstadoFactura();
+    
+    window.location.href = './Clientes.html?returnTo=nueva-factura';
+}
+
+// ==========================================
+// FASE 2: PRODUCTOS
+// ==========================================
+
+function cargarProductos() {
+    const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
+    const claveProductos = `productos_${usuarioActual.email}`;
+    
+    console.log('📦 Cargando productos desde:', claveProductos);
+    
+    todosLosProductos = JSON.parse(localStorage.getItem(claveProductos)) || [];
+    
+    console.log(`✅ ${todosLosProductos.length} productos cargados`);
+}
+
+function abrirModalProductos() {
+    const modal = document.getElementById('modalBusquedaProductos');
+    const input = document.getElementById('inputBusquedaProducto');
+    
+    modal.style.display = 'flex';
+    
+    limpiarBusquedaProducto();
+    productoSeleccionadoTemp = null;
+    indiceSeleccionadoProducto = -1;
+    
+    mostrarEstadoInicialProducto();
+    
+    document.getElementById('btnConfirmarProducto').disabled = true;
+    
+    setTimeout(() => {
+        input.focus();
+    }, 100);
+    
+    console.log('🔍 Modal de productos abierto');
+}
+
+function cerrarModalProductos() {
+    const modal = document.getElementById('modalBusquedaProductos');
+    modal.style.display = 'none';
+    
+    console.log('❌ Modal de productos cerrado');
+}
+
+function cerrarModalSiClickFueraProducto(event) {
+    if (event.target.id === 'modalBusquedaProductos') {
+        cerrarModalProductos();
     }
 }
 
-// ========== CARGAR PRODUCTOS REGISTRADOS ==========
-function cargarProductosRegistrados() {
-    const usuarioActual = sessionStorage.getItem('usuarioActual');
-    if (!usuarioActual) return [];
+function limpiarBusquedaProducto() {
+    const input = document.getElementById('inputBusquedaProducto');
+    const btnLimpiar = document.getElementById('btnLimpiarProducto');
     
-    const usuario = JSON.parse(usuarioActual);
-    const claveProductos = `productos_${usuario.email}`;
+    input.value = '';
+    btnLimpiar.style.display = 'none';
     
-    return JSON.parse(localStorage.getItem(claveProductos)) || [];
+    mostrarEstadoInicialProducto();
+    input.focus();
 }
 
-// ========== AGREGAR ITEM ==========
-function agregarItem(esPrimero = false) {
-    const itemId = Date.now();
-    const productosRegistrados = cargarProductosRegistrados();
+function mostrarEstadoInicialProducto() {
+    document.getElementById('estadoInicialProducto').style.display = 'flex';
+    document.getElementById('listaResultadosProducto').style.display = 'none';
+    document.getElementById('sinResultadosProducto').style.display = 'none';
+}
+
+function buscarProductosEnTiempoReal() {
+    const input = document.getElementById('inputBusquedaProducto');
+    const btnLimpiar = document.getElementById('btnLimpiarProducto');
+    const termino = input.value.trim().toLowerCase();
     
-    // Crear opciones del select de productos
-    const opcionesProductos = productosRegistrados.map(producto => 
-        `<option value="${producto.id}" data-precio="${producto.precioVenta}" data-iva="${producto.tarifaIva}">${producto.descripcion}</option>`
-    ).join('');
+    btnLimpiar.style.display = termino ? 'flex' : 'none';
     
-    const itemHTML = `
-        <div class="item-row ${esPrimero ? 'first-item' : ''}" id="item-${itemId}">
-            <div class="item-field modo-selector">
-                <label>Modo de Selección *</label>
-                <select id="modo-${itemId}" onchange="cambiarModoItem(${itemId})">
-                    <option value="catalogo">Seleccionar del catálogo</option>
-                    <option value="manual">Escribir manualmente</option>
-                </select>
-            </div>
-            
-            <div class="item-field producto-selector" id="selector-${itemId}">
-                <label>Producto/Servicio *</label>
-                <select id="producto-${itemId}" onchange="seleccionarProducto(${itemId})">
-                    <option value="">-- Seleccione un producto --</option>
-                    ${opcionesProductos}
-                </select>
-            </div>
-            
-            <div class="item-field producto-manual" id="manual-${itemId}" style="display: none;">
-                <label>Descripción *</label>
-                <input type="text" id="desc-${itemId}" placeholder="Producto o servicio" onchange="actualizarPreview()">
-            </div>
-            
-            <div class="item-field">
-                <label>Cantidad *</label>
-                <input type="number" id="cant-${itemId}" value="1" min="1" step="1" onchange="calcularItem(${itemId})">
-            </div>
-            <div class="item-field">
-                <label>Precio Unit. *</label>
-                <input type="number" id="precio-${itemId}" value="0" min="0" step="0.01" onchange="calcularItem(${itemId})" title="Precio sin IVA">
-            </div>
-            <div class="item-field">
-                <label>IVA %</label>
-                <select id="iva-${itemId}" onchange="calcularItem(${itemId})">
-                    <option value="0">0%</option>
-                    <option value="5">5%</option>
-                    <option value="19" selected>19%</option>
-                </select>
-            </div>
-            <div class="item-field">
-                <label>Subtotal</label>
-                <input type="text" id="subtotal-${itemId}" value="$0.00" readonly title="Precio + IVA">
-            </div>
-            <button type="button" class="btn-remove-item" onclick="removerItem(${itemId})" ${esPrimero ? 'style="visibility: hidden;"' : ''}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-    `;
+    if (!termino) {
+        mostrarEstadoInicialProducto();
+        return;
+    }
     
-    document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', itemHTML);
+    const resultados = todosLosProductos.filter(producto => {
+        const nombre = (producto.nombre || producto.descripcion || '').toLowerCase();
+        const codigo = (producto.codigo || '').toLowerCase();
+        const categoria = (producto.categoria || '').toLowerCase();
+        
+        return nombre.includes(termino) || 
+               codigo.includes(termino) || 
+               categoria.includes(termino);
+    });
     
-    // Agregar al array de items
-    itemsFactura.push({
-        id: itemId,
-        descripcion: '',
+    console.log(`🔍 Búsqueda producto: "${termino}" → ${resultados.length} resultados`);
+    
+    mostrarResultadosProducto(resultados);
+}
+
+function mostrarResultadosProducto(resultados) {
+    const estadoInicial = document.getElementById('estadoInicialProducto');
+    const listaResultados = document.getElementById('listaResultadosProducto');
+    const sinResultados = document.getElementById('sinResultadosProducto');
+    
+    estadoInicial.style.display = 'none';
+    
+    if (resultados.length === 0) {
+        listaResultados.style.display = 'none';
+        sinResultados.style.display = 'flex';
+        return;
+    }
+    
+    let html = '';
+    
+    resultados.forEach((producto, index) => {
+        const nombre = producto.nombre || producto.descripcion || 'Sin nombre';
+        const codigo = producto.codigo || 'Sin código';
+        const precio = formatearNumero(producto.precioVenta || 0);
+        const iva = producto.tarifaIva || 0;
+        const tieneRetencion = producto.tieneRetencion || false;
+        const tarifaRetencion = producto.tarifaRetencion || 0;
+        
+        html += `
+            <div class="resultado-producto" data-index="${index}" onclick="seleccionarResultadoProducto(${index})">
+                <div class="resultado-producto-header">
+                    <div>
+                        <div class="resultado-producto-nombre">${nombre}</div>
+                        <div class="resultado-producto-codigo">Código: ${codigo}</div>
+                    </div>
+                    <div class="resultado-producto-precio">$${precio}</div>
+                </div>
+                <div class="resultado-producto-detalles">
+                    <span class="detalle-badge iva">IVA ${iva}%</span>
+                    ${tieneRetencion ? `<span class="detalle-badge retencion">Retención ${tarifaRetencion}%</span>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    listaResultados.innerHTML = html;
+    listaResultados.style.display = 'flex';
+    sinResultados.style.display = 'none';
+    
+    indiceSeleccionadoProducto = -1;
+    productoSeleccionadoTemp = null;
+    document.getElementById('btnConfirmarProducto').disabled = true;
+}
+
+function seleccionarResultadoProducto(index) {
+    const termino = document.getElementById('inputBusquedaProducto').value.trim().toLowerCase();
+    
+    const resultados = todosLosProductos.filter(producto => {
+        const nombre = (producto.nombre || producto.descripcion || '').toLowerCase();
+        const codigo = (producto.codigo || '').toLowerCase();
+        const categoria = (producto.categoria || '').toLowerCase();
+        
+        return nombre.includes(termino) || 
+               codigo.includes(termino) || 
+               categoria.includes(termino);
+    });
+    
+    if (index < 0 || index >= resultados.length) {
+        console.error('❌ Índice fuera de rango');
+        return;
+    }
+    
+    document.querySelectorAll('.resultado-producto').forEach(item => {
+        item.classList.remove('seleccionado');
+    });
+    
+    const item = document.querySelector(`.resultado-producto[data-index="${index}"]`);
+    if (item) {
+        item.classList.add('seleccionado');
+    }
+    
+    productoSeleccionadoTemp = resultados[index];
+    indiceSeleccionadoProducto = index;
+    
+    document.getElementById('btnConfirmarProducto').disabled = false;
+    
+    console.log('✅ Producto seleccionado:', productoSeleccionadoTemp);
+}
+
+function navegarResultadosProductoTeclado(event) {
+    const items = document.querySelectorAll('.resultado-producto');
+    
+    if (items.length === 0) return;
+    
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        indiceSeleccionadoProducto = Math.min(indiceSeleccionadoProducto + 1, items.length - 1);
+        seleccionarResultadoProducto(indiceSeleccionadoProducto);
+        items[indiceSeleccionadoProducto].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } 
+    else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        indiceSeleccionadoProducto = Math.max(indiceSeleccionadoProducto - 1, 0);
+        seleccionarResultadoProducto(indiceSeleccionadoProducto);
+        items[indiceSeleccionadoProducto].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } 
+    else if (event.key === 'Enter' && productoSeleccionadoTemp) {
+        event.preventDefault();
+        confirmarSeleccionProducto();
+    }
+    else if (event.key === 'Escape') {
+        event.preventDefault();
+        cerrarModalProductos();
+    }
+}
+
+function confirmarSeleccionProducto() {
+    if (!productoSeleccionadoTemp) {
+        console.error('❌ No hay producto seleccionado');
+        return;
+    }
+    
+    agregarProductoAFactura(productoSeleccionadoTemp);
+    
+    cerrarModalProductos();
+}
+
+function agregarProductoAFactura(producto) {
+    const item = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        productoId: producto.id,
+        nombre: producto.nombre || producto.descripcion,
+        codigo: producto.codigo || '',
         cantidad: 1,
-        precioUnitario: 0,
-        iva: 19,
-        subtotal: 0,
-        modo: 'catalogo'
-    });
+        precioUnitario: parseFloat(producto.precioVenta) || 0,
+        tarifaIva: parseFloat(producto.tarifaIva) || 0,
+        tieneRetencion: producto.tieneRetencion || false,
+        tipoRetencion: producto.tipoRetencion || '',
+        tarifaRetencion: parseFloat(producto.tarifaRetencion) || 0
+    };
+    
+    calcularSubtotalItem(item);
+    
+    itemsFactura.push(item);
+    
+    console.log('✅ Producto agregado a factura:', item);
+    console.log('📊 Total items:', itemsFactura.length);
+    
+    renderizarListaProductos();
 }
 
-// ========== CAMBIAR MODO DE ITEM ==========
-function cambiarModoItem(itemId) {
-    const modo = document.getElementById(`modo-${itemId}`).value;
-    const selectorDiv = document.getElementById(`selector-${itemId}`);
-    const manualDiv = document.getElementById(`manual-${itemId}`);
+function calcularSubtotalItem(item) {
+    const base = item.cantidad * item.precioUnitario;
+    const valorIva = base * (item.tarifaIva / 100);
+    item.subtotal = base + valorIva;
+    item.base = base;
+    item.valorIva = valorIva;
     
-    if (modo === 'catalogo') {
-        selectorDiv.style.display = 'flex';
-        manualDiv.style.display = 'none';
-        
-        // Limpiar campo manual
-        if (document.getElementById(`desc-${itemId}`)) {
-            document.getElementById(`desc-${itemId}`).value = '';
+    if (item.tieneRetencion) {
+        if (item.tipoRetencion === 'fuente') {
+            item.valorRetencion = base * (item.tarifaRetencion / 100);
+        } else if (item.tipoRetencion === 'iva') {
+            item.valorRetencion = valorIva * (item.tarifaRetencion / 100);
+        } else {
+            item.valorRetencion = 0;
         }
     } else {
-        selectorDiv.style.display = 'none';
-        manualDiv.style.display = 'flex';
-        
-        // Limpiar selector
-        document.getElementById(`producto-${itemId}`).value = '';
+        item.valorRetencion = 0;
     }
     
-    // Actualizar modo en el array
-    const item = itemsFactura.find(i => i.id === itemId);
-    if (item) {
-        item.modo = modo;
-        item.descripcion = '';
-    }
-    
-    // Resetear precio e IVA
-    document.getElementById(`precio-${itemId}`).value = 0;
-    document.getElementById(`iva-${itemId}`).value = 19;
-    calcularItem(itemId);
+    return item;
 }
 
-// ========== SELECCIONAR PRODUCTO DEL CATÁLOGO ==========
-function seleccionarProducto(itemId) {
-    const selectProducto = document.getElementById(`producto-${itemId}`);
-    const productoId = selectProducto.value;
+function renderizarListaProductos() {
+    const lista = document.getElementById('listaProductos');
+    const sinProductos = document.getElementById('sinProductos');
     
-    if (!productoId) {
-        // Si se deselecciona, resetear valores
-        document.getElementById(`precio-${itemId}`).value = 0;
-        document.getElementById(`iva-${itemId}`).value = 19;
-        calcularItem(itemId);
+    if (itemsFactura.length === 0) {
+        lista.innerHTML = '';
+        sinProductos.style.display = 'flex';
+        actualizarResumen();
         return;
     }
     
-    // Buscar el producto seleccionado
-    const productosRegistrados = cargarProductosRegistrados();
-    const producto = productosRegistrados.find(p => p.id === productoId);
+    sinProductos.style.display = 'none';
     
-    if (producto) {
-        // Autocompletar precio
-        document.getElementById(`precio-${itemId}`).value = producto.precioVenta;
+    let html = '';
+    
+    itemsFactura.forEach((item, index) => {
+        const retencionBadge = item.tieneRetencion 
+            ? `<div class="producto-campo">
+                <label>Retención</label>
+                <span class="badge-retencion">${item.tipoRetencion.toUpperCase()} ${item.tarifaRetencion}%</span>
+               </div>`
+            : `<div class="producto-campo">
+                <label>Retención</label>
+                <span class="badge-sin-retencion">No aplica</span>
+               </div>`;
         
-        // Autocompletar IVA (convertir tarifas a porcentajes)
-        let ivaValor = 19; // Por defecto
-        if (producto.tarifaIva === '0%' || producto.tarifaIva === 'Exento' || producto.tarifaIva === 'Excluido') {
-            ivaValor = 0;
-        } else if (producto.tarifaIva === '5%') {
-            ivaValor = 5;
-        } else if (producto.tarifaIva === '19%') {
-            ivaValor = 19;
-        }
-        document.getElementById(`iva-${itemId}`).value = ivaValor;
-        
-        // Actualizar descripción en el array
-        const item = itemsFactura.find(i => i.id === itemId);
-        if (item) {
-            item.descripcion = producto.descripcion;
-        }
-        
-        // Calcular totales
-        calcularItem(itemId);
-    }
-}
-
-// ========== REMOVER ITEM ==========
-function removerItem(itemId) {
-    document.getElementById(`item-${itemId}`).remove();
-    itemsFactura = itemsFactura.filter(item => item.id !== itemId);
-    actualizarPreview();
-}
-
-// ========== CALCULAR ITEM (SUBTOTAL = PRECIO + IVA) ==========
-function calcularItem(itemId) {
-    const cantidad = parseFloat(document.getElementById(`cant-${itemId}`).value) || 0;
-    const precioUnitario = parseFloat(document.getElementById(`precio-${itemId}`).value) || 0;
-    const tasaIva = parseFloat(document.getElementById(`iva-${itemId}`).value) || 0;
-    
-    // Base sin IVA
-    const baseItem = cantidad * precioUnitario;
-    
-    // IVA del item
-    const ivaItem = baseItem * (tasaIva / 100);
-    
-    // SUBTOTAL = BASE + IVA (esto es lo que ve el usuario)
-    const subtotalConIva = baseItem + ivaItem;
-    
-    // Mostrar el subtotal CON IVA en el campo
-    document.getElementById(`subtotal-${itemId}`).value = `$${formatearNumero(subtotalConIva)}`;
-    
-    // Actualizar en el array
-    const item = itemsFactura.find(i => i.id === itemId);
-    if (item) {
-        item.cantidad = cantidad;
-        item.precioUnitario = precioUnitario;
-        item.iva = tasaIva;
-        item.subtotal = subtotalConIva; // Guardamos el subtotal con IVA
-    }
-    
-    actualizarPreview();
-}
-
-// ========== ACTUALIZAR PREVIEW ==========
-function actualizarPreview() {
-    let subtotalTotal = 0;
-    let ivaTotal = 0;
-    
-    itemsFactura.forEach(item => {
-        const cantidad = parseFloat(document.getElementById(`cant-${item.id}`).value) || 0;
-        const precioUnitario = parseFloat(document.getElementById(`precio-${item.id}`).value) || 0;
-        const tasaIva = parseFloat(document.getElementById(`iva-${item.id}`).value) || 0;
-        
-        // Base sin IVA
-        const base = cantidad * precioUnitario;
-        
-        // IVA del item
-        const ivaItem = base * (tasaIva / 100);
-        
-        subtotalTotal += base;
-        ivaTotal += ivaItem;
+        html += `
+            <div class="producto-item">
+                <div class="producto-item-header">
+                    <div>
+                        <div class="producto-nombre">${item.nombre}</div>
+                        <div class="producto-codigo">Código: ${item.codigo || 'N/A'}</div>
+                    </div>
+                    <button type="button" class="btn-eliminar-producto" onclick="eliminarProducto(${index})" title="Eliminar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="producto-item-body">
+                    <div class="producto-campo">
+                        <label>Cantidad</label>
+                        <input type="number" min="1" value="${item.cantidad}" onchange="cambiarCantidad(${index}, this.value)">
+                    </div>
+                    <div class="producto-campo">
+                        <label>Precio Unitario</label>
+                        <input type="text" value="$${formatearNumero(item.precioUnitario)}" readonly>
+                    </div>
+                    <div class="producto-campo">
+                        <label>IVA</label>
+                        <span class="badge-iva">${item.tarifaIva}%</span>
+                    </div>
+                    ${retencionBadge}
+                </div>
+            </div>
+        `;
     });
     
-    const total = subtotalTotal + ivaTotal;
+    lista.innerHTML = html;
     
-    document.getElementById('previewSubtotal').textContent = `$${formatearNumero(subtotalTotal)}`;
-    document.getElementById('previewIva').textContent = `$${formatearNumero(ivaTotal)}`;
-    document.getElementById('previewTotal').textContent = `$${formatearNumero(total)}`;
+    console.log('📋 Lista de productos renderizada');
+    
+    actualizarResumen();
 }
 
-// ========== GENERAR FACTURA ==========
-function generarFactura() {
-    // Validar datos del cliente
-    const tipoCliente = document.getElementById('tipoCliente').value;
-    const tipoDocumento = document.getElementById('tipoDocumento').value;
-    const numeroDocumento = document.getElementById('numeroDocumento').value.trim();
-    const nombreCliente = document.getElementById('nombreCliente').value.trim();
+function cambiarCantidad(index, nuevaCantidad) {
+    const cantidad = parseInt(nuevaCantidad);
     
-    if (!numeroDocumento || !nombreCliente) {
-        mostrarError('Por favor complete los datos del cliente (Documento y Nombre)');
+    if (cantidad < 1) {
+        mostrarError('La cantidad debe ser mayor a 0');
+        itemsFactura[index].cantidad = 1;
+        renderizarListaProductos();
         return;
     }
     
-    // Validar items
-    let itemsValidos = true;
-    itemsFactura.forEach(item => {
-        const modo = document.getElementById(`modo-${item.id}`).value;
-        let desc = '';
+    itemsFactura[index].cantidad = cantidad;
+    calcularSubtotalItem(itemsFactura[index]);
+    
+    renderizarListaProductos();
+    
+    console.log(`✏️ Cantidad actualizada: ${cantidad}`);
+    
+    actualizarResumen();
+}
+
+function eliminarProducto(index) {
+    if (!confirm('¿Estás seguro de eliminar este producto?')) {
+        return;
+    }
+    
+    const productoEliminado = itemsFactura[index];
+    itemsFactura.splice(index, 1);
+    
+    console.log('🗑️ Producto eliminado:', productoEliminado);
+    console.log('📊 Items restantes:', itemsFactura.length);
+    
+    renderizarListaProductos();
+    
+    actualizarResumen();
+}
+
+function irACrearProductoDesdeModal() {
+    console.log('➕ Redirigiendo a crear producto...');
+    
+    guardarEstadoFactura();
+    
+    window.location.href = './Mis-productos.html?returnTo=nueva-factura';
+}
+
+// ==========================================
+// FASE 3: PANEL DE RESUMEN
+// ==========================================
+
+function actualizarResumen() {
+    if (itemsFactura.length === 0) {
+        mostrarResumenVacio();
+        return;
+    }
+    
+    const totales = calcularTotalesFactura();
+    
+    document.getElementById('resumenVacio').style.display = 'none';
+    document.getElementById('resumenValores').style.display = 'block';
+    
+    actualizarValor('resumenSubtotal', totales.subtotal);
+    actualizarValor('resumenTotalIva', totales.totalIva);
+    
+    actualizarDesgIoseIva(totales.ivasPorTarifa);
+    
+    if (totales.totalRetenciones > 0) {
+        document.getElementById('lineaRetenciones').style.display = 'flex';
+        actualizarValor('resumenRetenciones', -totales.totalRetenciones, true);
+        actualizarDesgIoseRetenciones(totales.retencionesPorTipo);
+    } else {
+        document.getElementById('lineaRetenciones').style.display = 'none';
+        document.getElementById('desgIoseRetenciones').style.display = 'none';
+    }
+    
+    if (totales.otrosImpuestos > 0) {
+        document.getElementById('lineaOtrosImpuestos').style.display = 'flex';
+        actualizarValor('resumenOtrosImpuestos', totales.otrosImpuestos);
+    } else {
+        document.getElementById('lineaOtrosImpuestos').style.display = 'none';
+    }
+    
+    actualizarValor('resumenTotal', totales.totalFactura);
+    
+    if (totales.totalRetenciones > 0) {
+        document.getElementById('lineaCobrar').style.display = 'flex';
+        actualizarValor('resumenCobrar', totales.totalACobrar);
+    } else {
+        document.getElementById('lineaCobrar').style.display = 'none';
+    }
+    
+    console.log('📊 Resumen actualizado:', totales);
+    
+    // FASE 4: Actualizar instrumentos si hay productos
+    if (instrumentosCobro.length > 0 && formaPagoSeleccionada === 'contado') {
+        const totales = calcularTotalesFactura();
+        const totalACobrar = totales.totalACobrar || totales.totalFactura;
         
-        if (modo === 'catalogo') {
-            const selectProducto = document.getElementById(`producto-${item.id}`);
-            if (!selectProducto.value) {
-                itemsValidos = false;
-                return;
+        if (instrumentosCobro[0]) {
+            instrumentosCobro[0].importe = totalACobrar;
+            renderizarInstrumentos();
+        }
+    }
+}
+
+function mostrarResumenVacio() {
+    document.getElementById('resumenVacio').style.display = 'flex';
+    document.getElementById('resumenValores').style.display = 'none';
+}
+
+function calcularTotalesFactura() {
+    let subtotal = 0;
+    let totalIva = 0;
+    let totalRetenciones = 0;
+    let otrosImpuestos = 0;
+    
+    const ivasPorTarifa = {};
+    const retencionesPorTipo = {};
+    
+    itemsFactura.forEach(item => {
+        subtotal += item.base;
+        totalIva += item.valorIva;
+        
+        if (item.tarifaIva > 0) {
+            if (!ivasPorTarifa[item.tarifaIva]) {
+                ivasPorTarifa[item.tarifaIva] = 0;
             }
-            desc = selectProducto.options[selectProducto.selectedIndex].text;
-        } else {
-            desc = document.getElementById(`desc-${item.id}`).value.trim();
-            if (!desc) {
-                itemsValidos = false;
-                return;
-            }
+            ivasPorTarifa[item.tarifaIva] += item.valorIva;
         }
         
-        const cant = parseFloat(document.getElementById(`cant-${item.id}`).value);
-        const precio = parseFloat(document.getElementById(`precio-${item.id}`).value);
-        
-        if (cant <= 0 || precio < 0) {
-            itemsValidos = false;
+        if (item.tieneRetencion && item.valorRetencion > 0) {
+            totalRetenciones += item.valorRetencion;
+            
+            const tipoKey = `${item.tipoRetencion}-${item.tarifaRetencion}`;
+            if (!retencionesPorTipo[tipoKey]) {
+                retencionesPorTipo[tipoKey] = {
+                    tipo: item.tipoRetencion,
+                    tarifa: item.tarifaRetencion,
+                    valor: 0
+                };
+            }
+            retencionesPorTipo[tipoKey].valor += item.valorRetencion;
         }
     });
     
-    if (!itemsValidos || itemsFactura.length === 0) {
-        mostrarError('Por favor complete todos los items: seleccione un producto del catálogo o escriba una descripción, y asegúrese de que cantidad y precio sean válidos');
+    const totalFactura = subtotal + totalIva + otrosImpuestos;
+    const totalACobrar = totalFactura - totalRetenciones;
+    
+    return {
+        subtotal,
+        totalIva,
+        totalRetenciones,
+        otrosImpuestos,
+        totalFactura,
+        totalACobrar,
+        ivasPorTarifa,
+        retencionesPorTipo
+    };
+}
+
+function actualizarValor(elementId, valor, esNegativo = false) {
+    const elemento = document.getElementById(elementId);
+    if (!elemento) return;
+    
+    const valorFormateado = esNegativo 
+        ? `-$${formatearNumero(Math.abs(valor))}`
+        : `$${formatearNumero(valor)}`;
+    
+    if (elemento.textContent !== valorFormateado) {
+        elemento.textContent = valorFormateado;
+        elemento.classList.add('actualizado');
+        setTimeout(() => {
+            elemento.classList.remove('actualizado');
+        }, 300);
+    }
+}
+
+function actualizarDesgIoseIva(ivasPorTarifa) {
+    const container = document.getElementById('desgIoseIva');
+    
+    const tarifas = Object.keys(ivasPorTarifa);
+    
+    if (tarifas.length <= 1) {
+        container.style.display = 'none';
         return;
     }
     
-    // Recopilar datos completos
-    const datosCliente = {
-        tipo: tipoCliente,
-        tipoDocumento: tipoDocumento,
-        numeroDocumento: numeroDocumento,
-        nombre: nombreCliente,
-        telefono: document.getElementById('telefonoCliente').value.trim(),
-        email: document.getElementById('emailCliente').value.trim(),
-        direccion: document.getElementById('direccionCliente').value.trim()
-    };
+    container.style.display = 'flex';
     
-    const observaciones = document.getElementById('observaciones').value.trim();
-    
-    // Calcular totales
-    let subtotalTotal = 0;
-    let ivaTotal = 0;
-    const itemsCompletos = [];
-    
-    itemsFactura.forEach(item => {
-        const modo = document.getElementById(`modo-${item.id}`).value;
-        let desc = '';
-        
-        if (modo === 'catalogo') {
-            const selectProducto = document.getElementById(`producto-${item.id}`);
-            desc = selectProducto.options[selectProducto.selectedIndex].text;
-        } else {
-            desc = document.getElementById(`desc-${item.id}`).value.trim();
-        }
-        
-        const cant = parseFloat(document.getElementById(`cant-${item.id}`).value);
-        const precioUnitario = parseFloat(document.getElementById(`precio-${item.id}`).value);
-        const iva = parseFloat(document.getElementById(`iva-${item.id}`).value);
-        
-        const base = cant * precioUnitario;
-        const ivaItem = base * (iva / 100);
-        const total = base + ivaItem;
-        
-        subtotalTotal += base;
-        ivaTotal += ivaItem;
-        
-        itemsCompletos.push({
-            descripcion: desc,
-            cantidad: cant,
-            precioUnitario: precioUnitario,
-            iva: iva,
-            subtotal: base,
-            ivaValor: ivaItem,
-            total: total
-        });
+    let html = '';
+    tarifas.forEach(tarifa => {
+        const valor = ivasPorTarifa[tarifa];
+        html += `
+            <div class="resumen-desglose-item">
+                <span class="resumen-desglose-label">IVA ${tarifa}%</span>
+                <span class="resumen-desglose-valor">$${formatearNumero(valor)}</span>
+            </div>
+        `;
     });
     
-    const totalFinal = subtotalTotal + ivaTotal;
-    
-    // Crear objeto factura
-    const factura = {
-        numero: numeroFacturaActual,
-        prefijo: configuracionFacturacion.resolucion?.prefijo || 'SETT',
-        fecha: new Date().toLocaleDateString('es-CO'),
-        hora: new Date().toLocaleTimeString('es-CO'),
-        cliente: datosCliente,
-        items: itemsCompletos,
-        subtotal: subtotalTotal,
-        iva: ivaTotal,
-        total: totalFinal,
-        observaciones: observaciones,
-        configuracion: configuracionFacturacion
-    };
-    
-    // Guardar factura en localStorage
-    guardarFactura(factura);
-    
-    // Actualizar numeración
-    actualizarNumeracion();
-    
-    // Mostrar factura generada
-    mostrarFacturaGenerada(factura);
+    container.innerHTML = html;
 }
 
-// ========== GUARDAR FACTURA ==========
-function guardarFactura(factura) {
-    const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
-    const claveFacturas = `facturas_${usuarioActual.email}`;
+function actualizarDesgIoseRetenciones(retencionesPorTipo) {
+    const container = document.getElementById('desgIoseRetenciones');
     
-    let facturas = JSON.parse(localStorage.getItem(claveFacturas)) || [];
+    const tipos = Object.keys(retencionesPorTipo);
     
-    factura.id = Date.now().toString();
-    factura.usuarioId = usuarioActual.email;
+    if (tipos.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
     
-    facturas.push(factura);
-    localStorage.setItem(claveFacturas, JSON.stringify(facturas));
+    container.style.display = 'flex';
     
-    console.log('Factura guardada:', factura);
+    let html = '';
+    tipos.forEach(key => {
+        const ret = retencionesPorTipo[key];
+        const nombreTipo = ret.tipo === 'fuente' ? 'ReteFuente' : 
+                          ret.tipo === 'iva' ? 'ReteIVA' : 
+                          ret.tipo;
+        html += `
+            <div class="resumen-desglose-item">
+                <span class="resumen-desglose-label">${nombreTipo} ${ret.tarifa}%</span>
+                <span class="resumen-desglose-valor">-$${formatearNumero(ret.valor)}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
 }
 
-// ========== ACTUALIZAR NUMERACIÓN ==========
-function actualizarNumeracion() {
-    const usuarioActual = JSON.parse(sessionStorage.getItem('usuarioActual'));
-    const claveConfig = `config_facturacion_${usuarioActual.email}`;
-    
+function actualizarNumeroFacturaResumen() {
     if (configuracionFacturacion && configuracionFacturacion.resolucion) {
-        configuracionFacturacion.resolucion.numeracionActual = numeroFacturaActual + 1;
-        localStorage.setItem(claveConfig, JSON.stringify(configuracionFacturacion));
+        const prefijo = configuracionFacturacion.resolucion.prefijo || 'FACT';
+        const numero = numeroFacturaActual || 1;
+        const numeroFormateado = numero.toString().padStart(5, '0');
+        
+        document.getElementById('numeroFacturaPreview').textContent = `${prefijo}-${numeroFormateado}`;
     }
 }
 
-// ========== MOSTRAR FACTURA GENERADA ==========
-function mostrarFacturaGenerada(factura) {
-    const numeroCompleto = `${factura.prefijo}-${String(factura.numero).padStart(5, '0')}`;
+// ==========================================
+// FASE 4: FORMAS Y MEDIOS DE PAGO + FECHAS
+// ==========================================
+
+// ========== INICIALIZAR FECHAS ==========
+function inicializarFechas() {
+    const hoy = new Date();
+    const fechaFormateada = formatearFechaParaInput(hoy);
     
-    // Agrupar IVAs por tasa
-    const ivasPorTasa = {};
-    factura.items.forEach(item => {
-        if (!ivasPorTasa[item.iva]) {
-            ivasPorTasa[item.iva] = 0;
+    const inputFechaEmision = document.getElementById('fechaEmision');
+    if (inputFechaEmision) {
+        inputFechaEmision.value = fechaFormateada;
+        console.log('📅 Fecha de emisión establecida:', fechaFormateada);
+    }
+}
+
+// ========== FORMATEAR FECHA PARA INPUT ==========
+function formatearFechaParaInput(fecha) {
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
+}
+
+// ========== CAMBIAR FORMA DE PAGO ==========
+function cambiarFormaPago(tipo) {
+    formaPagoSeleccionada = tipo;
+    
+    const campoMedioPago = document.getElementById('campoMedioPago');
+    const campoFechaVencimiento = document.getElementById('campoFechaVencimiento');
+    const seccionInstrumentos = document.getElementById('seccionInstrumentos');
+    
+    if (tipo === 'contado') {
+        // CONTADO: Mostrar medio de pago, ocultar fecha vencimiento
+        if (campoMedioPago) campoMedioPago.style.display = 'block';
+        if (campoFechaVencimiento) campoFechaVencimiento.style.display = 'none';
+        if (seccionInstrumentos) seccionInstrumentos.style.display = 'block';
+        
+        // Limpiar fecha de vencimiento
+        const inputVencimiento = document.getElementById('fechaVencimiento');
+        if (inputVencimiento) {
+            inputVencimiento.value = '';
+            inputVencimiento.classList.remove('error');
+            
+            // Remover mensaje de error si existe
+            const errorPrevio = inputVencimiento.parentElement.querySelector('.mensaje-fecha-error');
+            if (errorPrevio) errorPrevio.remove();
         }
-        ivasPorTasa[item.iva] += item.ivaValor;
+        
+        console.log('📄 Forma de pago: De Contado');
+    } else {
+        // CRÉDITO: Ocultar medio de pago, mostrar fecha vencimiento
+        if (campoMedioPago) campoMedioPago.style.display = 'none';
+        if (campoFechaVencimiento) campoFechaVencimiento.style.display = 'block';
+        if (seccionInstrumentos) seccionInstrumentos.style.display = 'none';
+        
+        // Limpiar selección de medio de pago e instrumentos
+        const selectMedio = document.getElementById('medioPago');
+        if (selectMedio) selectMedio.value = '';
+        medioPagoSeleccionado = '';
+        instrumentosCobro = [];
+        
+        // Establecer fecha de vencimiento por defecto (+30 días)
+        const inputVencimiento = document.getElementById('fechaVencimiento');
+        if (inputVencimiento && !inputVencimiento.value) {
+            agregarDias(30);
+        }
+        
+        console.log('💳 Forma de pago: Crédito');
+    }
+}
+
+// ========== AGREGAR DÍAS A LA FECHA ==========
+function agregarDias(dias) {
+    const inputEmision = document.getElementById('fechaEmision');
+    const inputVencimiento = document.getElementById('fechaVencimiento');
+    
+    if (!inputEmision || !inputVencimiento) return;
+    
+    let fechaEmision = inputEmision.value ? new Date(inputEmision.value + 'T00:00:00') : new Date();
+    
+    const fechaVencimiento = new Date(fechaEmision);
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + dias);
+    
+    inputVencimiento.value = formatearFechaParaInput(fechaVencimiento);
+    
+    validarFechaVencimiento();
+    
+    console.log(`📅 Fecha vencimiento: +${dias} días = ${formatearFechaParaInput(fechaVencimiento)}`);
+}
+
+// ========== VALIDAR FECHA DE VENCIMIENTO ==========
+function validarFechaVencimiento() {
+    const inputEmision = document.getElementById('fechaEmision');
+    const inputVencimiento = document.getElementById('fechaVencimiento');
+    
+    if (!inputEmision || !inputVencimiento) return true;
+    
+    const fechaEmision = new Date(inputEmision.value + 'T00:00:00');
+    const fechaVencimiento = new Date(inputVencimiento.value + 'T00:00:00');
+    
+    // Remover error previo
+    inputVencimiento.classList.remove('error');
+    
+    // Validar que vencimiento sea mayor a emisión
+    if (fechaVencimiento <= fechaEmision) {
+        inputVencimiento.classList.add('error');
+        
+        // Mostrar panel de error elegante
+        mostrarPanelErrorFechas(fechaEmision, fechaVencimiento);
+        
+        console.warn('⚠️ Fecha de vencimiento inválida');
+        return false;
+    }
+    
+    // Calcular días de crédito
+    const diffTime = Math.abs(fechaVencimiento - fechaEmision);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    console.log(`✅ Fecha vencimiento válida: ${diffDays} días de crédito`);
+    return true;
+}
+
+// ========== SELECCIONAR MEDIO DE PAGO ==========
+function seleccionarMedioPago() {
+    const select = document.getElementById('medioPago');
+    medioPagoSeleccionado = select.value;
+    
+    if (!medioPagoSeleccionado) {
+        instrumentosCobro = [];
+        renderizarInstrumentos();
+        return;
+    }
+    
+    console.log('💰 Medio de pago seleccionado:', medioPagoSeleccionado);
+    
+    crearInstrumentoAutomatico();
+}
+
+// ========== CREAR INSTRUMENTO AUTOMÁTICO ==========
+function crearInstrumentoAutomatico() {
+    instrumentosCobro = [];
+    
+    const totales = calcularTotalesFactura();
+    const montoACobrar = totales.totalACobrar || totales.totalFactura;
+    
+    const instrumento = {
+        id: Date.now().toString(),
+        tipoCuenta: obtenerTipoCuenta(medioPagoSeleccionado),
+        cuenta: '',
+        moneda: 'Pesos Colombianos',
+        cotizacion: 1.0000,
+        importe: montoACobrar,
+        nroCheque: '',
+        vtoCheque: '',
+        banco: '',
+        descripcion: obtenerDescripcionMedioPago(medioPagoSeleccionado)
+    };
+    
+    instrumentosCobro.push(instrumento);
+    
+    renderizarInstrumentos();
+}
+
+// ========== OBTENER TIPO DE CUENTA ==========
+function obtenerTipoCuenta(medioPago) {
+    const tipos = {
+        'efectivo': 'Caja',
+        'transferencia_credito': 'Banco',
+        'transferencia_debito': 'Banco',
+        'cheque': 'Banco',
+        'consignacion': 'Banco',
+        'tarjeta_debito': 'Banco',
+        'tarjeta_credito': 'Banco',
+        'otro': 'Caja'
+    };
+    
+    return tipos[medioPago] || 'Caja';
+}
+
+// ========== OBTENER DESCRIPCIÓN ==========
+function obtenerDescripcionMedioPago(medioPago) {
+    const descripciones = {
+        'efectivo': 'Pago en efectivo',
+        'transferencia_credito': 'Transferencia bancaria',
+        'transferencia_debito': 'Transferencia bancaria',
+        'cheque': 'Pago con cheque',
+        'consignacion': 'Consignación bancaria',
+        'tarjeta_debito': 'Pago con tarjeta débito',
+        'tarjeta_credito': 'Pago con tarjeta crédito',
+        'otro': 'Otro medio de pago'
+    };
+    
+    return descripciones[medioPago] || 'Pago';
+}
+
+// ========== RENDERIZAR INSTRUMENTOS ==========
+function renderizarInstrumentos() {
+    const lista = document.getElementById('listaInstrumentos');
+    const sinInstrumentos = document.getElementById('sinInstrumentos');
+    
+    if (instrumentosCobro.length === 0) {
+        lista.innerHTML = '';
+        sinInstrumentos.style.display = 'flex';
+        actualizarTotalesInstrumentos();
+        return;
+    }
+    
+    sinInstrumentos.style.display = 'none';
+    
+    let html = '';
+    
+    instrumentosCobro.forEach((inst, index) => {
+        const esCheque = medioPagoSeleccionado === 'cheque';
+        
+        html += `
+            <div class="instrumento-item">
+                <div class="instrumento-header">
+                    <div class="instrumento-tipo">
+                        <span>${inst.tipoCuenta}</span>
+                        <span class="instrumento-badge">${medioPagoSeleccionado.replace('_', ' ')}</span>
+                    </div>
+                    <button type="button" class="btn-eliminar-instrumento" onclick="eliminarInstrumento(${index})" title="Eliminar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="instrumento-grid">
+                    <div class="instrumento-campo">
+                        <label>Tipo Cuenta</label>
+                        <input type="text" value="${inst.tipoCuenta}" readonly>
+                    </div>
+                    <div class="instrumento-campo">
+                        <label>Cuenta</label>
+                        <input type="text" value="${inst.cuenta}" onchange="actualizarCampoInstrumento(${index}, 'cuenta', this.value)" placeholder="Número de cuenta">
+                    </div>
+                    <div class="instrumento-campo">
+                        <label>Moneda</label>
+                        <select onchange="actualizarCampoInstrumento(${index}, 'moneda', this.value)">
+                            <option value="Pesos Colombianos" selected>Pesos Colombianos</option>
+                            <option value="Dólares">Dólares</option>
+                            <option value="Euros">Euros</option>
+                        </select>
+                    </div>
+                    <div class="instrumento-campo">
+                        <label>Cotización</label>
+                        <input type="number" step="0.0001" value="${inst.cotizacion}" onchange="actualizarCampoInstrumento(${index}, 'cotizacion', this.value)">
+                    </div>
+                    <div class="instrumento-campo">
+                        <label>Importe</label>
+                        <input type="number" step="0.01" value="${inst.importe}" onchange="actualizarImporteInstrumento(${index}, this.value)">
+                    </div>
+                    ${esCheque ? `
+                        <div class="instrumento-campo">
+                            <label>Nro. Cheque</label>
+                            <input type="text" value="${inst.nroCheque}" onchange="actualizarCampoInstrumento(${index}, 'nroCheque', this.value)" placeholder="000000">
+                        </div>
+                        <div class="instrumento-campo">
+                            <label>Vto. Cheque</label>
+                            <input type="date" value="${inst.vtoCheque}" onchange="actualizarCampoInstrumento(${index}, 'vtoCheque', this.value)">
+                        </div>
+                        <div class="instrumento-campo">
+                            <label>Banco</label>
+                            <input type="text" value="${inst.banco}" onchange="actualizarCampoInstrumento(${index}, 'banco', this.value)" placeholder="Nombre del banco">
+                        </div>
+                    ` : ''}
+                    <div class="instrumento-campo" style="grid-column: span ${esCheque ? '1' : '3'};">
+                        <label>Descripción</label>
+                        <input type="text" value="${inst.descripcion}" onchange="actualizarCampoInstrumento(${index}, 'descripcion', this.value)">
+                    </div>
+                </div>
+            </div>
+        `;
     });
     
-    // Crear HTML del desglose de IVAs
-    const desgloseIVA = Object.keys(ivasPorTasa).map(tasa => {
-        if (parseFloat(tasa) === 0) return '';
-        return `<div><strong>IVA (${tasa}%):</strong> $${formatearNumero(ivasPorTasa[tasa])}</div>`;
-    }).filter(Boolean).join('');
+    lista.innerHTML = html;
     
-    const facturaHTML = `
-        <div class="factura-generada">
-            <div class="factura-generada-header">
-                <div class="factura-generada-logo">
-                    ${factura.configuracion.logo ? 
-                        `<img src="${factura.configuracion.logo}" alt="Logo">` : 
-                        '<span>LOGO</span>'}
-                </div>
-                <div class="factura-generada-empresa">
-                    <strong>${factura.configuracion.razonSocial}</strong>
-                    <p>NIT: ${factura.configuracion.nit}</p>
-                    <p>${factura.configuracion.direccion}, ${factura.configuracion.ciudad}</p>
-                    <p>Tel: ${factura.configuracion.telefono} | ${factura.configuracion.email}</p>
-                    <p>${factura.configuracion.regimen}</p>
-                </div>
-            </div>
-            
-            <div class="factura-generada-title">
-                <h2>FACTURA ELECTRÓNICA DE VENTA</h2>
-                <p>Resolución DIAN No. ${factura.configuracion.resolucion?.numero || 'N/A'}</p>
-                <p>Del ${factura.configuracion.resolucion?.numeracionDesde || 'N/A'} al ${factura.configuracion.resolucion?.numeracionHasta || 'N/A'}</p>
-            </div>
-            
-            <div class="factura-generada-info">
-                <div><strong>Factura No.:</strong> ${numeroCompleto}</div>
-                <div><strong>Fecha:</strong> ${factura.fecha}</div>
-                <div><strong>Hora:</strong> ${factura.hora}</div>
-            </div>
-            
-            <div class="factura-generada-cliente">
-                <h4>CLIENTE</h4>
-                <p><strong>Nombre:</strong> ${factura.cliente.nombre}</p>
-                <p><strong>${factura.cliente.tipoDocumento}:</strong> ${factura.cliente.numeroDocumento}</p>
-                ${factura.cliente.direccion ? `<p><strong>Dirección:</strong> ${factura.cliente.direccion}</p>` : ''}
-                ${factura.cliente.telefono ? `<p><strong>Teléfono:</strong> ${factura.cliente.telefono}</p>` : ''}
-                ${factura.cliente.email ? `<p><strong>Email:</strong> ${factura.cliente.email}</p>` : ''}
-            </div>
-            
-            <div class="factura-generada-items">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>DESCRIPCIÓN</th>
-                            <th>CANT.</th>
-                            <th>PRECIO UNIT.</th>
-                            <th>IVA %</th>
-                            <th>VALOR IVA</th>
-                            <th>TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${factura.items.map(item => `
-                            <tr>
-                                <td>${item.descripcion}</td>
-                                <td>${item.cantidad}</td>
-                                <td>$${formatearNumero(item.precioUnitario)}</td>
-                                <td>${item.iva}%</td>
-                                <td>$${formatearNumero(item.ivaValor)}</td>
-                                <td>$${formatearNumero(item.total)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="factura-generada-totales">
-                <div><strong>Subtotal (sin IVA):</strong> $${formatearNumero(factura.subtotal)}</div>
-                ${desgloseIVA}
-                <div style="margin-top: 8px;"><strong>IVA Total:</strong> $${formatearNumero(factura.iva)}</div>
-                <div class="total-final"><strong>TOTAL A PAGAR:</strong> $${formatearNumero(factura.total)}</div>
-            </div>
-            
-            ${factura.observaciones ? `
-                <div class="factura-generada-footer">
-                    <p><strong>Observaciones:</strong></p>
-                    <p>${factura.observaciones}</p>
-                </div>
-            ` : ''}
-            
-            ${factura.configuracion.pieFact ? `
-                <div class="factura-generada-footer" style="margin-top: 20px;">
-                    <p>${factura.configuracion.pieFact}</p>
-                </div>
-            ` : ''}
-            
-            <div class="factura-generada-acciones">
-                <button class="btn-accion btn-descargar" onclick="descargarFactura()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    Descargar PDF
-                </button>
-                <button class="btn-accion btn-imprimir" onclick="imprimirFactura()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                        <rect x="6" y="14" width="12" height="8"></rect>
-                    </svg>
-                    Imprimir
-                </button>
-                <button class="btn-accion btn-nueva" onclick="nuevaFactura()">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Nueva Factura
-                </button>
-            </div>
-        </div>
-    `;
+    actualizarTotalesInstrumentos();
     
-    // Ocultar formulario y mostrar factura
-    document.querySelector('.factura-form').style.display = 'none';
-    document.querySelector('.factura-preview').innerHTML = `
-        <h3>Factura Generada Exitosamente ✅</h3>
-        ${facturaHTML}
-    `;
+    console.log('📝 Instrumentos renderizados:', instrumentosCobro.length);
 }
 
-// ========== DESCARGAR FACTURA ==========
-function descargarFactura() {
-    alert('Funcionalidad de descarga PDF en desarrollo.\n\nSe requiere una librería como jsPDF o html2pdf para implementar esta función.');
+// ========== ACTUALIZAR CAMPO DE INSTRUMENTO ==========
+function actualizarCampoInstrumento(index, campo, valor) {
+    if (instrumentosCobro[index]) {
+        instrumentosCobro[index][campo] = valor;
+        console.log(`✏️ Campo ${campo} actualizado:`, valor);
+    }
 }
 
-// ========== IMPRIMIR FACTURA ==========
-function imprimirFactura() {
-    window.print();
+// ========== ACTUALIZAR IMPORTE ==========
+function actualizarImporteInstrumento(index, valor) {
+    const importe = parseFloat(valor) || 0;
+    
+    if (instrumentosCobro[index]) {
+        instrumentosCobro[index].importe = importe;
+        actualizarTotalesInstrumentos();
+        console.log(`💵 Importe actualizado: $${formatearNumero(importe)}`);
+    }
 }
 
-// ========== NUEVA FACTURA ==========
-function nuevaFactura() {
-    location.reload();
+// ========== ELIMINAR INSTRUMENTO ==========
+function eliminarInstrumento(index) {
+    if (!confirm('¿Eliminar este instrumento de cobro?')) {
+        return;
+    }
+    
+    instrumentosCobro.splice(index, 1);
+    renderizarInstrumentos();
+    
+    console.log('🗑️ Instrumento eliminado');
 }
 
-// ========== UTILIDADES ==========
+// ========== ACTUALIZAR TOTALES DE INSTRUMENTOS ==========
+function actualizarTotalesInstrumentos() {
+    let totalInstrumentos = 0;
+    
+    instrumentosCobro.forEach(inst => {
+        totalInstrumentos += parseFloat(inst.importe) || 0;
+    });
+    
+    const totales = calcularTotalesFactura();
+    const totalACobrar = totales.totalACobrar || totales.totalFactura;
+    
+    document.getElementById('totalInstrumentos').textContent = `$${formatearNumero(totalInstrumentos)}`;
+    
+    const diferencia = totalACobrar - totalInstrumentos;
+    
+    const divDiferencia = document.getElementById('diferencia');
+    const valorDiferencia = document.getElementById('valorDiferencia');
+    
+    if (Math.abs(diferencia) > 0.01) {
+        divDiferencia.style.display = 'flex';
+        valorDiferencia.textContent = `$${formatearNumero(Math.abs(diferencia))}`;
+        
+        if (diferencia < 0) {
+            valorDiferencia.classList.remove('positiva');
+            valorDiferencia.style.color = '#c62828';
+        } else {
+            valorDiferencia.classList.add('positiva');
+            valorDiferencia.style.color = '#2d7a4b';
+        }
+    } else {
+        divDiferencia.style.display = 'none';
+    }
+    
+    console.log('💰 Total instrumentos:', totalInstrumentos, '| Diferencia:', diferencia);
+}
+
+// ========== INICIALIZAR FORMA DE PAGO ==========
+function inicializarFormaPago() {
+    const campoMedio = document.getElementById('campoMedioPago');
+    const campoVencimiento = document.getElementById('campoFechaVencimiento');
+    const seccionInst = document.getElementById('seccionInstrumentos');
+    
+    if (campoMedio) campoMedio.style.display = 'none';
+    if (campoVencimiento) campoVencimiento.style.display = 'none';
+    if (seccionInst) seccionInst.style.display = 'none';
+    
+    inicializarFechas();
+    
+    console.log('💳 Forma de pago inicializada');
+}
+
+// ========== VALIDAR PAGO ANTES DE GENERAR ==========
+function validarPago() {
+    const inputEmision = document.getElementById('fechaEmision');
+    if (!inputEmision || !inputEmision.value) {
+        mostrarError('Por favor seleccione la fecha de emisión');
+        return false;
+    }
+    
+    if (formaPagoSeleccionada === 'contado') {
+        if (!medioPagoSeleccionado) {
+            mostrarError('Por favor seleccione un medio de pago');
+            return false;
+        }
+        
+        if (instrumentosCobro.length === 0) {
+            mostrarError('No hay instrumentos de cobro');
+            return false;
+        }
+        
+        const totales = calcularTotalesFactura();
+        const totalACobrar = totales.totalACobrar || totales.totalFactura;
+        
+        let totalInstrumentos = 0;
+        instrumentosCobro.forEach(inst => {
+            totalInstrumentos += parseFloat(inst.importe) || 0;
+        });
+        
+        const diferencia = Math.abs(totalACobrar - totalInstrumentos);
+        
+        if (diferencia > 0.01) {
+            mostrarError(`Los instrumentos no cuadran. Diferencia: $${formatearNumero(diferencia)}`);
+            return false;
+        }
+    } 
+    else if (formaPagoSeleccionada === 'credito') {
+        const inputVencimiento = document.getElementById('fechaVencimiento');
+        if (!inputVencimiento || !inputVencimiento.value) {
+            mostrarError('Por favor seleccione la fecha de vencimiento');
+            return false;
+        }
+        
+        if (!validarFechaVencimiento()) {
+            return false;
+        }
+    }
+    else {
+        mostrarError('Por favor seleccione una forma de pago');
+        return false;
+    }
+    
+    return true;
+}
+
+// ========== OBTENER DATOS DE LA FACTURA ==========
+function obtenerDatosFactura() {
+    const fechaEmision = document.getElementById('fechaEmision').value;
+    const fechaVencimiento = formaPagoSeleccionada === 'credito' 
+        ? document.getElementById('fechaVencimiento').value 
+        : null;
+    
+    return {
+        fechaEmision,
+        fechaVencimiento,
+        formaPago: formaPagoSeleccionada,
+        medioPago: formaPagoSeleccionada === 'contado' ? medioPagoSeleccionado : null,
+        instrumentos: formaPagoSeleccionada === 'contado' ? instrumentosCobro : []
+    };
+}
+
+// ==========================================
+// ESTADO Y RESTAURACIÓN
+// ==========================================
+
+function guardarEstadoFactura() {
+    const estado = {
+        clienteId: clienteSeleccionadoGlobal?.id || null,
+        items: itemsFactura,
+        observaciones: document.getElementById('observaciones')?.value || '',
+        timestamp: Date.now()
+    };
+    
+    sessionStorage.setItem('facturaTemporal', JSON.stringify(estado));
+    console.log('💾 Estado guardado:', estado);
+}
+
+function restaurarEstadoFactura() {
+    const estadoGuardado = sessionStorage.getItem('facturaTemporal');
+    
+    if (!estadoGuardado) {
+        console.log('ℹ️ No hay estado para restaurar');
+        return;
+    }
+    
+    console.log('♻️ Restaurando estado...');
+    
+    const estado = JSON.parse(estadoGuardado);
+    
+    if (estado.clienteId) {
+        const cliente = todosLosClientes.find(c => c.id === estado.clienteId);
+        
+        if (cliente) {
+            clienteSeleccionadoGlobal = cliente;
+            mostrarClienteEnCard();
+            console.log('✅ Cliente restaurado');
+        }
+    }
+    
+    if (estado.items && estado.items.length > 0) {
+        itemsFactura = estado.items;
+        renderizarListaProductos();
+        console.log(`✅ ${itemsFactura.length} productos restaurados`);
+    }
+    
+    if (estado.observaciones) {
+        const obsTextarea = document.getElementById('observaciones');
+        if (obsTextarea) {
+            obsTextarea.value = estado.observaciones;
+        }
+    }
+    
+    sessionStorage.removeItem('facturaTemporal');
+    console.log('🗑️ Estado temporal limpiado');
+}
+
+// ==========================================
+// GENERAR FACTURA
+// ==========================================
+
+function generarFactura() {
+    console.log('🚀 Generando factura...');
+    
+    if (!clienteSeleccionadoGlobal) {
+        mostrarError('Por favor seleccione un cliente');
+        return;
+    }
+    
+    if (itemsFactura.length === 0) {
+        mostrarError('Por favor agregue al menos un producto');
+        return;
+    }
+    
+    if (!validarPago()) {
+        return;
+    }
+    
+    const datosFactura = obtenerDatosFactura();
+    console.log('📄 Datos de factura:', datosFactura);
+    
+    mostrarError('Sistema en construcción. FASES 1-4 + FECHAS completadas ✅. Próxima: Guardar factura');
+}
+
+// ==========================================
+// UTILIDADES
+// ==========================================
+
 function formatearNumero(numero) {
     return new Intl.NumberFormat('es-CO', {
         minimumFractionDigits: 2,
@@ -663,7 +1483,7 @@ function mostrarError(mensaje) {
         errorDiv.textContent = mensaje;
         errorDiv.style.display = 'block';
         
-        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
         setTimeout(() => {
             errorDiv.style.display = 'none';
@@ -671,4 +1491,131 @@ function mostrarError(mensaje) {
     }
 }
 
-console.log('Nueva Factura Electrónica - Módulo cargado correctamente ✨');
+console.log('✅ Sistema de facturación COMPLETO - TODAS LAS FASES + FECHAS cargado');
+// ========== MOSTRAR PANEL DE ERROR ELEGANTE ==========
+function mostrarPanelErrorFechas(fechaEmision, fechaVencimiento) {
+    // Evitar múltiples paneles
+    cerrarPanelErrorFechas();
+    
+    // Formatear fechas para mostrar
+    const formatoFecha = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    const emisionStr = fechaEmision.toLocaleDateString('es-CO', formatoFecha);
+    const vencimientoStr = fechaVencimiento.toLocaleDateString('es-CO', formatoFecha);
+    
+    // Crear overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay-error-fechas';
+    overlay.id = 'overlayErrorFechas';
+    
+    // Crear panel
+    const panel = document.createElement('div');
+    panel.className = 'panel-error-fechas';
+    panel.id = 'panelErrorFechas';
+    
+    panel.innerHTML = `
+        <div class="panel-error-header">
+            <div class="panel-error-icono">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <h3 class="panel-error-titulo">Error de Validación</h3>
+        </div>
+        
+        <div class="panel-error-contenido">
+            <p class="panel-error-mensaje">
+                La <strong>fecha de vencimiento</strong> debe ser posterior a la <strong>fecha de emisión</strong> de la factura.
+            </p>
+            
+            <div class="panel-error-detalle">
+                <div class="panel-error-fecha-item">
+                    <span class="panel-error-fecha-label">Fecha de Emisión:</span>
+                    <span class="panel-error-fecha-valor">${emisionStr}</span>
+                </div>
+                <div class="panel-error-fecha-item">
+                    <span class="panel-error-fecha-label">Fecha de Vencimiento:</span>
+                    <span class="panel-error-fecha-valor">${vencimientoStr}</span>
+                </div>
+            </div>
+            
+            <p class="panel-error-mensaje" style="margin-top: 12px; font-size: 13px; color: #6c757d;">
+                💡 Usa los botones de atajos (+15, +30, +60 días) o selecciona una fecha posterior manualmente.
+            </p>
+        </div>
+        
+        <div class="panel-error-acciones">
+            <button type="button" class="btn-error-corregir" onclick="corregirFechaAutomatica()">
+                Corregir Automáticamente
+            </button>
+            <button type="button" class="btn-error-entendido" onclick="cerrarPanelErrorFechas()">
+                Entendido
+            </button>
+        </div>
+    `;
+    
+    // Agregar al DOM
+    document.body.appendChild(overlay);
+    document.body.appendChild(panel);
+    
+    // Cerrar con click en overlay
+    overlay.addEventListener('click', cerrarPanelErrorFechas);
+    
+    // Cerrar con tecla ESC
+    document.addEventListener('keydown', cerrarPanelConEscape);
+    
+    console.log('⚠️ Panel de error de fechas mostrado');
+}
+
+// ========== CERRAR PANEL DE ERROR ==========
+function cerrarPanelErrorFechas() {
+    const overlay = document.getElementById('overlayErrorFechas');
+    const panel = document.getElementById('panelErrorFechas');
+    
+    if (overlay && panel) {
+        // Animar salida
+        overlay.classList.add('saliendo');
+        panel.classList.add('saliendo');
+        
+        // Remover del DOM después de la animación
+        setTimeout(() => {
+            if (overlay.parentNode) overlay.remove();
+            if (panel.parentNode) panel.remove();
+        }, 300);
+        
+        // Remover listener de ESC
+        document.removeEventListener('keydown', cerrarPanelConEscape);
+    }
+}
+
+// ========== CERRAR CON TECLA ESC ==========
+function cerrarPanelConEscape(event) {
+    if (event.key === 'Escape') {
+        cerrarPanelErrorFechas();
+    }
+}
+
+// ========== CORREGIR FECHA AUTOMÁTICAMENTE ==========
+function corregirFechaAutomatica() {
+    // Agregar 30 días por defecto
+    agregarDias(30);
+    
+    // Cerrar el panel
+    cerrarPanelErrorFechas();
+    
+    // Enfocar el campo de fecha de vencimiento
+    const inputVencimiento = document.getElementById('fechaVencimiento');
+    if (inputVencimiento) {
+        inputVencimiento.focus();
+        
+        // Pequeña animación de confirmación
+        inputVencimiento.classList.remove('error');
+        inputVencimiento.style.borderColor = '#2d7a4b';
+        setTimeout(() => {
+            inputVencimiento.style.borderColor = '';
+        }, 1000);
+    }
+    
+    console.log('✅ Fecha corregida automáticamente a +30 días');
+}

@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva Factura Electrónica - Sparkles</title>
     <link rel="stylesheet" href="./dasboard.css">
-    <link rel="stylesheet" href="nueva-factura.css">
+    <link rel="stylesheet" href="./nueva-factura.css">
+    <script defer src="dashboard.js"></script>
+    <script defer src="nueva-factura.js"></script>
 </head>
+
 <body>
     <!-- Sidebar -->
     <aside class="sidebar">
@@ -26,7 +30,7 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                Dashboard
+                Inicio
             </a>
             <a href="empresas.html" class="nav-item">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -73,14 +77,16 @@
                 <div class="user-avatar">JP</div>
                 <div class="user-details">
                     <strong>Juan Pérez</strong>
-                    <span>juan@empresa.com</span>
+                    <span>juan@example.com</span>
                 </div>
             </div>
             <div class="footer-links">
-                <button class="footer-btn">
+                <button class="footer-btn" onclick="window.location.href='Configuracion.html'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2 5.2l-4.2-4.2m-6 0l-4.2 4.2"></path>
+                        <path
+                            d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2 5.2l-4.2-4.2m-6 0l-4.2 4.2">
+                        </path>
                     </svg>
                     Ajustes
                 </button>
@@ -131,122 +137,319 @@
             <div class="factura-header">
                 <button class="back-btn" onclick="window.location.href='operaciones.html'">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
                     </svg>
                 </button>
                 <div>
                     <h1>Nueva Factura Electrónica</h1>
-                    <p>Complete los datos del cliente y los productos/servicios</p>
+                    <p>Seleccione cliente y productos para generar la factura</p>
                 </div>
             </div>
 
-            <div class="factura-content">
-                <!-- Formulario -->
+            <!-- Layout de 2 columnas: Formulario + Panel Resumen -->
+            <div class="factura-layout">
+                <!-- Columna Izquierda: Formulario -->
                 <div class="factura-form">
-                    <!-- Información del Cliente -->
+                    <div id="mensajeError" class="mensaje-error" style="display: none;"></div>
+
+                    <!-- FASE 1: Cliente -->
                     <div class="form-section-factura">
                         <h2 class="section-title-factura">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
                             </svg>
-                            Información del Cliente
+                            Cliente
                         </h2>
 
-                        <div class="form-grid-factura">
-                            <div class="form-field-factura">
-                                <label>Tipo de Cliente *</label>
-                                <select id="tipoCliente" onchange="toggleTipoDocumento()">
-                                    <option value="persona">Persona Natural</option>
-                                    <option value="empresa">Empresa</option>
-                                </select>
-                            </div>
+                        <button type="button" class="btn-seleccionar-cliente" onclick="abrirModalClientes()"
+                            id="btnSeleccionarCliente">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <span>Seleccionar Cliente</span>
+                        </button>
 
-                            <div class="form-field-factura">
-                                <label>Tipo de Documento *</label>
-                                <select id="tipoDocumento">
-                                    <option value="CC">Cédula de Ciudadanía</option>
-                                    <option value="CE">Cédula de Extranjería</option>
-                                    <option value="NIT">NIT</option>
-                                    <option value="PA">Pasaporte</option>
-                                </select>
+                        <div id="clienteSeleccionadoCard" class="cliente-card" style="display: none;">
+                            <div class="cliente-card-header">
+                                <div class="cliente-info-principal">
+                                    <h3 id="cardNombreCliente"></h3>
+                                    <span class="badge-tipo" id="cardTipoCliente"></span>
+                                </div>
+                                <button type="button" class="btn-cambiar" onclick="abrirModalClientes()"
+                                    title="Cambiar cliente">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                    </svg>
+                                    Cambiar
+                                </button>
                             </div>
-
-                            <div class="form-field-factura">
-                                <label>Número de Documento *</label>
-                                <input type="text" id="numeroDocumento" placeholder="Ej: 1234567890">
-                            </div>
-
-                            <div class="form-field-factura">
-                                <label>Nombre/Razón Social *</label>
-                                <input type="text" id="nombreCliente" placeholder="Nombre completo del cliente">
-                            </div>
-
-                            <div class="form-field-factura">
-                                <label>Teléfono</label>
-                                <input type="tel" id="telefonoCliente" placeholder="Ej: 300 123 4567">
-                            </div>
-
-                            <div class="form-field-factura">
-                                <label>Email</label>
-                                <input type="email" id="emailCliente" placeholder="cliente@email.com">
-                            </div>
-
-                            <div class="form-field-factura full-width">
-                                <label>Dirección</label>
-                                <input type="text" id="direccionCliente" placeholder="Calle 123 #45-67">
+                            <div class="cliente-card-body">
+                                <div class="info-item">
+                                    <span class="info-label">Documento:</span>
+                                    <span class="info-value" id="cardDocumentoCliente"></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Teléfono:</span>
+                                    <span class="info-value" id="cardTelefonoCliente"></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Email:</span>
+                                    <span class="info-value" id="cardEmailCliente"></span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Dirección:</span>
+                                    <span class="info-value" id="cardDireccionCliente"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div class="form-section-factura seccion-pago">
+                        <!-- Header con ícono -->
+                        <div class="pago-section-header">
+                            <div class="pago-section-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                                </svg>
+                            </div>
+                            <h3 class="pago-section-title">Información de Pago</h3>
+                        </div>
 
-                    <!-- Productos/Servicios -->
+                        <div class="pago-grid">
+                            <!-- NUEVO: Campo Fecha de Emisión (SIEMPRE VISIBLE) -->
+                            <div class="form-field-pago">
+                                <label>
+                                    Fecha de Emisión
+                                    <span class="campo-requerido">*</span>
+                                </label>
+                                <div class="input-fecha-wrapper">
+                                    <input type="date" id="fechaEmision" class="input-fecha" required>
+                                    <svg class="icono-calendario" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Formas de Pago -->
+                            <div class="form-field-pago">
+                                <label>
+                                    Formas de Pago
+                                    <span class="campo-requerido">*</span>
+                                </label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="formaPago" value="contado"
+                                            onchange="cambiarFormaPago('contado')">
+                                        <div class="radio-content">
+                                            <div class="radio-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2">
+                                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6">
+                                                    </path>
+                                                </svg>
+                                            </div>
+                                            <span>De Contado</span>
+                                        </div>
+                                        <div class="radio-checkmark">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                    </label>
+
+                                    <label class="radio-option">
+                                        <input type="radio" name="formaPago" value="credito"
+                                            onchange="cambiarFormaPago('credito')">
+                                        <div class="radio-content">
+                                            <div class="radio-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2">
+                                                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                                                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                                                </svg>
+                                            </div>
+                                            <span>Crédito</span>
+                                        </div>
+                                        <div class="radio-checkmark">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- NUEVO: Fecha de Vencimiento (SOLO SI ES CRÉDITO) -->
+                            <div class="form-field-pago campo-credito" id="campoFechaVencimiento"
+                                style="display: none;">
+                                <label>
+                                    Fecha de Vencimiento
+                                    <span class="campo-requerido">*</span>
+                                </label>
+                                <div class="input-fecha-wrapper">
+                                    <input type="date" id="fechaVencimiento" class="input-fecha"
+                                        onchange="validarFechaVencimiento()">
+                                    <svg class="icono-calendario" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </div>
+
+                                <!-- Atajos rápidos -->
+                                <div class="atajos-fecha">
+                                    <button type="button" class="btn-atajo" onclick="agregarDias(15)"
+                                        title="Agregar 15 días">
+                                        +15 días
+                                    </button>
+                                    <button type="button" class="btn-atajo" onclick="agregarDias(30)"
+                                        title="Agregar 30 días">
+                                        +30 días
+                                    </button>
+                                    <button type="button" class="btn-atajo" onclick="agregarDias(60)"
+                                        title="Agregar 60 días">
+                                        +60 días
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Medio de Pago (solo visible si es "De Contado") -->
+                            <div class="form-field-pago" id="campoMedioPago">
+                                <label>
+                                    Medio de Pago
+                                    <span class="campo-requerido">*</span>
+                                </label>
+                                <div class="medio-pago-wrapper">
+                                    <select id="medioPago" onchange="seleccionarMedioPago()">
+                                        <option value="">-- Seleccione un medio de pago --</option>
+                                        <option value="efectivo">Efectivo</option>
+                                        <option value="transferencia_credito">Transferencia Crédito</option>
+                                        <option value="transferencia_debito">Transferencia Débito</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="consignacion">Consignación bancaria</option>
+                                        <option value="tarjeta_debito">Tarjeta Débito</option>
+                                        <option value="tarjeta_credito">Tarjeta Crédito</option>
+                                        <option value="otro">Instrumento no definido</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FASE 2: Productos -->
                     <div class="form-section-factura">
                         <h2 class="section-title-factura">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="9" cy="21" r="1"></circle>
-                                <circle cx="20" cy="21" r="1"></circle>
-                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
                             </svg>
                             Productos / Servicios
                         </h2>
 
-                        <div class="items-container" id="itemsContainer">
-                            <!-- Items dinámicos aquí -->
+                        <div id="listaProductos" class="lista-productos"></div>
+
+                        <div id="sinProductos" class="sin-productos-msg">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                            <p>No hay productos agregados</p>
+                            <small>Haz clic en el botón de abajo para agregar productos</small>
                         </div>
 
-                        <button type="button" class="btn-agregar-item" onclick="agregarItem()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button type="button" class="btn-agregar-producto" onclick="abrirModalProductos()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                            Agregar Item
+                            <span>Agregar Producto / Servicio</span>
                         </button>
                     </div>
 
                     <!-- Observaciones -->
                     <div class="form-section-factura">
                         <h2 class="section-title-factura">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
                             </svg>
-                            Observaciones (Opcional)
+                            Observaciones
                         </h2>
-
-                        <div class="form-field-factura full-width">
-                            <textarea id="observaciones" rows="3" placeholder="Observaciones o notas adicionales para esta factura..."></textarea>
-                        </div>
+                        <textarea id="observaciones" placeholder="Notas adicionales, términos de pago, etc."
+                            rows="3"></textarea>
                     </div>
 
-                    <div id="mensajeError" class="mensaje-error" style="display: none;"></div>
 
-                    <!-- Botones de Acción -->
+                    <div class="form-section-factura seccion-instrumentos" id="seccionInstrumentos"
+                        style="display: none;">
+                        <!-- Header con ícono -->
+                        <div class="pago-section-header">
+                            <div class="pago-section-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                                </svg>
+                            </div>
+                            <h3 class="pago-section-title">Instrumentos de Cobro</h3>
+                        </div>
+
+                        <!-- Lista de instrumentos -->
+                        <div id="listaInstrumentos" class="lista-instrumentos">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+
+                        <!-- Mensaje si no hay instrumentos -->
+                        <div id="sinInstrumentos" class="sin-instrumentos-msg">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" style="opacity: 0.3;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                            <p>No hay instrumentos de cobro agregados</p>
+                            <small>Los instrumentos se agregan automáticamente según el medio de pago
+                                seleccionado</small>
+                        </div>
+
+                        <!-- Totales de instrumentos -->
+                        <div class="instrumentos-footer">
+                            <div class="instrumento-total">
+                                <span class="total-label">Total Instrumentos</span>
+                                <span class="total-valor" id="totalInstrumentos">$0.00</span>
+                            </div>
+                            <div class="instrumento-diferencia" id="diferencia" style="display: none;">
+                                <span class="diferencia-label">Diferencia</span>
+                                <span class="diferencia-valor" id="valorDiferencia">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Botón Generar Factura -->
                     <div class="form-actions-factura">
-                        <button type="button" class="btn-cancelar" onclick="window.location.href='operaciones.html'">
-                            Cancelar
-                        </button>
-                        <button type="button" class="btn-generar" onclick="generarFactura()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <button type="button" class="btn-generar-factura" onclick="generarFactura()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                             Generar Factura
@@ -254,42 +457,235 @@
                     </div>
                 </div>
 
-                <!-- Vista Previa -->
-                <div class="factura-preview">
-                    <h3>Vista Previa</h3>
-                    <div class="preview-box" id="previewBox">
-                        <div class="preview-placeholder">
-                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <!-- Columna Derecha: Panel de Resumen (FASE 3) -->
+                <aside class="panel-resumen">
+                    <div class="resumen-header">
+                        <h3>Resumen de Factura</h3>
+                        <span class="resumen-numero" id="numeroFacturaPreview">FACT-00001</span>
+                    </div>
+
+                    <div class="resumen-content" id="resumenContent">
+                        <div class="resumen-vacio" id="resumenVacio">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                             </svg>
-                            <p>La vista previa aparecerá aquí</p>
+                            <p>Sin productos</p>
+                            <small>Agrega productos para ver el resumen</small>
+                        </div>
+
+                        <div id="resumenValores" style="display: none;">
+                            <div class="resumen-linea">
+                                <span class="resumen-label">
+                                    Subtotal
+                                    <span class="resumen-help" title="Suma de productos sin IVA">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor" id="resumenSubtotal">$0.00</span>
+                            </div>
+
+                            <div class="resumen-linea">
+                                <span class="resumen-label">
+                                    Total IVA
+                                    <span class="resumen-help" title="Suma de todos los impuestos IVA">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor" id="resumenTotalIva">$0.00</span>
+                            </div>
+
+                            <div class="resumen-desglose" id="desgIoseIva" style="display: none;"></div>
+
+                            <div class="resumen-divider"></div>
+
+                            <div class="resumen-linea" id="lineaRetenciones" style="display: none;">
+                                <span class="resumen-label">
+                                    Retenciones
+                                    <span class="resumen-help" title="Retención en la fuente aplicada">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor resumen-negativo" id="resumenRetenciones">-$0.00</span>
+                            </div>
+
+                            <div class="resumen-desglose" id="desgIoseRetenciones" style="display: none;"></div>
+
+                            <div class="resumen-linea" id="lineaOtrosImpuestos" style="display: none;">
+                                <span class="resumen-label">
+                                    Otros Impuestos
+                                    <span class="resumen-help" title="ICA, consumo, etc.">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor" id="resumenOtrosImpuestos">$0.00</span>
+                            </div>
+
+                            <div class="resumen-divider"></div>
+
+                            <div class="resumen-linea resumen-total">
+                                <span class="resumen-label-total">Total Factura</span>
+                                <span class="resumen-valor-total" id="resumenTotal">$0.00</span>
+                            </div>
+
+                            <div class="resumen-linea resumen-cobrar" id="lineaCobrar" style="display: none;">
+                                <span class="resumen-label-cobrar">
+                                    Total a Cobrar
+                                    <span class="resumen-help" title="Total factura menos retenciones">ⓘ</span>
+                                </span>
+                                <span class="resumen-valor-cobrar" id="resumenCobrar">$0.00</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Totales -->
-                    <div class="totales-preview">
-                        <div class="total-row">
-                            <span>Subtotal:</span>
-                            <strong id="previewSubtotal">$0.00</strong>
-                        </div>
-                        <div class="total-row">
-                            <span>IVA (19%):</span>
-                            <strong id="previewIva">$0.00</strong>
-                        </div>
-                        <div class="total-row total-final">
-                            <span>TOTAL:</span>
-                            <strong id="previewTotal">$0.00</strong>
-                        </div>
+                    <div class="resumen-footer">
+                        <p class="resumen-nota">Los valores se actualizan automáticamente</p>
                     </div>
-                </div>
+                </aside>
             </div>
         </section>
     </main>
 
-    <script src="dashboard.js"></script>
-    <script src="nueva-factura.js"></script>
+    <!-- MODAL: Clientes -->
+    <div id="modalBusquedaClientes" class="modal-overlay" style="display: none;"
+        onclick="cerrarModalSiClickFuera(event)">
+        <div class="modal-contenido" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Buscar Cliente</h2>
+                <button type="button" class="btn-cerrar-modal" onclick="cerrarModalClientes()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-busqueda">
+                <div class="input-busqueda-wrapper">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="inputBusquedaCliente"
+                        placeholder="Escribe el nombre o documento del cliente..." autocomplete="off"
+                        oninput="buscarClientesEnTiempoReal()" onkeydown="navegarResultadosTeclado(event)">
+                    <button type="button" class="btn-limpiar-busqueda" onclick="limpiarBusqueda()"
+                        style="display: none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-resultados" id="resultadosBusqueda">
+                <div class="estado-inicial" id="estadoInicial">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <p>Escribe para buscar clientes</p>
+                    <small>Busca por nombre o documento</small>
+                </div>
+                <div class="lista-resultados" id="listaResultados" style="display: none;"></div>
+                <div class="sin-resultados" id="sinResultados" style="display: none;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>No se encontraron clientes</p>
+                    <small>Intenta con otro término de búsqueda</small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-crear-cliente-modal" onclick="irACrearClienteDesdeModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Crear Nuevo Cliente
+                </button>
+                <div class="modal-acciones">
+                    <button type="button" class="btn-cancelar-modal" onclick="cerrarModalClientes()">Cancelar</button>
+                    <button type="button" class="btn-seleccionar-modal" id="btnConfirmarSeleccion" disabled
+                        onclick="confirmarSeleccionCliente()">Seleccionar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Productos -->
+    <div id="modalBusquedaProductos" class="modal-overlay" style="display: none;"
+        onclick="cerrarModalSiClickFueraProducto(event)">
+        <div class="modal-contenido" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Buscar Producto / Servicio</h2>
+                <button type="button" class="btn-cerrar-modal" onclick="cerrarModalProductos()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-busqueda">
+                <div class="input-busqueda-wrapper">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="inputBusquedaProducto"
+                        placeholder="Escribe el nombre o código del producto..." autocomplete="off"
+                        oninput="buscarProductosEnTiempoReal()" onkeydown="navegarResultadosProductoTeclado(event)">
+                    <button type="button" class="btn-limpiar-busqueda" onclick="limpiarBusquedaProducto()"
+                        style="display: none;" id="btnLimpiarProducto">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-resultados" id="resultadosBusquedaProducto">
+                <div class="estado-inicial" id="estadoInicialProducto">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <p>Escribe para buscar productos</p>
+                    <small>Busca por nombre o código</small>
+                </div>
+                <div class="lista-resultados" id="listaResultadosProducto" style="display: none;"></div>
+                <div class="sin-resultados" id="sinResultadosProducto" style="display: none;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>No se encontraron productos</p>
+                    <small>Intenta con otro término de búsqueda</small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-crear-cliente-modal" onclick="irACrearProductoDesdeModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Crear Nuevo Producto
+                </button>
+                <div class="modal-acciones">
+                    <button type="button" class="btn-cancelar-modal" onclick="cerrarModalProductos()">Cancelar</button>
+                    <button type="button" class="btn-seleccionar-modal" id="btnConfirmarProducto" disabled
+                        onclick="confirmarSeleccionProducto()">Agregar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

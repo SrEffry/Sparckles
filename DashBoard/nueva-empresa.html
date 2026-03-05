@@ -28,7 +28,7 @@
                     <rect x="14" y="14" width="7" height="7"></rect>
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
-                Dashboard
+                Inicio
             </a>
             <a href="empresas.html" class="nav-item active">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -75,7 +75,7 @@
                 <div class="user-avatar">JP</div>
                 <div class="user-details">
                     <strong>Juan Pérez</strong>
-                    <span>juan@empresa.com</span>
+                    <span>juan@example.com</span>
                 </div>
             </div>
             <div class="footer-links">
@@ -142,27 +142,34 @@
                 </div>
             </div>
 
-            <!-- Progress Steps -->
-            <div class="progress-steps">
-                <div class="step active">
-                    <div class="step-number">1</div>
-                    <span>Información Básica</span>
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-header">
+                    <span class="progress-text">Paso <span id="currentStep">1</span> de 4</span>
+                    <span class="progress-label" id="currentStepLabel">Información Básica</span>
                 </div>
-                <div class="step-line"></div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <span>Ubicación</span>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-markers">
+                        <div class="marker active" data-step="1" title="Información Básica"></div>
+                        <div class="marker" data-step="2" id="marker2" title="Representante Legal"></div>
+                        <div class="marker" data-step="3" title="Ubicación"></div>
+                        <div class="marker" data-step="4" title="Configuración Tributaria"></div>
+                    </div>
                 </div>
-                <div class="step-line"></div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <span>Configuración Tributaria</span>
+                <div class="progress-steps-labels">
+                    <span class="step-label active">Info Básica</span>
+                    <span class="step-label" id="step2Label">Representante</span>
+                    <span class="step-label">Ubicación</span>
+                    <span class="step-label">Tributaria</span>
                 </div>
             </div>
 
-            <!-- Form -->
-            <form id="empresaForm" class="empresa-form">
-                <!-- Sección 1: Información Básica -->
+            <!-- Formulario -->
+            <form id="empresaForm">
+                <!-- Sección 1: Tipo de Entidad e Información Básica -->
                 <div class="form-section active" id="section1">
                     <h2 class="section-title">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -172,49 +179,99 @@
                         Información Básica
                     </h2>
 
-                    <div class="form-grid">
-                        <div class="form-field full-width">
-                            <label>Tipo de Persona *</label>
-                            <div class="radio-group">
-                                <label class="radio-option">
-                                    <input type="radio" name="tipoPersona" value="Jurídica" checked>
-                                    <span>Jurídica</span>
-                                </label>
-                                <label class="radio-option">
-                                    <input type="radio" name="tipoPersona" value="Natural">
-                                    <span>Natural</span>
-                                </label>
-                            </div>
+                    <!-- NUEVO: Selector de Tipo de Entidad -->
+                    <div class="tipo-entidad-selector">
+                        <label class="field-label-main">Tipo de Entidad *</label>
+                        <div class="radio-group-cards">
+                            <label class="radio-card">
+                                <input type="radio" name="tipoEntidad" value="juridica" checked onchange="cambiarTipoEntidad()">
+                                <div class="radio-card-content">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                    </svg>
+                                    <span class="card-title">Persona Jurídica</span>
+                                    <span class="card-desc">Empresa u organización con NIT</span>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="tipoEntidad" value="natural" onchange="cambiarTipoEntidad()">
+                                <div class="radio-card-content">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span class="card-title">Persona Natural</span>
+                                    <span class="card-desc">Individuo con documento de identidad</span>
+                                </div>
+                            </label>
                         </div>
+                    </div>
 
+                    <!-- Campos para Persona Jurídica -->
+                    <div id="camposJuridica" class="form-grid">
                         <div class="form-field full-width">
-                            <label for="nombreEmpresa">Nombre de la Empresa *</label>
-                            <input type="text" id="nombreEmpresa" placeholder="Ej: Comercial XYZ S.A.S" required>
+                            <label for="razonSocial">Razón Social *</label>
+                            <input type="text" id="razonSocial" placeholder="Empresa S.A.S." required>
                         </div>
 
                         <div class="form-field">
                             <label for="nit">NIT *</label>
-                            <input type="text" id="nit" placeholder="900.123.456" required>
+                            <input type="text" id="nit" placeholder="900123456" required>
                         </div>
 
                         <div class="form-field">
-                            <label for="dv">DV *</label>
-                            <input type="text" id="dv" placeholder="7" maxlength="1" required>
-                        </div>
-
-                        <div class="form-field full-width">
-                            <label for="razonSocial">Razón Social *</label>
-                            <input type="text" id="razonSocial" placeholder="Razón social de la empresa" required>
+                            <label for="dv">Dígito de Verificación *</label>
+                            <input type="text" id="dv" placeholder="1" maxlength="1" required>
                         </div>
 
                         <div class="form-field">
-                            <label for="matriculaMercantil">Número de Matrícula Mercantil</label>
-                            <input type="text" id="matriculaMercantil" placeholder="Ej: 123456">
+                            <label for="telefonoJuridica">Teléfono *</label>
+                            <input type="tel" id="telefonoJuridica" placeholder="3001234567" required>
                         </div>
 
                         <div class="form-field">
-                            <label for="telefono">Teléfono *</label>
-                            <input type="tel" id="telefono" placeholder="(+57) 300 123 4567" required>
+                            <label for="emailJuridica">Correo Electrónico *</label>
+                            <input type="email" id="emailJuridica" placeholder="contacto@empresa.com" required>
+                        </div>
+                    </div>
+
+                    <!-- Campos para Persona Natural -->
+                    <div id="camposNatural" class="form-grid" style="display: none;">
+                        <div class="form-field">
+                            <label for="nombresNatural">Nombres *</label>
+                            <input type="text" id="nombresNatural" placeholder="Juan Carlos">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="apellidosNatural">Apellidos *</label>
+                            <input type="text" id="apellidosNatural" placeholder="García Rodríguez">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="tipoDocumentoNatural">Tipo de Documento *</label>
+                            <select id="tipoDocumentoNatural">
+                                <option value="">Seleccione tipo</option>
+                                <option value="CC">Cédula de Ciudadanía</option>
+                                <option value="CE">Cédula de Extranjería</option>
+                                <option value="PA">Pasaporte</option>
+                                <option value="TI">Tarjeta de Identidad</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="numeroDocumentoNatural">Número de Documento *</label>
+                            <input type="text" id="numeroDocumentoNatural" placeholder="1234567890">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="telefonoNatural">Teléfono *</label>
+                            <input type="tel" id="telefonoNatural" placeholder="3001234567">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="emailNatural">Correo Electrónico *</label>
+                            <input type="email" id="emailNatural" placeholder="juan@example.com">
                         </div>
                     </div>
 
@@ -228,8 +285,88 @@
                     </div>
                 </div>
 
-                <!-- Sección 2: Ubicación -->
+                <!-- Sección 2: Representante Legal (solo para Persona Jurídica) -->
                 <div class="form-section" id="section2">
+                    <h2 class="section-title">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span id="section2Title">Datos del Representante Legal</span>
+                    </h2>
+
+                    <!-- Solo para Persona Jurídica -->
+                    <div class="form-grid" id="camposRepresentante">
+                        <div class="form-field">
+                            <label for="nombresRepresentante">Nombres *</label>
+                            <input type="text" id="nombresRepresentante" placeholder="María José">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="apellidosRepresentante">Apellidos *</label>
+                            <input type="text" id="apellidosRepresentante" placeholder="Martínez López">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="tipoDocumentoRepresentante">Tipo de Documento *</label>
+                            <select id="tipoDocumentoRepresentante">
+                                <option value="">Seleccione tipo</option>
+                                <option value="CC">Cédula de Ciudadanía</option>
+                                <option value="CE">Cédula de Extranjería</option>
+                                <option value="PA">Pasaporte</option>
+                            </select>
+                        </div>
+
+                        <div class="form-field">
+                            <label for="numeroDocumentoRepresentante">Número de Documento *</label>
+                            <input type="text" id="numeroDocumentoRepresentante" placeholder="1234567890">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="telefonoRepresentante">Teléfono</label>
+                            <input type="tel" id="telefonoRepresentante" placeholder="3001234567">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="emailRepresentante">Correo Electrónico</label>
+                            <input type="email" id="emailRepresentante" placeholder="maria@example.com">
+                        </div>
+                    </div>
+
+                    <!-- Mensaje para Persona Natural -->
+                    <div id="mensajePersonaNatural" style="display: none;">
+                        <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 12px; padding: 24px; text-align: center;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="margin: 0 auto 16px;">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                                <path d="M22 12h-6m3-3v6"></path>
+                            </svg>
+                            <h3 style="color: #1e40af; margin: 0 0 8px 0; font-size: 18px;">Datos Personales Completos ✓</h3>
+                            <p style="color: #1e40af; margin: 0; font-size: 14px;">
+                                Como Persona Natural, tus datos personales ya están registrados.<br>
+                                Puedes continuar al siguiente paso.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-prev" onclick="prevSection(1)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Anterior
+                        </button>
+                        <button type="button" class="btn-next" onclick="nextSection(3)">
+                            Siguiente
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Ubicación -->
+                <div class="form-section" id="section3">
                     <h2 class="section-title">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -239,7 +376,7 @@
                     </h2>
 
                     <div class="form-grid">
-                        <div class="form-field full-width">
+                        <div class="form-field">
                             <label for="pais">País *</label>
                             <select id="pais" required>
                                 <option value="">Seleccione un país</option>
@@ -273,13 +410,13 @@
                     </div>
 
                     <div class="form-actions">
-                        <button type="button" class="btn-prev" onclick="prevSection(1)">
+                        <button type="button" class="btn-prev" onclick="prevSection(2)">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 12H5M12 19l-7-7 7-7"/>
                             </svg>
                             Anterior
                         </button>
-                        <button type="button" class="btn-next" onclick="nextSection(3)">
+                        <button type="button" class="btn-next" onclick="nextSection(4)">
                             Siguiente
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14M12 5l7 7-7 7"/>
@@ -288,8 +425,8 @@
                     </div>
                 </div>
 
-                <!-- Sección 3: Configuración Tributaria -->
-                <div class="form-section" id="section3">
+                <!-- Sección 4: Configuración Tributaria -->
+                <div class="form-section" id="section4">
                     <h2 class="section-title">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -306,11 +443,15 @@
                             <label for="tarifaIvaRetenido">Tarifa de IVA Retenido *</label>
                             <select id="tarifaIvaRetenido" required>
                                 <option value="">Seleccione tarifa</option>
-                                <option value="No aplica">No aplica</option>
+                                <option value="No aplica">No aplica (0%)</option>
                                 <option value="15%">15%</option>
                                 <option value="50%">50%</option>
+                                <option value="75%">75%</option>
                                 <option value="100%">100%</option>
                             </select>
+                            <small style="color: #86868b; font-size: 12px; display: block; margin-top: 4px;">
+                                Retención en la Fuente sobre IVA según normativa DIAN
+                            </small>
                         </div>
 
                         <div class="form-field full-width">
@@ -374,7 +515,7 @@
                     <div id="mensajeExito" class="mensaje-exito" style="display: none;"></div>
 
                     <div class="form-actions">
-                        <button type="button" class="btn-prev" onclick="prevSection(2)">
+                        <button type="button" class="btn-prev" onclick="prevSection(3)">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 12H5M12 19l-7-7 7-7"/>
                             </svg>

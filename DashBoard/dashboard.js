@@ -6,19 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeDashboard();
 });
 
-// Ejecutar verificarDatosCompletos después de que TODO se haya cargado
-window.addEventListener('load', function() {
-    // Esperar un momento para asegurar que modal-completar-datos.js esté cargado
-    setTimeout(() => {
-        if (typeof verificarDatosCompletos === 'function') {
-            console.log('Ejecutando verificarDatosCompletos...');
-            verificarDatosCompletos();
-        } else {
-            console.error('verificarDatosCompletos no está definida');
-        }
-    }, 100);
-});
-
 // ========== VERIFICAR SESIÓN ==========
 function verificarSesion() {
     const usuarioActual = sessionStorage.getItem('usuarioActual');
@@ -38,7 +25,7 @@ function cargarDatosUsuario() {
         // Actualizar nombre en el sidebar
         const userNameElements = document.querySelectorAll('.user-details strong');
         userNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
         const userEmailElements = document.querySelectorAll('.user-details span');
@@ -49,14 +36,14 @@ function cargarDatosUsuario() {
         // Actualizar nombre en el header
         const headerNameElements = document.querySelectorAll('.user-info-header strong');
         headerNameElements.forEach(el => {
-            el.textContent = `${usuario.nombre} ${usuario.apellido}`;
+            el.textContent = usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`;
         });
         
         // Actualizar iniciales en avatares
-        const iniciales = usuario.nombre.charAt(0) + usuario.apellido.charAt(0);
+        const iniciales = obtenerIniciales(usuario.nombreCompleto || `${usuario.nombre} ${usuario.apellido}`);
         const avatarElements = document.querySelectorAll('.user-avatar, .user-avatar-small');
         avatarElements.forEach(el => {
-            el.textContent = iniciales.toUpperCase();
+            el.textContent = iniciales;
         });
         
         // Actualizar mensaje de bienvenida
@@ -65,6 +52,15 @@ function cargarDatosUsuario() {
             updateWelcomeMessage(usuario.nombre);
         }
     }
+}
+
+// ========== OBTENER INICIALES ==========
+function obtenerIniciales(nombreCompleto) {
+    const partes = nombreCompleto.trim().split(' ');
+    if (partes.length === 1) {
+        return partes[0].substring(0, 2).toUpperCase();
+    }
+    return (partes[0].charAt(0) + partes[partes.length - 1].charAt(0)).toUpperCase();
 }
 
 function initializeDashboard() {
@@ -297,8 +293,6 @@ function updateWelcomeMessage(nombre) {
         welcomeText.textContent = greeting + ' 👋';
     }
 }
-
-// No llamar updateWelcomeMessage() aquí, se llama desde cargarDatosUsuario()
 
 // ========== EFECTOS HOVER PARA TARJETAS ==========
 const statCards = document.querySelectorAll('.stat-card');

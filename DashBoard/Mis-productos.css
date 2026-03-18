@@ -502,3 +502,286 @@
         transform: translateY(0);
     }
 }
+/* Modal más grande para retenciones */
+.modal-producto-grande {
+    max-width: 900px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Secciones del modal */
+.modal-section {
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-section:last-of-type {
+    border-bottom: none;
+}
+
+.modal-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #801931;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #801931;
+}
+
+.modal-section-title svg {
+    color: #801931;
+}
+
+/* Checkbox de retención */
+.checkbox-label-retencion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 14px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 2px solid #e5e5e7;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    margin-bottom: 8px;
+}
+
+.checkbox-label-retencion:hover {
+    border-color: #801931;
+    background: linear-gradient(135deg, #fff5f7 0%, #ffffff 100%);
+}
+
+.checkbox-label-retencion input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #801931;
+}
+
+.checkbox-label-retencion span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.help-text {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Campos de retención */
+#camposRetefuenteModal {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #fffbea 0%, #ffffff 100%);
+    border: 2px dashed #ffd700;
+    border-radius: 10px;
+    animation: slideDownModal 0.3s ease;
+}
+
+@keyframes slideDownModal {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Detalles del concepto en modal */
+.detalles-concepto-modal {
+    margin-top: 16px;
+    animation: fadeInModal 0.3s ease;
+}
+
+@keyframes fadeInModal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.detalle-card-modal {
+    background: white;
+    border: 2px solid #e5e5e7;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.detalle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detalle-info.full {
+    grid-column: span 2;
+}
+
+.detalle-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detalle-valor {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.detalle-valor-tarifa {
+    font-size: 18px;
+    font-weight: 700;
+    color: #801931;
+}
+
+.info-uvt-modal {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+    border-left: 3px solid #2196f3;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #1565c0;
+    font-weight: 600;
+}
+
+.info-uvt-modal svg {
+    flex-shrink: 0;
+    color: #2196f3;
+}
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .modal-producto-grande {
+        max-width: 95% !important;
+        max-height: 95vh;
+    }
+    
+    .modal-section-title {
+        font-size: 14px;
+    }
+    
+    .detalle-card-modal {
+        grid-template-columns: 1fr;
+    }
+    
+    .detalle-info.full {
+        grid-column: span 1;
+    }
+}
+
+/* Mejoras al grid del formulario */
+.form-grid-producto {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.form-field-producto.full-width {
+    grid-column: span 2;
+}
+
+.form-field-producto label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.form-field-producto input,
+.form-field-producto select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e5e5e7;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.form-field-producto input:focus,
+.form-field-producto select:focus {
+    outline: none;
+    border-color: #801931;
+    box-shadow: 0 0 0 3px rgba(128, 25, 49, 0.1);
+}
+
+/* Código manual */
+.codigo-manual-field {
+    position: relative;
+}
+
+.codigo-manual-toggle {
+    position: absolute;
+    right: 8px;
+    top: 32px;
+    padding: 6px 12px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.codigo-manual-toggle:hover {
+    background: #6d28d9;
+    transform: scale(1.05);
+}
+
+/* Mensaje de error en modal */
+.mensaje-error {
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+    border-left: 4px solid #e74c3c;
+    border-radius: 8px;
+    color: #c0392b;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 16px;
+    animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Scroll suave en modal grande */
+.modal-producto-grande::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-producto-grande::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.modal-producto-grande::-webkit-scrollbar-thumb {
+    background: #801931;
+    border-radius: 10px;
+}
+
+.modal-producto-grande::-webkit-scrollbar-thumb:hover {
+    background: #a02244;
+}

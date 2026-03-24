@@ -2285,4 +2285,53 @@
         flex-direction: column;
     }
 }
+/* ========== BADGES DE RETENCIÓN EN PRODUCTOS ========== */
+/* Agregar al final de Nueva-factura.css */
+
+/* Badge retención activa (verde) */
+.badge-retencion-activa {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+    border: 2px solid #2d7a4b;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #2d7a4b;
+    white-space: nowrap;
+}
+
+.badge-retencion-activa svg {
+    flex-shrink: 0;
+}
+
+/* Badge retención inactiva (naranja - no supera base) */
+.badge-retencion-inactiva {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+    border: 2px solid #f57c00;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #f57c00;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.badge-retencion-inactiva svg {
+    flex-shrink: 0;
+}
+
+/* Badge retención en resultados de búsqueda */
+.detalle-badge.retencion {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #2d7a4b;
+    border: 1px solid #2d7a4b;
+    font-weight: 700;
+}
 }

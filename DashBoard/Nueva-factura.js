@@ -1,5 +1,6 @@
 // ========== NUEVA FACTURA ELECTRÓNICA - SPARKLES ==========
 // FASE 1: Clientes + FASE 2: Productos + FASE 3: Resumen + FASE 4: Formas de Pago + FECHAS
+// ========== CON RETENCIONES AUTOMÁTICAS ==========
 
 // Variables globales
 let configuracionFacturacion = null;
@@ -39,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
     restaurarEstadoFactura();
     setupLogout();
     inicializarFormaPago();
+    
+    console.log('✅ Sistema de facturación con retenciones automáticas cargado');
 });
 
 function verificarSesion() {
@@ -389,7 +392,7 @@ function irACrearClienteDesdeModal() {
 }
 
 // ==========================================
-// FASE 2: PRODUCTOS
+// FASE 2: PRODUCTOS CON RETENCIONES
 // ==========================================
 
 function cargarProductos() {
@@ -500,9 +503,12 @@ function mostrarResultadosProducto(resultados) {
         const nombre = producto.nombre || producto.descripcion || 'Sin nombre';
         const codigo = producto.codigo || 'Sin código';
         const precio = formatearNumero(producto.precioVenta || 0);
-        const iva = producto.tarifaIva || 0;
-        const tieneRetencion = producto.tieneRetencion || false;
-        const tarifaRetencion = producto.tarifaRetencion || 0;
+        const iva = producto.tarifaIva || '0%';
+        
+        // ========== DETECTAR RETENCIÓN ==========
+        const tieneRetencion = producto.retencion?.aplica || false;
+        const nombreRetencion = producto.retencion?.nombre || '';
+        const tarifaRetencion = producto.retencion?.tarifa || 0;
 
         html += `
             <div class="resultado-producto" data-index="${index}" onclick="seleccionarResultadoProducto(${index})">
@@ -514,8 +520,8 @@ function mostrarResultadosProducto(resultados) {
                     <div class="resultado-producto-precio">$${precio}</div>
                 </div>
                 <div class="resultado-producto-detalles">
-                    <span class="detalle-badge iva">IVA ${iva}%</span>
-                    ${tieneRetencion ? `<span class="detalle-badge retencion">Retención ${tarifaRetencion}%</span>` : ''}
+                    <span class="detalle-badge iva">IVA ${iva}</span>
+                    ${tieneRetencion ? `<span class="detalle-badge retencion">ReteFuente ${tarifaRetencion}%</span>` : ''}
                 </div>
             </div>
         `;
@@ -603,6 +609,7 @@ function confirmarSeleccionProducto() {
     cerrarModalProductos();
 }
 
+// ========== AGREGAR PRODUCTO CON RETENCIÓN AUTOMÁTICA ==========
 function agregarProductoAFactura(producto) {
     const item = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -611,12 +618,18 @@ function agregarProductoAFactura(producto) {
         codigo: producto.codigo || '',
         cantidad: 1,
         precioUnitario: parseFloat(producto.precioVenta) || 0,
-        descuentoPorcentaje: 0,  // ← NUEVO
-        descuentoValor: 0,       // ← NUEVO
-        tarifaIva: parseFloat(producto.tarifaIva) || 0,
-        tieneRetencion: producto.tieneRetencion || false,
-        tipoRetencion: producto.tipoRetencion || '',
-        tarifaRetencion: parseFloat(producto.tarifaRetencion) || 0
+        descuentoPorcentaje: 0,
+        descuentoValor: 0,
+        tarifaIva: parseTarifaIva(producto.tarifaIva),
+        
+        // ========== RETENCIÓN AUTOMÁTICA DEL PRODUCTO ==========
+        tieneRetencion: producto.retencion?.aplica || false,
+        conceptoRetencion: producto.retencion?.conceptoId || '',
+        nombreRetencion: producto.retencion?.nombre || '',
+        categoriaRetencion: producto.retencion?.categoria || '',
+        tarifaRetencion: parseFloat(producto.retencion?.tarifa) || 0,
+        baseMinimaRetencion: producto.retencion?.baseMinimaP || 0,
+        valorRetencion: 0
     };
 
     calcularSubtotalItem(item);
@@ -624,11 +637,35 @@ function agregarProductoAFactura(producto) {
     itemsFactura.push(item);
 
     console.log('✅ Producto agregado a factura:', item);
+    
+    if (item.tieneRetencion) {
+        console.log(`   💰 Con retención: ${item.nombreRetencion} (${item.tarifaRetencion}%)`);
+    }
+    
     console.log('📊 Total items:', itemsFactura.length);
 
     renderizarListaProductos();
 }
 
+// ========== PARSEAR TARIFA IVA ==========
+function parseTarifaIva(tarifaIva) {
+    if (typeof tarifaIva === 'number') return tarifaIva;
+    
+    const tarifaStr = String(tarifaIva).toLowerCase();
+    
+    if (tarifaStr === '0%' || tarifaStr === 'exento' || tarifaStr === 'excluido') {
+        return 0;
+    } else if (tarifaStr === '5%') {
+        return 5;
+    } else if (tarifaStr === '19%') {
+        return 19;
+    }
+    
+    const numero = parseFloat(tarifaStr);
+    return isNaN(numero) ? 0 : numero;
+}
+
+// ========== CALCULAR SUBTOTAL CON RETENCIÓN ==========
 function calcularSubtotalItem(item) {
     // 1. Base sin descuento
     const baseOriginal = item.cantidad * item.precioUnitario;
@@ -647,14 +684,22 @@ function calcularSubtotalItem(item) {
     item.valorIva = valorIva;
     item.subtotal = baseConDescuento + valorIva;
 
-    // 6. Calcular retenciones sobre base con descuento
+    // 6. ========== CALCULAR RETENCIÓN AUTOMÁTICA ==========
     if (item.tieneRetencion) {
-        if (item.tipoRetencion === 'fuente') {
-            item.valorRetencion = baseConDescuento * (item.tarifaRetencion / 100);
-        } else if (item.tipoRetencion === 'iva') {
-            item.valorRetencion = valorIva * (item.tarifaRetencion / 100);
-        } else {
+        // Validar base mínima
+        if (item.baseMinimaRetencion > 0 && baseConDescuento < item.baseMinimaRetencion) {
+            // No aplica retención porque no supera la base mínima
             item.valorRetencion = 0;
+            console.warn(`⚠️ ${item.nombre}: No supera base mínima ($${formatearNumero(item.baseMinimaRetencion)})`);
+        } else {
+            // Calcular retención sobre la base CON descuento
+            const tarifaNum = typeof item.tarifaRetencion === 'number' 
+                ? item.tarifaRetencion 
+                : parseFloat(item.tarifaRetencion) || 0;
+            
+            item.valorRetencion = baseConDescuento * (tarifaNum / 100);
+            
+            console.log(`✅ ${item.nombre}: ReteFuente ${tarifaNum}% = $${formatearNumero(item.valorRetencion)}`);
         }
     } else {
         item.valorRetencion = 0;
@@ -679,15 +724,56 @@ function renderizarListaProductos() {
     let html = '';
 
     itemsFactura.forEach((item, index) => {
-        const retencionBadge = item.tieneRetencion
-            ? `<div class="producto-campo">
-                <label>Retención</label>
-                <span class="badge-retencion">${item.tipoRetencion.toUpperCase()} ${item.tarifaRetencion}%</span>
-               </div>`
-            : `<div class="producto-campo">
-                <label>Retención</label>
-                <span class="badge-sin-retencion">No aplica</span>
-               </div>`;
+        // ========== BADGE DE RETENCIÓN ==========
+        let retencionBadge = '';
+        
+        if (item.tieneRetencion) {
+            if (item.valorRetencion > 0) {
+                // Retención aplicada
+                const tarifaTexto = typeof item.tarifaRetencion === 'number' 
+                    ? `${item.tarifaRetencion}%` 
+                    : item.tarifaRetencion;
+                
+                retencionBadge = `
+                    <div class="producto-campo">
+                        <label>Retención</label>
+                        <span class="badge-retencion-activa">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
+                            ReteFuente ${tarifaTexto} = -$${formatearNumero(item.valorRetencion)}
+                        </span>
+                    </div>
+                `;
+            } else {
+                // Retención NO aplicada (no supera base mínima)
+                const tarifaTexto = typeof item.tarifaRetencion === 'number' 
+                    ? `${item.tarifaRetencion}%` 
+                    : item.tarifaRetencion;
+                
+                retencionBadge = `
+                    <div class="producto-campo">
+                        <label>Retención</label>
+                        <span class="badge-retencion-inactiva" title="No supera la base mínima de $${formatearNumero(item.baseMinimaRetencion)}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            ReteFuente ${tarifaTexto} (No supera base)
+                        </span>
+                    </div>
+                `;
+            }
+        } else {
+            retencionBadge = `
+                <div class="producto-campo">
+                    <label>Retención</label>
+                    <span class="badge-sin-retencion">No aplica</span>
+                </div>
+            `;
+        }
 
         html += `
             <div class="producto-item">
@@ -704,24 +790,24 @@ function renderizarListaProductos() {
                     </button>
                 </div>
                 <div class="producto-item-body">
-    <div class="producto-campo">
-        <label>Cantidad</label>
-        <input type="number" min="1" value="${item.cantidad}" onchange="cambiarCantidad(${index}, this.value)">
-    </div>
-    <div class="producto-campo">
-        <label>Precio Unitario</label>
-        <input type="text" value="$${formatearNumero(item.precioUnitario)}" readonly>
-    </div>
-    <div class="producto-campo">
-        <label>Descuento (%)</label>
-        <input type="number" class="campo-descuento" min="0" max="100" step="0.1" value="${item.descuentoPorcentaje}" onchange="cambiarDescuento(${index}, this.value)" placeholder="0">
-    </div>
-    <div class="producto-campo">
-        <label>IVA</label>
-        <span class="badge-iva">${item.tarifaIva}%</span>
-    </div>
-    ${retencionBadge}
-</div>
+                    <div class="producto-campo">
+                        <label>Cantidad</label>
+                        <input type="number" min="1" value="${item.cantidad}" onchange="cambiarCantidad(${index}, this.value)">
+                    </div>
+                    <div class="producto-campo">
+                        <label>Precio Unitario</label>
+                        <input type="text" value="$${formatearNumero(item.precioUnitario)}" readonly>
+                    </div>
+                    <div class="producto-campo">
+                        <label>Descuento (%)</label>
+                        <input type="number" class="campo-descuento" min="0" max="100" step="0.1" value="${item.descuentoPorcentaje}" onchange="cambiarDescuento(${index}, this.value)" placeholder="0">
+                    </div>
+                    <div class="producto-campo">
+                        <label>IVA</label>
+                        <span class="badge-iva">${item.tarifaIva}%</span>
+                    </div>
+                    ${retencionBadge}
+                </div>
             </div>
         `;
     });
@@ -800,7 +886,7 @@ function irACrearProductoDesdeModal() {
 }
 
 // ==========================================
-// FASE 3: PANEL DE RESUMEN
+// FASE 3: PANEL DE RESUMEN CON RETENCIONES
 // ==========================================
 
 function actualizarResumen() {
@@ -815,20 +901,23 @@ function actualizarResumen() {
     document.getElementById('resumenValores').style.display = 'block';
 
     actualizarValor('resumenSubtotal', totales.subtotal);
+    
     // Mostrar descuentos SIEMPRE
     const lineaDescuentos = document.getElementById('lineaDescuentos');
     if (lineaDescuentos) {
         lineaDescuentos.style.display = 'flex';
         actualizarValor('resumenDescuentos', -totales.totalDescuentos, true);
     }
+    
     actualizarValor('resumenTotalIva', totales.totalIva);
 
     actualizarDesgIoseIva(totales.ivasPorTarifa);
 
+    // ========== RETENCIONES DE PRODUCTOS ==========
     if (totales.totalRetenciones > 0) {
         document.getElementById('lineaRetenciones').style.display = 'flex';
         actualizarValor('resumenRetenciones', -totales.totalRetenciones, true);
-        actualizarDesgIoseRetenciones(totales.retencionesPorTipo);
+        actualizarDesgIoseRetenciones(totales.retencionesPorConcepto);
     } else {
         document.getElementById('lineaRetenciones').style.display = 'none';
         document.getElementById('desgIoseRetenciones').style.display = 'none';
@@ -843,7 +932,18 @@ function actualizarResumen() {
 
     actualizarValor('resumenTotal', totales.totalFactura);
 
-    if (totales.totalRetenciones > 0) {
+    // Mostrar retenciones fiscales si hay
+    if (totales.totalRetencionesFiscales > 0) {
+        document.getElementById('lineaRetencionesFiscales').style.display = 'flex';
+        actualizarValor('resumenRetencionesFiscales', -totales.totalRetencionesFiscales, true);
+        actualizarDesgIoseRetencionesFiscales();
+    } else {
+        document.getElementById('lineaRetencionesFiscales').style.display = 'none';
+        document.getElementById('desgIoseRetencionesFiscales').style.display = 'none';
+    }
+
+    // Mostrar Total a Cobrar si hay retenciones
+    if (totales.totalRetenciones > 0 || totales.totalRetencionesFiscales > 0) {
         document.getElementById('lineaCobrar').style.display = 'flex';
         actualizarValor('resumenCobrar', totales.totalACobrar);
     } else {
@@ -862,23 +962,6 @@ function actualizarResumen() {
             renderizarInstrumentos();
         }
     }
-    // Mostrar retenciones fiscales si hay
-    if (totales.totalRetencionesFiscales > 0) {
-        document.getElementById('lineaRetencionesFiscales').style.display = 'flex';
-        actualizarValor('resumenRetencionesFiscales', -totales.totalRetencionesFiscales, true);
-        actualizarDesgIoseRetencionesFiscales();
-    } else {
-        document.getElementById('lineaRetencionesFiscales').style.display = 'none';
-        document.getElementById('desgIoseRetencionesFiscales').style.display = 'none';
-    }
-
-    // Mostrar Total a Cobrar si hay retenciones fiscales
-    if (totales.totalRetenciones > 0 || totales.totalRetencionesFiscales > 0) {
-        document.getElementById('lineaCobrar').style.display = 'flex';
-        actualizarValor('resumenCobrar', totales.totalACobrar);
-    } else {
-        document.getElementById('lineaCobrar').style.display = 'none';
-    }
 }
 
 function mostrarResumenVacio() {
@@ -886,18 +969,19 @@ function mostrarResumenVacio() {
     document.getElementById('resumenValores').style.display = 'none';
 }
 
+// ========== CALCULAR TOTALES CON RETENCIONES ==========
 function calcularTotalesFactura() {
     let subtotal = 0;
-    let totalDescuentos = 0;  // ← NUEVO
+    let totalDescuentos = 0;
     let totalIva = 0;
-    let totalRetenciones = 0;
+    let totalRetenciones = 0; // Retenciones de productos
     let otrosImpuestos = 0;
 
     const ivasPorTarifa = {};
-    const retencionesPorTipo = {};
+    const retencionesPorConcepto = {}; // ← NUEVO: Por concepto en lugar de por tipo
 
     itemsFactura.forEach(item => {
-        totalDescuentos += item.descuentoValor;  // ← NUEVO
+        totalDescuentos += item.descuentoValor;
         subtotal += item.base;
         totalIva += item.valorIva;
 
@@ -908,18 +992,20 @@ function calcularTotalesFactura() {
             ivasPorTarifa[item.tarifaIva] += item.valorIva;
         }
 
+        // ========== RETENCIONES DE PRODUCTOS ==========
         if (item.tieneRetencion && item.valorRetencion > 0) {
             totalRetenciones += item.valorRetencion;
 
-            const tipoKey = `${item.tipoRetencion}-${item.tarifaRetencion}`;
-            if (!retencionesPorTipo[tipoKey]) {
-                retencionesPorTipo[tipoKey] = {
-                    tipo: item.tipoRetencion,
+            // Agrupar por concepto de retención
+            const conceptoKey = item.conceptoRetencion || `${item.nombreRetencion}`;
+            if (!retencionesPorConcepto[conceptoKey]) {
+                retencionesPorConcepto[conceptoKey] = {
+                    nombre: item.nombreRetencion,
                     tarifa: item.tarifaRetencion,
                     valor: 0
                 };
             }
-            retencionesPorTipo[tipoKey].valor += item.valorRetencion;
+            retencionesPorConcepto[conceptoKey].valor += item.valorRetencion;
         }
     });
 
@@ -935,15 +1021,15 @@ function calcularTotalesFactura() {
 
     return {
         subtotal,
-        totalDescuentos,    // ← NUEVO
+        totalDescuentos,
         totalIva,
-        totalRetenciones,
-        totalRetencionesFiscales,  // ← NUEVO
+        totalRetenciones,          // Retenciones de productos
+        totalRetencionesFiscales,  // Retenciones fiscales (modal)
         otrosImpuestos,
         totalFactura,
         totalACobrar,
         ivasPorTarifa,
-        retencionesPorTipo
+        retencionesPorConcepto     // ← NUEVO
     };
 }
 
@@ -990,12 +1076,13 @@ function actualizarDesgIoseIva(ivasPorTarifa) {
     container.innerHTML = html;
 }
 
-function actualizarDesgIoseRetenciones(retencionesPorTipo) {
+// ========== DESGLOSE DE RETENCIONES DE PRODUCTOS ==========
+function actualizarDesgIoseRetenciones(retencionesPorConcepto) {
     const container = document.getElementById('desgIoseRetenciones');
 
-    const tipos = Object.keys(retencionesPorTipo);
+    const conceptos = Object.keys(retencionesPorConcepto);
 
-    if (tipos.length === 0) {
+    if (conceptos.length === 0) {
         container.style.display = 'none';
         return;
     }
@@ -1003,14 +1090,13 @@ function actualizarDesgIoseRetenciones(retencionesPorTipo) {
     container.style.display = 'flex';
 
     let html = '';
-    tipos.forEach(key => {
-        const ret = retencionesPorTipo[key];
-        const nombreTipo = ret.tipo === 'fuente' ? 'ReteFuente' :
-            ret.tipo === 'iva' ? 'ReteIVA' :
-                ret.tipo;
+    conceptos.forEach(key => {
+        const ret = retencionesPorConcepto[key];
+        const tarifaTexto = typeof ret.tarifa === 'number' ? `${ret.tarifa}%` : ret.tarifa;
+        
         html += `
             <div class="resumen-desglose-item">
-                <span class="resumen-desglose-label">${nombreTipo} ${ret.tarifa}%</span>
+                <span class="resumen-desglose-label">${ret.nombre} ${tarifaTexto}</span>
                 <span class="resumen-desglose-valor">-$${formatearNumero(ret.valor)}</span>
             </div>
         `;
@@ -1541,9 +1627,21 @@ function generarFactura() {
     }
 
     const datosFactura = obtenerDatosFactura();
+    const totales = calcularTotalesFactura();
+    
     console.log('📄 Datos de factura:', datosFactura);
+    console.log('💰 Totales:', totales);
+    
+    if (totales.totalRetenciones > 0) {
+        console.log('📊 Retenciones automáticas aplicadas:');
+        Object.values(totales.retencionesPorConcepto).forEach(ret => {
+            const tarifaTexto = typeof ret.tarifa === 'number' ? `${ret.tarifa}%` : ret.tarifa;
+            console.log(`   • ${ret.nombre} (${tarifaTexto}): -$${formatearNumero(ret.valor)}`);
+        });
+        console.log(`   TOTAL: -$${formatearNumero(totales.totalRetenciones)}`);
+    }
 
-    mostrarError('Sistema en construcción. FASES 1-4 + FECHAS completadas ✅. Próxima: Guardar factura');
+    mostrarError('Sistema en construcción. Retenciones automáticas funcionando ✅');
 }
 
 // ==========================================
@@ -1709,8 +1807,7 @@ function mostrarError(mensaje) {
     }
 }
 
-console.log('✅ Sistema de facturación COMPLETO - TODAS LAS FASES + FECHAS cargado');
-// ========== MOSTRAR PANEL DE ERROR ELEGANTE ==========
+// ========== PANELES DE ERROR DE FECHAS ==========
 function mostrarPanelErrorFechas(fechaEmision, fechaVencimiento) {
     // Evitar múltiples paneles
     cerrarPanelErrorFechas();
@@ -1786,7 +1883,6 @@ function mostrarPanelErrorFechas(fechaEmision, fechaVencimiento) {
     console.log('⚠️ Panel de error de fechas mostrado');
 }
 
-// ========== CERRAR PANEL DE ERROR ==========
 function cerrarPanelErrorFechas() {
     const overlay = document.getElementById('overlayErrorFechas');
     const panel = document.getElementById('panelErrorFechas');
@@ -1807,14 +1903,12 @@ function cerrarPanelErrorFechas() {
     }
 }
 
-// ========== CERRAR CON TECLA ESC ==========
 function cerrarPanelConEscape(event) {
     if (event.key === 'Escape') {
         cerrarPanelErrorFechas();
     }
 }
 
-// ========== CORREGIR FECHA AUTOMÁTICAMENTE ==========
 function corregirFechaAutomatica() {
     // Agregar 30 días por defecto
     agregarDias(30);
@@ -1837,3 +1931,5 @@ function corregirFechaAutomatica() {
 
     console.log('✅ Fecha corregida automáticamente a +30 días');
 }
+
+console.log('✅ Sistema de facturación COMPLETO con retenciones automáticas cargado');

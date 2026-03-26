@@ -1,4 +1,4 @@
-// Gestión de Clientes - Sparkles
+// Gestión de Clientes - Sparkles CON AGENTE RETENEDOR
 
 let clienteEditando = null;
 
@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupLogout();
     cargarClientes();
     actualizarEstadisticas();
+    
+    console.log('✅ Módulo de clientes con agente retenedor cargado');
 });
 
 // ========== VERIFICAR SESIÓN ==========
@@ -70,9 +72,16 @@ function cambiarTipoCliente() {
     if (tipo === 'natural') {
         formNatural.style.display = 'grid';
         formEmpresa.style.display = 'none';
+        
+        // ========== NUEVO: Valor por defecto para personas naturales ==========
+        document.getElementById('agenteRetenedorNatural').checked = false;
     } else {
         formNatural.style.display = 'none';
         formEmpresa.style.display = 'grid';
+        
+        // ========== NUEVO: Valor por defecto para empresas ==========
+        document.getElementById('agenteRetenedorEmpresa').checked = true;
+        document.getElementById('autorretenedorEmpresa').checked = false;
     }
 }
 
@@ -117,6 +126,9 @@ function limpiarFormulario() {
     document.getElementById('ciudadNatural').value = '';
     document.getElementById('departamentoNatural').value = '';
     
+    // ========== NUEVO: Limpiar checkbox agente retenedor Natural ==========
+    document.getElementById('agenteRetenedorNatural').checked = false;
+    
     // Limpiar campos Empresa
     document.getElementById('razonSocialEmpresa').value = '';
     document.getElementById('nombreComercialEmpresa').value = '';
@@ -128,6 +140,10 @@ function limpiarFormulario() {
     document.getElementById('ciudadEmpresa').value = '';
     document.getElementById('departamentoEmpresa').value = '';
     document.getElementById('contactoEmpresa').value = '';
+    
+    // ========== NUEVO: Limpiar checkbox agente retenedor Empresa ==========
+    document.getElementById('agenteRetenedorEmpresa').checked = true;
+    document.getElementById('autorretenedorEmpresa').checked = false;
     
     // Limpiar mensajes
     document.getElementById('mensajeError').style.display = 'none';
@@ -148,6 +164,9 @@ function cargarDatosCliente(cliente) {
         document.getElementById('direccionNatural').value = cliente.direccion || '';
         document.getElementById('ciudadNatural').value = cliente.ciudad || '';
         document.getElementById('departamentoNatural').value = cliente.departamento || '';
+        
+        // ========== NUEVO: Cargar agente retenedor Natural ==========
+        document.getElementById('agenteRetenedorNatural').checked = cliente.esAgenteRetenedor || false;
     } else {
         document.querySelector('input[name="tipoCliente"][value="empresa"]').checked = true;
         cambiarTipoCliente();
@@ -162,10 +181,14 @@ function cargarDatosCliente(cliente) {
         document.getElementById('ciudadEmpresa').value = cliente.ciudad || '';
         document.getElementById('departamentoEmpresa').value = cliente.departamento || '';
         document.getElementById('contactoEmpresa').value = cliente.personaContacto || '';
+        
+        // ========== NUEVO: Cargar agente retenedor Empresa ==========
+        document.getElementById('agenteRetenedorEmpresa').checked = cliente.esAgenteRetenedor !== undefined ? cliente.esAgenteRetenedor : true;
+        document.getElementById('autorretenedorEmpresa').checked = cliente.esAutorretenedor || false;
     }
 }
 
-// ========== GUARDAR CLIENTE ==========
+// ========== GUARDAR CLIENTE CON AGENTE RETENEDOR ==========
 function guardarCliente() {
     const tipo = document.querySelector('input[name="tipoCliente"]:checked').value;
     let cliente = {};
@@ -194,6 +217,11 @@ function guardarCliente() {
             direccion: document.getElementById('direccionNatural').value.trim(),
             ciudad: document.getElementById('ciudadNatural').value.trim(),
             departamento: document.getElementById('departamentoNatural').value.trim(),
+            
+            // ========== NUEVO: Agente Retenedor ==========
+            esAgenteRetenedor: document.getElementById('agenteRetenedorNatural').checked,
+            esAutorretenedor: false, // Personas naturales NO pueden ser autorretenedoras
+            
             fechaRegistro: clienteEditando ? clienteEditando.fechaRegistro : new Date().toISOString()
         };
     } else {
@@ -225,6 +253,11 @@ function guardarCliente() {
             ciudad: document.getElementById('ciudadEmpresa').value.trim(),
             departamento: document.getElementById('departamentoEmpresa').value.trim(),
             personaContacto: document.getElementById('contactoEmpresa').value.trim(),
+            
+            // ========== NUEVO: Agente Retenedor ==========
+            esAgenteRetenedor: document.getElementById('agenteRetenedorEmpresa').checked,
+            esAutorretenedor: document.getElementById('autorretenedorEmpresa').checked,
+            
             fechaRegistro: clienteEditando ? clienteEditando.fechaRegistro : new Date().toISOString()
         };
     }
@@ -250,7 +283,16 @@ function guardarCliente() {
     
     localStorage.setItem(claveClientes, JSON.stringify(clientes));
     
-    console.log('Cliente guardado:', cliente);
+    // ========== NUEVO: Log de agente retenedor ==========
+    console.log('✅ Cliente guardado:', cliente);
+    if (cliente.esAgenteRetenedor) {
+        console.log('   💰 Es agente retenedor - Se aplicarán retenciones en facturas');
+        if (cliente.esAutorretenedor) {
+            console.log('   ⚡ Es autorretenedor - Grandes Contribuyentes');
+        }
+    } else {
+        console.log('   ⚠️ NO es agente retenedor - NO se aplicarán retenciones');
+    }
     
     // Cerrar modal y actualizar tabla
     cerrarModalCliente();
@@ -359,7 +401,15 @@ ${cliente.personaContacto ? `Persona de Contacto: ${cliente.personaContacto}\n` 
     detalles += `
 ${cliente.telefono ? `Teléfono: ${cliente.telefono}\n` : ''}${cliente.email ? `Email: ${cliente.email}\n` : ''}${cliente.direccion ? `Dirección: ${cliente.direccion}\n` : ''}${cliente.ciudad ? `Ciudad: ${cliente.ciudad}\n` : ''}${cliente.departamento ? `Departamento: ${cliente.departamento}\n` : ''}
 Fecha de Registro: ${new Date(cliente.fechaRegistro).toLocaleDateString('es-CO')}
+
     `;
+    
+    // ========== NUEVO: Mostrar info de agente retenedor ==========
+    detalles += `\n--- RETENCIONES ---\n`;
+    detalles += cliente.esAgenteRetenedor ? '✓ Es agente de retención\n' : '✗ NO es agente de retención\n';
+    if (cliente.esAutorretenedor) {
+        detalles += '⚡ Es autorretenedor (Gran Contribuyente)\n';
+    }
     
     alert(detalles);
 }
@@ -533,4 +583,4 @@ function mostrarNotificacion(mensaje) {
     }, 3000);
 }
 
-console.log('Gestión de Clientes - Módulo cargado correctamente ✨');
+console.log('✅ Gestión de Clientes con Agente Retenedor - Módulo cargado correctamente');

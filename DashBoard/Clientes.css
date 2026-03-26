@@ -575,3 +575,107 @@
         transform: translateY(0);
     }
 }
+/* Contenedor de checkboxes de agente retenedor */
+.checkbox-agente-retenedor {
+    margin: 16px 0;
+}
+
+/* Label del checkbox */
+.checkbox-label-agente {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    padding: 16px;
+    background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+    border: 2px solid #e0f2fe;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.checkbox-label-agente:hover {
+    border-color: #0ea5e9;
+    background: linear-gradient(135deg, #e0f2fe 0%, #ffffff 100%);
+}
+
+/* Ocultar checkbox nativo */
+.checkbox-label-agente input[type="checkbox"] {
+    display: none;
+}
+
+/* Checkbox personalizado */
+.checkbox-custom-agente {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    background: white;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+/* Checkbox marcado */
+.checkbox-label-agente input[type="checkbox"]:checked + .checkbox-custom-agente {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+    border-color: #0ea5e9;
+}
+
+/* Checkmark (✓) */
+.checkbox-label-agente input[type="checkbox"]:checked + .checkbox-custom-agente::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Textos del checkbox */
+.checkbox-text-agente {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.checkbox-text-agente strong {
+    font-size: 15px;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.checkbox-text-agente small {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .checkbox-label-agente {
+        padding: 12px;
+    }
+    
+    .checkbox-custom-agente {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .checkbox-label-agente input[type="checkbox"]:checked + .checkbox-custom-agente::after {
+        left: 6px;
+        top: 2px;
+        width: 5px;
+        height: 10px;
+    }
+    
+    .checkbox-text-agente strong {
+        font-size: 14px;
+    }
+    
+    .checkbox-text-agente small {
+        font-size: 11px;
+    }
+}

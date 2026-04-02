@@ -7,6 +7,9 @@
     <title>Nueva Factura Electrónica - Sparkles</title>
     <link rel="stylesheet" href="./dasboard.css">
     <link rel="stylesheet" href="./nueva-factura.css">
+    <!-- jsPDF para exportar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script defer src="dashboard.js"></script>
     <script defer src="nueva-factura.js"></script>
     <script defer src="../tabla-retefuente.js"></script>
@@ -78,7 +81,7 @@
                 <div class="user-avatar">JP</div>
                 <div class="user-details">
                     <strong>Juan Pérez</strong>
-                    <span>juan@example.com</span>
+                    <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f09a85919eb09588919d809c95de939f9d">[email&#160;protected]</a></span>
                 </div>
             </div>
             <div class="footer-links">
@@ -831,8 +834,52 @@
                     <button type="button" class="btn-cancelar-retenciones"
                         onclick="cerrarModalRetenciones()">Cancelar</button>
                     <button type="button" class="btn-aplicar-retenciones" onclick="aplicarRetenciones()">Aplicar
-                        Retenciones</button>
+                                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL BLOQUEANTE: SIN CONFIGURACIÓN DE FACTURACIÓN ========== -->
+    <div id="modalSinConfiguracion" class="modal-bloqueo-overlay" style="display:none;">
+        <div class="modal-bloqueo-contenido">
+            <div class="modal-bloqueo-icono">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <h2 class="modal-bloqueo-titulo">Configuración de Facturación Requerida</h2>
+            <p class="modal-bloqueo-desc">
+                Antes de emitir facturas electrónicas necesitas configurar la información de tu empresa
+                y los datos de la resolución DIAN (prefijo, numeración, fechas de vigencia).
+            </p>
+            <div class="modal-bloqueo-pasos">
+                <div class="paso-bloqueo">
+                    <span class="paso-num">1</span>
+                    <span>Datos de la empresa (razón social, NIT, dirección)</span>
+                </div>
+                <div class="paso-bloqueo">
+                    <span class="paso-num">2</span>
+                    <span>Resolución DIAN (número, prefijo, numeración habilitada)</span>
+                </div>
+                <div class="paso-bloqueo">
+                    <span class="paso-num">3</span>
+                    <span>Logo y pie de factura (opcional pero recomendado)</span>
+                </div>
+            </div>
+            <div class="modal-bloqueo-acciones">
+                <button class="btn-bloqueo-cancelar" onclick="window.location.href='operaciones.html'">
+                    Volver a Operaciones
+                </button>
+                <button class="btn-bloqueo-configurar" onclick="window.location.href='Configurar-facturacion.html'">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H1m18.2 5.2l-4.2-4.2m-6 0l-4.2 4.2"></path>
+                    </svg>
+                    Ir a Configuración
+                </button>
             </div>
         </div>
     </div>

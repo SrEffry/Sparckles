@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     verificarSesion();
     cargarDatosUsuario();
     cargarConfiguracionFacturacion();
+    verificarConfiguracionObligatoria();   // ← NUEVO: bloquear si no hay config
     cargarClientes();
     cargarProductos();
     restaurarEstadoFactura();
@@ -49,6 +50,36 @@ function verificarSesion() {
     if (!usuarioActual) {
         window.location.href = '../index.html';
         return;
+    }
+}
+
+// ========== VERIFICAR CONFIG DE FACTURACIÓN ==========
+// Si el usuario no tiene configurada la resolución DIAN, muestra un modal
+// bloqueante que impide usar el formulario hasta que configure primero.
+function verificarConfiguracionObligatoria() {
+    const usuario = JSON.parse(sessionStorage.getItem('usuarioActual'));
+    if (!usuario) return;
+
+    const claveConfig = `config_facturacion_${usuario.email}`;
+    const raw         = localStorage.getItem(claveConfig);
+
+    let configOk = false;
+    if (raw) {
+        try {
+            const cfg = JSON.parse(raw);
+            // Requisitos mínimos: razonSocial, nit y resolución con número
+            configOk = !!(cfg.razonSocial && cfg.nit && cfg.resolucion?.numero);
+        } catch (e) { /* config corrupta → no ok */ }
+    }
+
+    if (!configOk) {
+        const modal = document.getElementById('modalSinConfiguracion');
+        if (modal) {
+            modal.style.display = 'flex';
+            // Deshabilitar scroll del body mientras el modal está visible
+            document.body.style.overflow = 'hidden';
+        }
+        console.warn('⚠️ Sin configuración de facturación. Modal bloqueante activo.');
     }
 }
 
@@ -611,6 +642,23 @@ function confirmarSeleccionProducto() {
 
 // ========== AGREGAR PRODUCTO CON RETENCIÓN AUTOMÁTICA ==========
 function agregarProductoAFactura(producto) {
+    // ── Perfil tributario del cliente seleccionado ──────────────────────────
+    // La retención aplica en la factura SOLO si:
+    //   1. El producto tiene retención configurada (producto.retencion.aplica)
+    //   2. El cliente ES agente retenedor (esAgenteRetenedor = true)
+    //   3. El cliente NO es autorretenedor (esAutorretenedor = false)
+    //      → Los autorretenedores gestionan la retención internamente; nosotros
+    //        no la cobramos en la factura (Art. 368-2 E.T. Colombia).
+    const esAgenteRetenedor = clienteSeleccionadoGlobal?.esAgenteRetenedor ?? false;
+    const esAutorretenedor  = clienteSeleccionadoGlobal?.esAutorretenedor  ?? false;
+
+    const productoTieneRetencion = producto.retencion?.aplica || false;
+
+    const retencionAplicaAlCliente =
+        productoTieneRetencion &&
+        esAgenteRetenedor      &&
+        !esAutorretenedor;
+
     const item = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         productoId: producto.id,
@@ -621,27 +669,34 @@ function agregarProductoAFactura(producto) {
         descuentoPorcentaje: 0,
         descuentoValor: 0,
         tarifaIva: parseTarifaIva(producto.tarifaIva),
-        
-        // ========== RETENCIÓN AUTOMÁTICA DEL PRODUCTO ==========
-        tieneRetencion: producto.retencion?.aplica || false,
-        conceptoRetencion: producto.retencion?.conceptoId || '',
-        nombreRetencion: producto.retencion?.nombre || '',
-        categoriaRetencion: producto.retencion?.categoria || '',
-        tarifaRetencion: parseFloat(producto.retencion?.tarifa) || 0,
-        baseMinimaRetencion: producto.retencion?.baseMinimaP || 0,
+
+        // ── Retención: combina configuración del producto + perfil del cliente ──
+        tieneRetencion:           retencionAplicaAlCliente,   // ← decide si se calcula
+        productoTieneRetencion,                               // ← para mostrar el badge informativo
+        clienteEsAgenteRetenedor: esAgenteRetenedor,
+        clienteEsAutorretenedor:  esAutorretenedor,
+
+        conceptoRetencion:   producto.retencion?.conceptoId  || '',
+        nombreRetencion:     producto.retencion?.nombre       || '',
+        categoriaRetencion:  producto.retencion?.categoria    || '',
+        tarifaRetencion:     parseFloat(producto.retencion?.tarifa) || 0,
+        baseMinimaRetencion: producto.retencion?.baseMinimaP  || 0,
         valorRetencion: 0
     };
 
     calcularSubtotalItem(item);
-
     itemsFactura.push(item);
 
-    console.log('✅ Producto agregado a factura:', item);
-    
-    if (item.tieneRetencion) {
-        console.log(`   💰 Con retención: ${item.nombreRetencion} (${item.tarifaRetencion}%)`);
+    // ── Log descriptivo ────────────────────────────────────────────────────
+    if (productoTieneRetencion) {
+        if (retencionAplicaAlCliente) {
+            console.log(`✅ ${item.nombre}: ReteFuente ${item.tarifaRetencion}% aplicada (cliente es agente retenedor)`);
+        } else if (esAutorretenedor) {
+            console.log(`⚡ ${item.nombre}: ReteFuente omitida — cliente es autorretenedor`);
+        } else {
+            console.log(`ℹ️ ${item.nombre}: ReteFuente omitida — cliente NO es agente retenedor`);
+        }
     }
-    
     console.log('📊 Total items:', itemsFactura.length);
 
     renderizarListaProductos();
@@ -726,14 +781,15 @@ function renderizarListaProductos() {
     itemsFactura.forEach((item, index) => {
         // ========== BADGE DE RETENCIÓN ==========
         let retencionBadge = '';
-        
-        if (item.tieneRetencion) {
-            if (item.valorRetencion > 0) {
-                // Retención aplicada
-                const tarifaTexto = typeof item.tarifaRetencion === 'number' 
-                    ? `${item.tarifaRetencion}%` 
-                    : item.tarifaRetencion;
-                
+
+        if (item.productoTieneRetencion) {
+            // El producto tiene retención configurada — pero puede no aplicar al cliente
+            const tarifaTexto = typeof item.tarifaRetencion === 'number'
+                ? `${item.tarifaRetencion}%`
+                : item.tarifaRetencion;
+
+            if (item.tieneRetencion && item.valorRetencion > 0) {
+                // ✅ Aplica y supera base mínima
                 retencionBadge = `
                     <div class="producto-campo">
                         <label>Retención</label>
@@ -746,12 +802,8 @@ function renderizarListaProductos() {
                         </span>
                     </div>
                 `;
-            } else {
-                // Retención NO aplicada (no supera base mínima)
-                const tarifaTexto = typeof item.tarifaRetencion === 'number' 
-                    ? `${item.tarifaRetencion}%` 
-                    : item.tarifaRetencion;
-                
+            } else if (item.tieneRetencion && item.valorRetencion === 0) {
+                // ⚠️ Aplica al cliente pero no supera la base mínima
                 retencionBadge = `
                     <div class="producto-campo">
                         <label>Retención</label>
@@ -761,12 +813,41 @@ function renderizarListaProductos() {
                                 <line x1="12" y1="8" x2="12" y2="12"></line>
                                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
                             </svg>
-                            ReteFuente ${tarifaTexto} (No supera base)
+                            ReteFuente ${tarifaTexto} (No supera base mínima)
+                        </span>
+                    </div>
+                `;
+            } else if (item.clienteEsAutorretenedor) {
+                // ⚡ Autorretenedor — la gestiona él internamente
+                retencionBadge = `
+                    <div class="producto-campo">
+                        <label>Retención</label>
+                        <span class="badge-retencion-autorretenedor" title="El cliente es autorretenedor y gestiona la retención internamente">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            ReteFuente ${tarifaTexto} — Autorretenedor (no aplica en factura)
+                        </span>
+                    </div>
+                `;
+            } else {
+                // ℹ️ Cliente no es agente retenedor — no se cobra
+                retencionBadge = `
+                    <div class="producto-campo">
+                        <label>Retención</label>
+                        <span class="badge-retencion-no-aplica" title="El cliente no es agente retenedor; no se le cobra ReteFuente">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                            </svg>
+                            ReteFuente ${tarifaTexto} — No aplica (cliente no retenedor)
                         </span>
                     </div>
                 `;
             }
         } else {
+            // El producto simplemente no tiene retención configurada
             retencionBadge = `
                 <div class="producto-campo">
                     <label>Retención</label>
@@ -930,9 +1011,7 @@ function actualizarResumen() {
         document.getElementById('lineaOtrosImpuestos').style.display = 'none';
     }
 
-    actualizarValor('resumenTotal', totales.totalFactura);
-
-    // Mostrar retenciones fiscales si hay
+    // ── Retenciones fiscales ────────────────────────────────────────────────
     if (totales.totalRetencionesFiscales > 0) {
         document.getElementById('lineaRetencionesFiscales').style.display = 'flex';
         actualizarValor('resumenRetencionesFiscales', -totales.totalRetencionesFiscales, true);
@@ -942,20 +1021,31 @@ function actualizarResumen() {
         document.getElementById('desgIoseRetencionesFiscales').style.display = 'none';
     }
 
-    // Mostrar Total a Cobrar si hay retenciones
-    if (totales.totalRetenciones > 0 || totales.totalRetencionesFiscales > 0) {
-        document.getElementById('lineaCobrar').style.display = 'flex';
-        actualizarValor('resumenCobrar', totales.totalACobrar);
-    } else {
-        document.getElementById('lineaCobrar').style.display = 'none';
+    // ── Total principal: siempre muestra el neto real a pagar ───────────────
+    // Cuando hay retenciones (de producto o fiscales), el "Total Factura" es
+    // el bruto (subtotal + IVA) y el valor que el cliente efectivamente paga
+    // es totalACobrar. Mostramos este último en el bloque destacado para evitar
+    // confusión, y ajustamos la etiqueta según haya o no deducciones.
+    const hayRetenciones = totales.totalRetenciones > 0 || totales.totalRetencionesFiscales > 0;
+
+    const labelTotal = document.querySelector('.resumen-label-total');
+    if (labelTotal) {
+        labelTotal.textContent = hayRetenciones ? 'Total a Pagar' : 'Total Factura';
     }
+
+    // El valor destacado = neto real (totalACobrar ya descuenta todo)
+    actualizarValor('resumenTotal', totales.totalACobrar);
+
+    // La línea secundaria "Total a Cobrar" ya no es necesaria porque el bloque
+    // principal muestra el neto; la ocultamos siempre para evitar duplicidad.
+    document.getElementById('lineaCobrar').style.display = 'none';
 
     console.log('📊 Resumen actualizado:', totales);
 
     // FASE 4: Actualizar instrumentos si hay productos
     if (instrumentosCobro.length > 0 && formaPagoSeleccionada === 'contado') {
         const totales = calcularTotalesFactura();
-        const totalACobrar = totales.totalACobrar || totales.totalFactura;
+        const totalACobrar = totales.totalACobrar;
 
         if (instrumentosCobro[0]) {
             instrumentosCobro[0].importe = totalACobrar;
@@ -1259,7 +1349,7 @@ function crearInstrumentoAutomatico() {
     instrumentosCobro = [];
 
     const totales = calcularTotalesFactura();
-    const montoACobrar = totales.totalACobrar || totales.totalFactura;
+    const montoACobrar = totales.totalACobrar;
 
     const instrumento = {
         id: Date.now().toString(),
@@ -1439,7 +1529,7 @@ function actualizarTotalesInstrumentos() {
     });
 
     const totales = calcularTotalesFactura();
-    const totalACobrar = totales.totalACobrar || totales.totalFactura;
+    const totalACobrar = totales.totalACobrar;
 
     document.getElementById('totalInstrumentos').textContent = `$${formatearNumero(totalInstrumentos)}`;
 
@@ -1501,7 +1591,7 @@ function validarPago() {
         }
 
         const totales = calcularTotalesFactura();
-        const totalACobrar = totales.totalACobrar || totales.totalFactura;
+        const totalACobrar = totales.totalACobrar;
 
         let totalInstrumentos = 0;
         instrumentosCobro.forEach(inst => {
@@ -1626,22 +1716,507 @@ function generarFactura() {
         return;
     }
 
-    const datosFactura = obtenerDatosFactura();
-    const totales = calcularTotalesFactura();
-    
-    console.log('📄 Datos de factura:', datosFactura);
-    console.log('💰 Totales:', totales);
-    
-    if (totales.totalRetenciones > 0) {
-        console.log('📊 Retenciones automáticas aplicadas:');
-        Object.values(totales.retencionesPorConcepto).forEach(ret => {
-            const tarifaTexto = typeof ret.tarifa === 'number' ? `${ret.tarifa}%` : ret.tarifa;
-            console.log(`   • ${ret.nombre} (${tarifaTexto}): -$${formatearNumero(ret.valor)}`);
-        });
-        console.log(`   TOTAL: -$${formatearNumero(totales.totalRetenciones)}`);
+    const datosFactura  = obtenerDatosFactura();
+    const totales       = calcularTotalesFactura();
+    const config        = configuracionFacturacion;
+    const usuario       = JSON.parse(sessionStorage.getItem('usuarioActual'));
+
+    // ========== ARMAR OBJETO FACTURA ==========
+    const prefijo          = config.resolucion.prefijo || 'FACT';
+    const numeroFormateado = String(numeroFacturaActual).padStart(5, '0');
+    const numeroCompleto   = `${prefijo}-${numeroFormateado}`;
+
+    const factura = {
+        id:             Date.now().toString(),
+        numero:         numeroFacturaActual,
+        prefijo,
+        numeroCompleto,
+        fecha:          datosFactura.fechaEmision,
+        fechaVencimiento: datosFactura.fechaVencimiento || null,
+        formaPago:      datosFactura.formaPago,
+        medioPago:      datosFactura.medioPago || null,
+        instrumentos:   datosFactura.instrumentos || [],
+        cliente: {
+            id:                 clienteSeleccionadoGlobal.id,
+            nombre:             clienteSeleccionadoGlobal.nombreCompleto || clienteSeleccionadoGlobal.razonSocial,
+            tipo:               clienteSeleccionadoGlobal.tipo,
+            tipoDocumento:      clienteSeleccionadoGlobal.tipoDocumento || 'NIT',
+            numeroDocumento:    clienteSeleccionadoGlobal.numeroDocumento || clienteSeleccionadoGlobal.nit,
+            dv:                 clienteSeleccionadoGlobal.dv || '',
+            telefono:           clienteSeleccionadoGlobal.telefono || '',
+            email:              clienteSeleccionadoGlobal.email || '',
+            direccion:          clienteSeleccionadoGlobal.direccion || '',
+            esAgenteRetenedor:  clienteSeleccionadoGlobal.esAgenteRetenedor || false,
+            esAutorretenedor:   clienteSeleccionadoGlobal.esAutorretenedor  || false,
+        },
+        items:                  itemsFactura,
+        observaciones:          document.getElementById('observaciones')?.value?.trim() || '',
+        subtotal:               totales.subtotal,
+        totalDescuentos:        totales.totalDescuentos,
+        iva:                    totales.totalIva,
+        retenciones:            totales.totalRetenciones,
+        retencionesFiscales:    {
+            retefuente: { ...retencionesFiscales.retefuente },
+            reteiva:    { ...retencionesFiscales.reteiva },
+            reteica:    { ...retencionesFiscales.reteica },
+        },
+        total:                  totales.totalFactura,
+        totalACobrar:           totales.totalACobrar,
+        retencionesPorConcepto: totales.retencionesPorConcepto,
+        config: {
+            razonSocial:    config.razonSocial,
+            nit:            config.nit,
+            regimen:        config.regimen,
+            direccion:      config.direccion,
+            ciudad:         config.ciudad,
+            telefono:       config.telefono,
+            email:          config.email,
+            logo:           config.logo || null,
+            resolucion:     config.resolucion.numero,
+            prefijo:        config.resolucion.prefijo,
+            pieFact:        config.pieFact || '',
+            actividadEconomica: config.actividadEconomica || '',
+        }
+    };
+
+    // ========== GUARDAR EN LOCALSTORAGE ==========
+    const claveFacturas = `facturas_${usuario.email}`;
+    const facturas      = JSON.parse(localStorage.getItem(claveFacturas)) || [];
+    facturas.push(factura);
+    localStorage.setItem(claveFacturas, JSON.stringify(facturas));
+
+    // ========== INCREMENTAR NÚMERO DE RESOLUCIÓN ==========
+    const claveConfig = `config_facturacion_${usuario.email}`;
+    const configActual = JSON.parse(localStorage.getItem(claveConfig));
+    configActual.resolucion.numeracionActual = numeroFacturaActual + 1;
+    localStorage.setItem(claveConfig, JSON.stringify(configActual));
+
+    console.log('✅ Factura guardada:', numeroCompleto);
+
+    // ========== EXPORTAR PDF ==========
+    exportarFacturaPDF(factura);
+}
+
+// ==========================================
+// EXPORTAR FACTURA COMO PDF CON jsPDF
+// ==========================================
+
+function exportarFacturaPDF(factura) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // ── Paleta de colores ──
+    const ROJO      = [128, 25, 49];
+    const GRIS_OSC  = [45, 45, 45];
+    const GRIS_MED  = [100, 100, 100];
+    const GRIS_LIG  = [220, 220, 220];
+    const BLANCO    = [255, 255, 255];
+    const VERDE     = [45, 122, 75];
+    const AZUL      = [25, 118, 210];
+
+    const PW = 210; // ancho página A4
+    const M  = 14;  // margen lateral
+    const CW = PW - M * 2; // ancho útil
+    let y    = 0;
+
+    // ─────────────────────────────────────────
+    // ENCABEZADO — banda roja superior
+    // ─────────────────────────────────────────
+    // Banda roja: altura 38 si hay actividad económica, 32 si no
+    const tieneActividad = !!(factura.config.actividadEconomica);
+    const altoBanda = tieneActividad ? 38 : 32;
+    doc.setFillColor(...ROJO);
+    doc.rect(0, 0, PW, altoBanda, 'F');
+
+    // Logo (si existe)
+    if (factura.config.logo) {
+        try {
+            doc.addImage(factura.config.logo, 'PNG', M, 4, 24, 24);
+        } catch (e) { /* si falla, omitir logo */ }
     }
 
-    mostrarError('Sistema en construcción. Retenciones automáticas funcionando ✅');
+    // Datos de la empresa — columna izquierda
+    const logoOffset = factura.config.logo ? 30 : 0;
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(factura.config.razonSocial || 'Empresa', M + logoOffset, 13);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`NIT: ${factura.config.nit || ''}`, M + logoOffset, 19);
+    doc.text(factura.config.direccion || '', M + logoOffset, 24);
+    doc.text(`Tel: ${factura.config.telefono || ''}  |  ${factura.config.email || ''}`, M + logoOffset, 29);
+
+    // Actividad económica (si existe) — línea adicional en la banda
+    if (tieneActividad) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7.5);
+        doc.setTextColor(255, 220, 220); // blanco rosado para distinguirla
+        doc.text(`Act. Económica: ${factura.config.actividadEconomica}`, M + logoOffset, 35);
+    }
+
+    // Número de factura — columna derecha
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BLANCO);
+    doc.setFontSize(11);
+    doc.text('FACTURA ELECTRÓNICA', PW - M, 11, { align: 'right' });
+    doc.setFontSize(16);
+    doc.text(factura.numeroCompleto, PW - M, 20, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Resolución DIAN No. ${factura.config.resolucion || ''}`, PW - M, 27, { align: 'right' });
+
+    y = altoBanda + 4;
+
+    // ─────────────────────────────────────────
+    // FILA DE FECHAS Y PAGO
+    // ─────────────────────────────────────────
+    doc.setFillColor(245, 245, 247);
+    doc.roundedRect(M, y, CW, 14, 2, 2, 'F');
+
+    doc.setTextColor(...GRIS_OSC);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+
+    const col = CW / 3;
+    doc.text('FECHA DE EMISIÓN', M + 4, y + 5);
+    doc.text('VENCIMIENTO', M + col + 4, y + 5);
+    doc.text('FORMA DE PAGO', M + col * 2 + 4, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(factura.fecha || '-', M + 4, y + 11);
+    doc.text(factura.fechaVencimiento || 'Contado', M + col + 4, y + 11);
+    const formaPagoTexto = factura.formaPago === 'contado' ? 'De Contado' : 'Crédito';
+    doc.text(formaPagoTexto, M + col * 2 + 4, y + 11);
+
+    y += 18;
+
+    // ─────────────────────────────────────────
+    // BLOQUE CLIENTE
+    // ─────────────────────────────────────────
+    doc.setFillColor(...ROJO);
+    doc.roundedRect(M, y, CW, 6, 1, 1, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('DATOS DEL CLIENTE', M + 3, y + 4.2);
+    y += 8;
+
+    const c = factura.cliente;
+    const docCliente = c.tipo === 'natural'
+        ? `${c.tipoDocumento}: ${c.numeroDocumento}`
+        : `NIT: ${c.numeroDocumento}-${c.dv}`;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...GRIS_OSC);
+    doc.text(c.nombre, M, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...GRIS_MED);
+
+    // columna izquierda
+    doc.text(docCliente, M, y + 11);
+    doc.text(`Tel: ${c.telefono || 'N/A'}`, M, y + 16);
+
+    // columna derecha
+    doc.text(`Email: ${c.email || 'N/A'}`, M + CW / 2, y + 11);
+    doc.text(`Dir: ${c.direccion || 'N/A'}`, M + CW / 2, y + 16);
+
+    // Badge agente retenedor / autorretenedor
+    if (c.esAutorretenedor) {
+        doc.setFillColor(...AZUL);
+        doc.roundedRect(PW - M - 38, y + 1, 38, 6, 1, 1, 'F');
+        doc.setTextColor(...BLANCO);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AUTORRETENEDOR', PW - M - 19, y + 5.2, { align: 'center' });
+    } else if (c.esAgenteRetenedor) {
+        doc.setFillColor(...VERDE);
+        doc.roundedRect(PW - M - 38, y + 1, 38, 6, 1, 1, 'F');
+        doc.setTextColor(...BLANCO);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AGENTE RETENEDOR', PW - M - 19, y + 5.2, { align: 'center' });
+    }
+
+    y += 22;
+
+    // Separador
+    doc.setDrawColor(...GRIS_LIG);
+    doc.setLineWidth(0.3);
+    doc.line(M, y, M + CW, y);
+    y += 4;
+
+    // ─────────────────────────────────────────
+    // TABLA DE ÍTEMS con autoTable
+    // ─────────────────────────────────────────
+    const filas = factura.items.map((item, i) => {
+        const retencionTexto = item.tieneRetencion && item.valorRetencion > 0
+            ? `-$${formatearNumero(item.valorRetencion)}`
+            : (item.productoTieneRetencion && !item.tieneRetencion)
+                ? (item.clienteEsAutorretenedor ? 'Autorretenedor' : 'No aplica')
+                : '-';
+
+        return [
+            i + 1,
+            item.nombre + (item.codigo ? `\nCód: ${item.codigo}` : ''),
+            item.cantidad,
+            `$${formatearNumero(item.precioUnitario)}`,
+            `${item.descuentoPorcentaje > 0 ? item.descuentoPorcentaje + '%' : '-'}`,
+            `${item.tarifaIva}%`,
+            retencionTexto,
+            `$${formatearNumero(item.base)}`
+        ];
+    });
+
+    doc.autoTable({
+        startY: y,
+        head: [['#', 'Descripción', 'Cant.', 'P. Unit.', 'Dto.', 'IVA', 'ReteFuente', 'Subtotal']],
+        body: filas,
+        margin: { left: M, right: M },
+        styles: {
+            fontSize: 8,
+            cellPadding: 2.5,
+            textColor: GRIS_OSC,
+            lineColor: GRIS_LIG,
+            lineWidth: 0.2,
+        },
+        headStyles: {
+            fillColor: ROJO,
+            textColor: BLANCO,
+            fontStyle: 'bold',
+            fontSize: 7.5,
+            halign: 'center',
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 8 },
+            1: { cellWidth: 55 },
+            2: { halign: 'center', cellWidth: 12 },
+            3: { halign: 'right',  cellWidth: 22 },
+            4: { halign: 'center', cellWidth: 12 },
+            5: { halign: 'center', cellWidth: 12 },
+            6: { halign: 'right',  cellWidth: 24 },
+            7: { halign: 'right',  cellWidth: 27 },
+        },
+        alternateRowStyles: { fillColor: [250, 250, 252] },
+        didParseCell: (data) => {
+            // Colorear columna ReteFuente negativa en verde oscuro
+            if (data.column.index === 6 && data.section === 'body') {
+                const val = data.cell.raw;
+                if (val && val.startsWith('-$')) {
+                    data.cell.styles.textColor = VERDE;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+                if (val === 'No aplica' || val === 'Autorretenedor') {
+                    data.cell.styles.textColor = GRIS_MED;
+                    data.cell.styles.fontSize = 7;
+                }
+            }
+        }
+    });
+
+    y = doc.lastAutoTable.finalY + 4;
+
+    // ─────────────────────────────────────────
+    // PANEL DE TOTALES (derecha)
+    // ─────────────────────────────────────────
+    const panelX = M + CW - 75;
+    const panelW = 75;
+
+    // Fondo del panel
+    doc.setFillColor(248, 248, 250);
+    doc.roundedRect(panelX, y, panelW, 68, 2, 2, 'F');
+
+    const fila = (label, valor, bold = false, color = GRIS_OSC) => {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...GRIS_MED);
+        doc.text(label, panelX + 3, y + 5);
+        doc.setTextColor(...color);
+        doc.setFont('helvetica', bold ? 'bold' : 'normal');
+        doc.text(valor, panelX + panelW - 3, y + 5, { align: 'right' });
+        y += 7;
+    };
+
+    const yPanelStart = y;
+    y += 3;
+
+    fila('Subtotal', `$${formatearNumero(factura.subtotal)}`);
+
+    if (factura.totalDescuentos > 0) {
+        fila('Descuentos', `-$${formatearNumero(factura.totalDescuentos)}`, false, [200, 100, 0]);
+    }
+
+    fila(`IVA`, `$${formatearNumero(factura.iva)}`);
+
+    // Desglose retenciones de producto
+    if (factura.retenciones > 0) {
+        Object.values(factura.retencionesPorConcepto).forEach(ret => {
+            const tarTxt = typeof ret.tarifa === 'number' ? `${ret.tarifa}%` : ret.tarifa;
+            fila(`  ${ret.nombre} ${tarTxt}`, `-$${formatearNumero(ret.valor)}`, false, VERDE);
+        });
+    }
+
+    // Línea divisoria
+    doc.setDrawColor(...GRIS_LIG);
+    doc.line(panelX + 2, yPanelStart + (y - yPanelStart), panelX + panelW - 2, yPanelStart + (y - yPanelStart));
+    y += 3;
+
+    // ── Bloque total destacado ───────────────────────────────────────────────
+    // Cuando hay retenciones de producto, "TOTAL FACTURA" es el bruto y
+    // "TOTAL A PAGAR" es el neto. Mostramos ambos para claridad:
+    //  · Si hay retenciones de producto → línea gris con el bruto + línea roja con el neto
+    //  · Si no hay retenciones            → solo línea roja con el total (son iguales)
+    const hayRetProducto = factura.retenciones > 0;
+
+    if (hayRetProducto) {
+        // Línea secundaria: total bruto (antes de retenciones de producto)
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GRIS_MED);
+        doc.text('Total Bruto', panelX + 3, y + 4);
+        doc.text(`$${formatearNumero(factura.total)}`, panelX + panelW - 3, y + 4, { align: 'right' });
+        y += 7;
+    }
+
+    // Línea principal: siempre el neto real a pagar
+    const etiquetaTotal = hayRetProducto ? 'TOTAL A PAGAR' : 'TOTAL FACTURA';
+    const valorTotal    = factura.totalACobrar;   // ← neto: ya descuenta retenciones de producto
+
+    doc.setFillColor(...ROJO);
+    doc.roundedRect(panelX, y - 2, panelW, 10, 1, 1, 'F');
+    doc.setTextColor(...BLANCO);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(etiquetaTotal, panelX + 3, y + 5);
+    doc.setFontSize(10);
+    doc.text(`$${formatearNumero(valorTotal)}`, panelX + panelW - 3, y + 5, { align: 'right' });
+    y += 13;
+
+    // Retenciones fiscales (si las hay)
+    const rf = factura.retencionesFiscales;
+    const hayRetFiscales = (rf.retefuente.activa && rf.retefuente.valor > 0)
+                        || (rf.reteiva.activa    && rf.reteiva.valor    > 0)
+                        || (rf.reteica.activa    && rf.reteica.valor    > 0);
+
+    if (hayRetFiscales) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GRIS_MED);
+        doc.text('Retenciones Fiscales:', panelX + 3, y + 4);
+        y += 6;
+
+        if (rf.retefuente.activa && rf.retefuente.valor > 0)
+            fila(`  ReteFuente ${rf.retefuente.tarifa}%`, `-$${formatearNumero(rf.retefuente.valor)}`, false, VERDE);
+        if (rf.reteiva.activa    && rf.reteiva.valor    > 0)
+            fila(`  ReteIVA ${rf.reteiva.tarifa}%`,       `-$${formatearNumero(rf.reteiva.valor)}`,    false, VERDE);
+        if (rf.reteica.activa    && rf.reteica.valor    > 0)
+            fila(`  ReteICA ${rf.reteica.tarifa}%`,       `-$${formatearNumero(rf.reteica.valor)}`,    false, VERDE);
+
+        // Total a cobrar
+        doc.setFillColor(...VERDE);
+        doc.roundedRect(panelX, y - 2, panelW, 10, 1, 1, 'F');
+        doc.setTextColor(...BLANCO);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('TOTAL A COBRAR', panelX + 3, y + 5);
+        doc.text(`$${formatearNumero(factura.totalACobrar)}`, panelX + panelW - 3, y + 5, { align: 'right' });
+        y += 13;
+    }
+
+    // ─────────────────────────────────────────
+    // OBSERVACIONES (izquierda, a la altura del panel)
+    // ─────────────────────────────────────────
+    if (factura.observaciones) {
+        const obsY    = doc.lastAutoTable.finalY + 8;
+        const obsMaxW = panelX - M - 4;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(...ROJO);
+        doc.text('Observaciones:', M, obsY);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...GRIS_MED);
+        const lines = doc.splitTextToSize(factura.observaciones, obsMaxW);
+        doc.text(lines, M, obsY + 5);
+    }
+
+    // ─────────────────────────────────────────
+    // TEXTO LEGAL — Ley 1231 de 2008
+    // ─────────────────────────────────────────
+    const TEXTO_LEGAL =
+        'A esta factura de venta aplican las normas relativas a la letra de cambio ' +
+        '(artículo 5 Ley 1231 de 2008). Con esta el Comprador declara haber recibido ' +
+        'real y materialmente las mercancías o prestación de servicios descritos en este título.';
+
+    // Calcular posición: encima del pie fijo, dejando espacio suficiente
+    const pageH = doc.internal.pageSize.getHeight();
+    const legalMaxW = CW;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(...GRIS_MED);
+    const legalLines = doc.splitTextToSize(TEXTO_LEGAL, legalMaxW);
+    // Altura aproximada del bloque legal (líneas × interlineado ~3.5mm)
+    const legalBlockH = legalLines.length * 3.5 + 8; // +8 por el recuadro y padding
+    const legalY = pageH - 22 - legalBlockH;
+
+    // Recuadro sutil detrás del texto legal
+    doc.setFillColor(250, 248, 245);
+    doc.setDrawColor(210, 200, 195);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(M, legalY, CW, legalBlockH, 1.5, 1.5, 'FD');
+
+    // Etiqueta "Nota Legal"
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...ROJO);
+    doc.text('NOTA LEGAL', M + 3, legalY + 4.5);
+
+    // Texto de la ley
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(...GRIS_MED);
+    doc.text(legalLines, M + 3, legalY + 8);
+
+    // ─────────────────────────────────────────
+    // PIE DE PÁGINA
+    // ─────────────────────────────────────────
+
+    // Línea decorativa
+    doc.setDrawColor(...ROJO);
+    doc.setLineWidth(0.8);
+    doc.line(M, pageH - 22, M + CW, pageH - 22);
+    if (factura.config.pieFact) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GRIS_MED);
+        const pieLines = doc.splitTextToSize(factura.config.pieFact, CW);
+        doc.text(pieLines, PW / 2, pageH - 17, { align: 'center' });
+    }
+
+    // Firma digital / marca de agua
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...ROJO);
+    doc.text('Generado por Sparkles · Software Contable', PW / 2, pageH - 8, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRIS_MED);
+    doc.setFontSize(6.5);
+    doc.text(`Documento emitido el ${new Date().toLocaleDateString('es-CO')} · ${factura.numeroCompleto}`, PW / 2, pageH - 4, { align: 'center' });
+
+    // ─────────────────────────────────────────
+    // DESCARGAR
+    // ─────────────────────────────────────────
+    doc.save(`Factura_${factura.numeroCompleto}.pdf`);
+
+    console.log(`✅ PDF generado: Factura_${factura.numeroCompleto}.pdf`);
 }
 
 // ==========================================

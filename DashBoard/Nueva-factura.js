@@ -1860,7 +1860,7 @@ function exportarFacturaPDF(factura) {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...BLANCO);
     doc.setFontSize(11);
-    doc.text('FACTURA ELECTRÓNICA', PW - M, 11, { align: 'right' });
+    doc.text('FACTURA ELECTRÓNICA DE VENTA', PW - M, 11, { align: 'right' });
     doc.setFontSize(16);
     doc.text(factura.numeroCompleto, PW - M, 20, { align: 'right' });
     doc.setFont('helvetica', 'normal');

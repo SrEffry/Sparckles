@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial de Facturas - Sparkles</title>
     <link rel="stylesheet" href="./dasboard.css">
-    <link rel="stylesheet" href="historial-facturas.css">
+    <link rel="stylesheet" href="./Historial-facturas.css">
+    <link rel="stylesheet" href="./Notas.css">
+    <link rel="stylesheet" href="./Historial-facturas-v2.css">
+    <!-- jsPDF — disponible en AMBAS páginas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <aside class="sidebar">
@@ -19,10 +24,8 @@
         <nav class="sidebar-nav">
             <a href="dashboard.html" class="nav-item">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
                 Dashboard
             </a>
@@ -123,7 +126,7 @@
         <section class="historial-container">
             <div class="historial-header">
                 <div class="historial-header-left">
-                    <button class="back-btn" onclick="window.location.href='operaciones.html'">
+                    <button class="back-btn" onclick="window.location.href='Operaciones.html'">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
                         </svg>
@@ -133,8 +136,18 @@
                         <p>Visualiza y administra todas las facturas emitidas</p>
                     </div>
                 </div>
+                <!-- FASE 3: acceso rápido a notas -->
+                <a href="Notas.html" class="btn-ver-notas">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    Ver Notas Emitidas
+                </a>
             </div>
 
+            <!-- Stats — FASE 3: añadida tarjeta de notas del mes -->
             <div class="historial-stats">
                 <div class="stat-historial">
                     <div class="stat-historial-icon blue">
@@ -172,8 +185,23 @@
                         <h3 id="totalMes">0</h3>
                     </div>
                 </div>
+                <!-- NUEVA tarjeta: notas del mes -->
+                <div class="stat-historial">
+                    <div class="stat-historial-icon orange">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <p>Notas Este Mes</p>
+                        <h3 id="totalNotasMes">0</h3>
+                    </div>
+                </div>
             </div>
 
+            <!-- Toolbar — FASE 3: checkbox filtro "con notas" -->
             <div class="historial-toolbar">
                 <div class="search-historial">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -182,6 +210,12 @@
                     </svg>
                     <input type="text" id="searchFactura" placeholder="Buscar por número, cliente..." onkeyup="filtrarFacturas()">
                 </div>
+
+                <!-- FASE 3: filtro de notas -->
+                <label class="filtro-notas-label">
+                    <input type="checkbox" id="filtroConNotas" onchange="filtrarFacturas()">
+                    <span>Solo con notas</span>
+                </label>
             </div>
 
             <div class="historial-table-container">
@@ -213,14 +247,15 @@
                             <th>ACCIONES</th>
                         </tr>
                     </thead>
-                    <tbody id="historialTableBody">
-                    </tbody>
+                    <tbody id="historialTableBody"></tbody>
                 </table>
             </div>
         </section>
     </main>
 
     <script src="dashboard.js"></script>
-    <script src="historial-facturas.js"></script>
+    <script src="Historial-facturas.js"></script>
+    <!-- notas.js cargado aquí para que abrirModalCrearNota esté disponible inline -->
+    <script src="notas.js"></script>
 </body>
 </html>

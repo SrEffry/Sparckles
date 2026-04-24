@@ -73,6 +73,16 @@ function cambiarTab(tabName) {
     // Activar el contenido correspondiente
     document.getElementById(`tab-${tabName}`).classList.add('active');
     
+    // Si es el tab de contabilidad, inicializar los asientos
+    if (tabName === 'contabilidad') {
+        // Esperar un tick para asegurar que el DOM está actualizado
+        setTimeout(() => {
+            if (typeof iniciarAsientos === 'function') {
+                iniciarAsientos();
+            }
+        }, 100);
+    }
+    
     console.log('Tab cambiado a:', tabName);
 }
 

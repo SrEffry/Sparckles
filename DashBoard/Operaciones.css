@@ -262,3 +262,79 @@
         transform: translateY(0);
     }
 }
+/* =========================================
+   FIX: TARJETAS DE CONTABILIDAD Y NÓMINA (COMPACTAS)
+   ========================================= */
+
+.facturacion-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 16px;
+}
+
+.action-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #f5f5f7;
+}
+
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+/* ── NUEVO CONTENEDOR EN LÍNEA ── */
+.card-header-inline {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.action-card .card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Evita que el ícono cambie de tamaño */
+}
+
+/* Colores de los íconos según la tarjeta */
+.card-purple .card-icon { background: #f3e8ff; color: #7c3aed; }
+.card-blue .card-icon { background: #e3f2fd; color: #1976d2; }
+.card-red .card-icon { background: #fee2e2; color: #dc2626; }
+
+.action-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1d1d1f;
+    margin: 0; /* Se quita el margen, lo controla el contenedor */
+}
+
+.action-card p {
+    font-size: 14px;
+    color: #86868b;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+    flex-grow: 1; /* Mantiene el botón pegado abajo */
+}
+
+.factura-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}

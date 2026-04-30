@@ -158,12 +158,14 @@ function removeMobileMenuButton() {
 
 // ========== NOTIFICACIONES ==========
 function setupNotifications() {
-    const notificationBtn = document.querySelector('.notification-btn');
-    
-    notificationBtn.addEventListener('click', function() {
-        showNotificationPanel();
+const botonNotificaciones = document.querySelector('.notification-btn');
+
+// Solo agrega el evento SI el botón existe en esta página
+if (botonNotificaciones) {
+    botonNotificaciones.addEventListener('click', function() {
+        // el código que ya tenías adentro
     });
-}
+}}
 
 function showNotificationPanel() {
     // Aquí puedes implementar un panel de notificaciones

@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { obtenerSesion } from "@/lib/session";
+import { normalizarAsiento } from "@/lib/asientoValidation";
+
+export async function GET() {
+  const sesion = await obtenerSesion();
+  if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+
+  const asientos = await prisma.asiento.findMany({
+    where: { usuarioId: sesion.id },
+    orderBy: { createdAt: "desc" },
+  });
+  return NextResponse.json({ asientos });
+}
+
+export async function POST(request) {
+  const sesion = await obtenerSesion();
+  if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
+  }
+
+  const { data, movimientos, errors } = normalizarAsiento(body);
+  if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
+
+  try {
+    const asiento = await prisma.$transaction(async (tx) => {
+      const count = await tx.asiento.count({ where: { usuarioId: sesion.id } });
+      const numero = `AS-${String(count + 1).padStart(4, "0")}`;
+      return tx.asiento.create({
+        data: {
+          ...data,
+          numero,
+          usuarioId: sesion.id,
+          movimientos: { create: movimientos },
+        },
+        include: { movimientos: true },
+      });
+    });
+    return NextResponse.json({ asiento }, { status: 201 });
+  } catch (e) {
+    if (e.code === "P2002")
+      return NextResponse.json({ error: "Conflicto de numeración, intente de nuevo." }, { status: 409 });
+    throw e;
+  }
+}

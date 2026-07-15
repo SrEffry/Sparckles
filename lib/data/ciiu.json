@@ -1,0 +1,1337 @@
+[
+  {
+    "codigo": "0111",
+    "descripcion": "Cultivo de cereales (excepto arroz), legumbres y semillas oleaginosas"
+  },
+  {
+    "codigo": "0112",
+    "descripcion": "Cultivo de arroz"
+  },
+  {
+    "codigo": "0113",
+    "descripcion": "Cultivo de hortalizas, raíces y tubérculos"
+  },
+  {
+    "codigo": "0114",
+    "descripcion": "Cultivo de tabaco"
+  },
+  {
+    "codigo": "0115",
+    "descripcion": "Cultivo de plantas textiles"
+  },
+  {
+    "codigo": "0121",
+    "descripcion": "Cultivo de frutas tropicales y subtropicales"
+  },
+  {
+    "codigo": "0122",
+    "descripcion": "Cultivo de plátano y banano"
+  },
+  {
+    "codigo": "0123",
+    "descripcion": "Cultivo de café"
+  },
+  {
+    "codigo": "0124",
+    "descripcion": "Cultivo de caña de azúcar"
+  },
+  {
+    "codigo": "0125",
+    "descripcion": "Cultivo de flor de corte"
+  },
+  {
+    "codigo": "1010",
+    "descripcion": "Procesamiento y conservación de carne y productos cárnicos"
+  },
+  {
+    "codigo": "1020",
+    "descripcion": "Procesamiento y conservación de frutas, legumbres, hortalizas y tubérculos"
+  },
+  {
+    "codigo": "1040",
+    "descripcion": "Elaboración de productos lácteos"
+  },
+  {
+    "codigo": "1081",
+    "descripcion": "Elaboración de productos de panadería"
+  },
+  {
+    "codigo": "4511",
+    "descripcion": "Comercio de vehículos automotores nuevos"
+  },
+  {
+    "codigo": "4520",
+    "descripcion": "Mantenimiento y reparación de vehículos automotores"
+  },
+  {
+    "codigo": "4711",
+    "descripcion": "Comercio al por menor en establecimientos no especializados con surtido compuesto principalmente por alimentos, bebidas o tabaco"
+  },
+  {
+    "codigo": "4719",
+    "descripcion": "Comercio al por menor en establecimientos no especializados"
+  },
+  {
+    "codigo": "4721",
+    "descripcion": "Comercio al por menor de productos agrícolas para el consumo"
+  },
+  {
+    "codigo": "4722",
+    "descripcion": "Comercio al por menor de leche, productos lácteos y huevos"
+  },
+  {
+    "codigo": "4723",
+    "descripcion": "Comercio al por menor de carnes, productos cárnicos, pescados y productos de mar"
+  },
+  {
+    "codigo": "4724",
+    "descripcion": "Comercio al por menor de bebidas y productos del tabaco"
+  },
+  {
+    "codigo": "4741",
+    "descripcion": "Comercio al por menor de computadores, equipos periféricos y programas de informática"
+  },
+  {
+    "codigo": "4751",
+    "descripcion": "Comercio al por menor de productos textiles"
+  },
+  {
+    "codigo": "4752",
+    "descripcion": "Comercio al por menor de artículos de ferretería, pinturas y productos de vidrio"
+  },
+  {
+    "codigo": "4771",
+    "descripcion": "Comercio al por menor de prendas de vestir y sus accesorios"
+  },
+  {
+    "codigo": "4772",
+    "descripcion": "Comercio al por menor de todo tipo de calzado"
+  },
+  {
+    "codigo": "4773",
+    "descripcion": "Comercio al por menor de productos farmacéuticos y medicinales, cosméticos y artículos de tocador"
+  },
+  {
+    "codigo": "5511",
+    "descripcion": "Alojamiento en hoteles"
+  },
+  {
+    "codigo": "5611",
+    "descripcion": "Expendio a la mesa de comidas preparadas (Restaurantes)"
+  },
+  {
+    "codigo": "5621",
+    "descripcion": "Catering para eventos"
+  },
+  {
+    "codigo": "5630",
+    "descripcion": "Expendio de bebidas alcohólicas para el consumo dentro del establecimiento (Bares)"
+  },
+  {
+    "codigo": "6201",
+    "descripcion": "Desarrollo de sistemas informáticos (planificación, análisis, diseño, programación)"
+  },
+  {
+    "codigo": "6202",
+    "descripcion": "Consultoría informática y administración de instalaciones informáticas"
+  },
+  {
+    "codigo": "6209",
+    "descripcion": "Otras actividades de tecnologías de información y servicios informáticos"
+  },
+  {
+    "codigo": "6311",
+    "descripcion": "Procesamiento de datos, alojamiento (hosting) y actividades relacionadas"
+  },
+  {
+    "codigo": "6312",
+    "descripcion": "Portales web"
+  },
+  {
+    "codigo": "6920",
+    "descripcion": "Actividades de contabilidad, teneduría de libros, auditoría financiera y asesoría tributaria"
+  },
+  {
+    "codigo": "7010",
+    "descripcion": "Actividades de administración empresarial"
+  },
+  {
+    "codigo": "7020",
+    "descripcion": "Actividades de consultoría de gestión"
+  },
+  {
+    "codigo": "7110",
+    "descripcion": "Actividades de arquitectura e ingeniería"
+  },
+  {
+    "codigo": "7310",
+    "descripcion": "Publicidad"
+  },
+  {
+    "codigo": "7320",
+    "descripcion": "Estudios de mercado y realización de encuestas de opinión pública"
+  },
+  {
+    "codigo": "7410",
+    "descripcion": "Actividades especializadas de diseño"
+  },
+  {
+    "codigo": "7420",
+    "descripcion": "Actividades de fotografía"
+  },
+  {
+    "codigo": "7490",
+    "descripcion": "Otras actividades profesionales, científicas y técnicas"
+  },
+  {
+    "codigo": "7711",
+    "descripcion": "Alquiler y arrendamiento de vehículos automotores"
+  },
+  {
+    "codigo": "8010",
+    "descripcion": "Actividades de seguridad privada"
+  },
+  {
+    "codigo": "8121",
+    "descripcion": "Limpieza general interior de edificios"
+  },
+  {
+    "codigo": "8220",
+    "descripcion": "Actividades de centros de llamadas (Call center)"
+  },
+  {
+    "codigo": "8230",
+    "descripcion": "Organización de convenciones y eventos comerciales"
+  },
+  {
+    "codigo": "8511",
+    "descripcion": "Educación de la primera infancia"
+  },
+  {
+    "codigo": "8513",
+    "descripcion": "Educación básica primaria"
+  },
+  {
+    "codigo": "8521",
+    "descripcion": "Educación básica secundaria"
+  },
+  {
+    "codigo": "8530",
+    "descripcion": "Establecimientos que combinan diferentes niveles de educación"
+  },
+  {
+    "codigo": "8541",
+    "descripcion": "Educación técnica profesional"
+  },
+  {
+    "codigo": "8544",
+    "descripcion": "Educación de universidades"
+  },
+  {
+    "codigo": "8551",
+    "descripcion": "Formación académica no formal"
+  },
+  {
+    "codigo": "8610",
+    "descripcion": "Actividades de hospitales y clínicas, con internación"
+  },
+  {
+    "codigo": "8621",
+    "descripcion": "Actividades de la práctica médica, sin internación"
+  },
+  {
+    "codigo": "8622",
+    "descripcion": "Actividades de la práctica odontológica"
+  },
+  {
+    "codigo": "8691",
+    "descripcion": "Actividades de apoyo diagnóstico"
+  },
+  {
+    "codigo": "9001",
+    "descripcion": "Creación literaria"
+  },
+  {
+    "codigo": "9002",
+    "descripcion": "Creación musical"
+  },
+  {
+    "codigo": "9003",
+    "descripcion": "Creación teatral"
+  },
+  {
+    "codigo": "9007",
+    "descripcion": "Actividades de espectáculos musicales en vivo"
+  },
+  {
+    "codigo": "9102",
+    "descripcion": "Actividades y funcionamiento de museos, conservación de edificios y sitios históricos"
+  },
+  {
+    "codigo": "9311",
+    "descripcion": "Gestión de instalaciones deportivas"
+  },
+  {
+    "codigo": "9312",
+    "descripcion": "Actividades de clubes deportivos"
+  },
+  {
+    "codigo": "9511",
+    "descripcion": "Mantenimiento y reparación de computadores y de equipo periférico"
+  },
+  {
+    "codigo": "9512",
+    "descripcion": "Mantenimiento y reparación de equipos de comunicación"
+  },
+  {
+    "codigo": "9521",
+    "descripcion": "Mantenimiento y reparación de aparatos electrónicos de consumo"
+  },
+  {
+    "codigo": "9601",
+    "descripcion": "Lavado y limpieza, incluso la limpieza en seco, de productos textiles"
+  },
+  {
+    "codigo": "9602",
+    "descripcion": "Peluquería y otros tratamientos de belleza"
+  },
+  {
+    "codigo": "9603",
+    "descripcion": "Pompas fúnebres y actividades relacionadas"
+  },
+  {
+    "codigo": "9609",
+    "descripcion": "Otras actividades de servicios personales"
+  },
+  {
+    "codigo": "4631",
+    "descripcion": "Comercio al por mayor de productos alimenticios"
+  },
+  {
+    "codigo": "4641",
+    "descripcion": "Comercio al por mayor de productos textiles"
+  },
+  {
+    "codigo": "4649",
+    "descripcion": "Comercio al por mayor de otros utensilios domésticos"
+  },
+  {
+    "codigo": "4690",
+    "descripcion": "Comercio al por mayor no especializado"
+  },
+  {
+    "codigo": "5819",
+    "descripcion": "Otros trabajos de edición"
+  },
+  {
+    "codigo": "6110",
+    "descripcion": "Actividades de telecomunicaciones alámbricas"
+  },
+  {
+    "codigo": "6120",
+    "descripcion": "Actividades de telecomunicaciones inalámbricas"
+  },
+  {
+    "codigo": "6190",
+    "descripcion": "Otras actividades de telecomunicaciones"
+  },
+  {
+    "codigo": "6391",
+    "descripcion": "Actividades de agencias de noticias"
+  },
+  {
+    "codigo": "6810",
+    "descripcion": "Actividades inmobiliarias realizadas con bienes propios o arrendados"
+  },
+  {
+    "codigo": "6820",
+    "descripcion": "Actividades inmobiliarias realizadas a cambio de una retribución o por contrata"
+  },
+  {
+    "codigo": "6910",
+    "descripcion": "Actividades jurídicas"
+  },
+  {
+    "codigo": "7120",
+    "descripcion": "Ensayos y análisis técnicos"
+  },
+  {
+    "codigo": "7500",
+    "descripcion": "Actividades veterinarias"
+  },
+  {
+    "codigo": "7730",
+    "descripcion": "Alquiler y arrendamiento de otros tipos de maquinaria y equipo"
+  },
+  {
+    "codigo": "8020",
+    "descripcion": "Actividades de servicios de sistemas de seguridad"
+  },
+  {
+    "codigo": "8110",
+    "descripcion": "Actividades combinadas de apoyo a instalaciones"
+  },
+  {
+    "codigo": "8130",
+    "descripcion": "Actividades de paisajismo y servicios de mantenimiento conexos"
+  },
+  {
+    "codigo": "8211",
+    "descripcion": "Actividades combinadas de servicios administrativos de oficina"
+  },
+  {
+    "codigo": "8291",
+    "descripcion": "Actividades de agencias de cobranza y oficinas de calificación crediticia"
+  },
+  {
+    "codigo": "8299",
+    "descripcion": "Otras actividades de servicio de apoyo a las empresas"
+  },
+  {
+    "codigo": "8512",
+    "descripcion": "Educación preescolar"
+  },
+  {
+    "codigo": "8522",
+    "descripcion": "Educación media académica"
+  },
+  {
+    "codigo": "8523",
+    "descripcion": "Educación media técnica y de formación laboral"
+  },
+  {
+    "codigo": "8542",
+    "descripcion": "Educación tecnológica"
+  },
+  {
+    "codigo": "8543",
+    "descripcion": "Educación de instituciones universitarias o de escuelas tecnológicas"
+  },
+  {
+    "codigo": "8552",
+    "descripcion": "Enseñanza deportiva y recreativa"
+  },
+  {
+    "codigo": "8553",
+    "descripcion": "Enseñanza cultural"
+  },
+  {
+    "codigo": "8560",
+    "descripcion": "Actividades de apoyo a la educación"
+  },
+  {
+    "codigo": "8692",
+    "descripcion": "Actividades de apoyo terapéutico"
+  },
+  {
+    "codigo": "8710",
+    "descripcion": "Actividades de atención residencial medicalizada de tipo general"
+  },
+  {
+    "codigo": "8810",
+    "descripcion": "Actividades de asistencia social sin alojamiento para personas mayores y discapacitadas"
+  },
+  {
+    "codigo": "9200",
+    "descripcion": "Actividades de juegos de azar y apuestas"
+  },
+  {
+    "codigo": "9319",
+    "descripcion": "Otras actividades deportivas"
+  },
+  {
+    "codigo": "9321",
+    "descripcion": "Actividades de parques de atracciones y parques temáticos"
+  },
+  {
+    "codigo": "9329",
+    "descripcion": "Otras actividades recreativas y de esparcimiento"
+  },
+  {
+    "codigo": "9522",
+    "descripcion": "Mantenimiento y reparación de aparatos y equipos domésticos y de jardinería"
+  },
+  {
+    "codigo": "9523",
+    "descripcion": "Reparación de calzado y artículos de cuero"
+  },
+  {
+    "codigo": "9524",
+    "descripcion": "Reparación de muebles y accesorios para el hogar"
+  }
+]
+    "descripcion": "Procesamiento y conservación de carne y productos cárnicos"
+  },
+  {
+    "codigo": "1020",
+    "descripcion": "Procesamiento y conservación de frutas, legumbres, hortalizas y tubérculos"
+  },
+  {
+    "codigo": "1030",
+    "descripcion": "Elaboración de aceites y grasas de origen vegetal y animal"
+  },
+  {
+    "codigo": "1040",
+    "descripcion": "Elaboración de productos lácteos"
+  },
+  {
+    "codigo": "1051",
+    "descripcion": "Elaboración de productos de molinería"
+  },
+  {
+    "codigo": "1052",
+    "descripcion": "Elaboración de almidones y productos derivados del almidón"
+  },
+  {
+    "codigo": "1061",
+    "descripcion": "Trilla de café"
+  },
+  {
+    "codigo": "1062",
+    "descripcion": "Descafeinado, tostión y molienda del café"
+  },
+  {
+    "codigo": "1063",
+    "descripcion": "Otros derivados del café"
+  },
+  {
+    "codigo": "1071",
+    "descripcion": "Elaboración y refinación de azúcar"
+  },
+  {
+    "codigo": "1072",
+    "descripcion": "Elaboración de panela"
+  },
+  {
+    "codigo": "1081",
+    "descripcion": "Elaboración de productos de panadería"
+  },
+  {
+    "codigo": "1082",
+    "descripcion": "Elaboración de cacao, chocolate y productos de confitería"
+  },
+  {
+    "codigo": "1083",
+    "descripcion": "Elaboración de macarrones, fideos, alcuzcuz y productos farináceos similares"
+  },
+  {
+    "codigo": "1084",
+    "descripcion": "Elaboración de comidas y platos preparados"
+  },
+  {
+    "codigo": "4511",
+    "descripcion": "Comercio de vehículos automotores nuevos"
+  },
+  {
+    "codigo": "4512",
+    "descripcion": "Comercio de vehículos automotores usados"
+  },
+  {
+    "codigo": "4520",
+    "descripcion": "Mantenimiento y reparación de vehículos automotores"
+  },
+  {
+    "codigo": "4530",
+    "descripcion": "Comercio de partes, piezas (autopartes) y accesorios (lujos) para vehículos automotores"
+  },
+  {
+    "codigo": "4541",
+    "descripcion": "Comercio de motocicletas y de sus partes, piezas y accesorios"
+  },
+  {
+    "codigo": "4542",
+    "descripcion": "Mantenimiento y reparación de motocicletas y de sus partes y piezas"
+  },
+  {
+    "codigo": "4610",
+    "descripcion": "Comercio al por mayor a cambio de una retribución o por contrata"
+  },
+  {
+    "codigo": "4620",
+    "descripcion": "Comercio al por mayor de materias primas agropecuarias; animales vivos"
+  },
+  {
+    "codigo": "4631",
+    "descripcion": "Comercio al por mayor de productos alimenticios"
+  },
+  {
+    "codigo": "4632",
+    "descripcion": "Comercio al por mayor de bebidas y tabaco"
+  },
+  {
+    "codigo": "4641",
+    "descripcion": "Comercio al por mayor de productos textiles y productos confeccionados para uso doméstico"
+  },
+  {
+    "codigo": "4642",
+    "descripcion": "Comercio al por mayor de prendas de vestir"
+  },
+  {
+    "codigo": "4643",
+    "descripcion": "Comercio al por mayor de calzado"
+  },
+  {
+    "codigo": "4644",
+    "descripcion": "Comercio al por mayor de aparatos y equipo de uso doméstico"
+  },
+  {
+    "codigo": "4645",
+    "descripcion": "Comercio al por mayor de productos farmacéuticos, medicinales, cosméticos y de tocador"
+  },
+  {
+    "codigo": "4649",
+    "descripcion": "Comercio al por mayor de otros utensilios domésticos n.c.p."
+  },
+  {
+    "codigo": "4651",
+    "descripcion": "Comercio al por mayor de computadores, equipo periférico y programas de informática"
+  },
+  {
+    "codigo": "4652",
+    "descripcion": "Comercio al por mayor de equipo, partes y piezas electrónicos y de telecomunicaciones"
+  },
+  {
+    "codigo": "4653",
+    "descripcion": "Comercio al por mayor de maquinaria y equipo agropecuarios"
+  },
+  {
+    "codigo": "4659",
+    "descripcion": "Comercio al por mayor de otros tipos de maquinaria y equipo n.c.p."
+  },
+  {
+    "codigo": "4661",
+    "descripcion": "Comercio al por mayor de combustibles sólidos, líquidos, gaseosos y productos conexos"
+  },
+  {
+    "codigo": "4662",
+    "descripcion": "Comercio al por mayor de metales y productos metalíferos"
+  },
+  {
+    "codigo": "4663",
+    "descripcion": "Comercio al por mayor de materiales de construcción, artículos de ferretería, pinturas, productos de vidrio, equipo y materiales de fontanería y calefacción"
+  },
+  {
+    "codigo": "4664",
+    "descripcion": "Comercio al por mayor de productos químicos básicos, cauchos y plásticos en formas primarias y productos químicos de uso agropecuario"
+  },
+  {
+    "codigo": "4665",
+    "descripcion": "Comercio al por mayor de desperdicios, desechos y chatarra"
+  },
+  {
+    "codigo": "4669",
+    "descripcion": "Comercio al por mayor de otros productos n.c.p."
+  },
+  {
+    "codigo": "4690",
+    "descripcion": "Comercio al por mayor no especializado"
+  },
+  {
+    "codigo": "4711",
+    "descripcion": "Comercio al por menor en establecimientos no especializados con surtido compuesto principalmente por alimentos, bebidas o tabaco"
+  },
+  {
+    "codigo": "4719",
+    "descripcion": "Comercio al por menor en establecimientos no especializados, con surtido compuesto principalmente por productos diferentes de alimentos (víveres en general), bebidas y tabaco"
+  },
+  {
+    "codigo": "4721",
+    "descripcion": "Comercio al por menor de productos agrícolas para el consumo en establecimientos especializados"
+  },
+  {
+    "codigo": "4722",
+    "descripcion": "Comercio al por menor de leche, productos lácteos y huevos, en establecimientos especializados"
+  },
+  {
+    "codigo": "4723",
+    "descripcion": "Comercio al por menor de carnes (incluye aves de corral), productos cárnicos, pescados y productos de mar, en establecimientos especializados"
+  },
+  {
+    "codigo": "4724",
+    "descripcion": "Comercio al por menor de bebidas y productos del tabaco, en establecimientos especializados"
+  },
+  {
+    "codigo": "4729",
+    "descripcion": "Comercio al por menor de otros productos alimenticios n.c.p., en establecimientos especializados"
+  },
+  {
+    "codigo": "4731",
+    "descripcion": "Comercio al por menor de combustible para automotores"
+  },
+  {
+    "codigo": "4732",
+    "descripcion": "Comercio al por menor de lubricantes (aceites, grasas), aditivos y productos de limpieza para vehículos automotores"
+  },
+  {
+    "codigo": "4741",
+    "descripcion": "Comercio al por menor de computadores, equipos periféricos, programas de informática y equipos de telecomunicaciones en establecimientos especializados"
+  },
+  {
+    "codigo": "4742",
+    "descripcion": "Comercio al por menor de equipos y aparatos de sonido y de video, en establecimientos especializados"
+  },
+  {
+    "codigo": "4751",
+    "descripcion": "Comercio al por menor de productos textiles en establecimientos especializados"
+  },
+  {
+    "codigo": "4752",
+    "descripcion": "Comercio al por menor de artículos de ferretería, pinturas y productos de vidrio en establecimientos especializados"
+  },
+  {
+    "codigo": "4753",
+    "descripcion": "Comercio al por menor de tapices, alfombras y cubrimientos para paredes y pisos en establecimientos especializados"
+  },
+  {
+    "codigo": "4754",
+    "descripcion": "Comercio al por menor de electrodomésticos y gasodomésticos de uso doméstico, muebles y equipos de iluminación"
+  },
+  {
+    "codigo": "4755",
+    "descripcion": "Comercio al por menor de artículos y utensilios de uso doméstico"
+  },
+  {
+    "codigo": "4759",
+    "descripcion": "Comercio al por menor de otros artículos domésticos en establecimientos especializados"
+  },
+  {
+    "codigo": "4761",
+    "descripcion": "Comercio al por menor de libros, periódicos, materiales y artículos de papelería y escritorio, en establecimientos especializados"
+  },
+  {
+    "codigo": "4762",
+    "descripcion": "Comercio al por menor de artículos deportivos, en establecimientos especializados"
+  },
+  {
+    "codigo": "4769",
+    "descripcion": "Comercio al por menor de otros artículos culturales y de entretenimiento n.c.p. en establecimientos especializados"
+  },
+  {
+    "codigo": "4771",
+    "descripcion": "Comercio al por menor de prendas de vestir y sus accesorios (incluye artículos de piel) en establecimientos especializados"
+  },
+  {
+    "codigo": "4772",
+    "descripcion": "Comercio al por menor de todo tipo de calzado y artículos de cuero y sucedáneos del cuero en establecimientos especializados"
+  },
+  {
+    "codigo": "4773",
+    "descripcion": "Comercio al por menor de productos farmacéuticos y medicinales, cosméticos y artículos de tocador en establecimientos especializados"
+  },
+  {
+    "codigo": "4774",
+    "descripcion": "Comercio al por menor de otros productos nuevos en establecimientos especializados"
+  },
+  {
+    "codigo": "4775",
+    "descripcion": "Comercio al por menor de artículos de segunda mano"
+  },
+  {
+    "codigo": "5511",
+    "descripcion": "Alojamiento en hoteles"
+  },
+  {
+    "codigo": "5512",
+    "descripcion": "Alojamiento en apartahoteles"
+  },
+  {
+    "codigo": "5513",
+    "descripcion": "Alojamiento en centros vacacionales"
+  },
+  {
+    "codigo": "5514",
+    "descripcion": "Alojamiento rural"
+  },
+  {
+    "codigo": "5519",
+    "descripcion": "Otros tipos de alojamiento para visitantes"
+  },
+  {
+    "codigo": "5520",
+    "descripcion": "Actividades de zonas de camping y parques para vehículos recreacionales"
+  },
+  {
+    "codigo": "5530",
+    "descripcion": "Servicio por horas"
+  },
+  {
+    "codigo": "5590",
+    "descripcion": "Otros tipos de alojamiento n.c.p."
+  },
+  {
+    "codigo": "5611",
+    "descripcion": "Expendio a la mesa de comidas preparadas"
+  },
+  {
+    "codigo": "5612",
+    "descripcion": "Expendio por autoservicio de comidas preparadas"
+  },
+  {
+    "codigo": "5613",
+    "descripcion": "Expendio de comidas preparadas en cafeterías"
+  },
+  {
+    "codigo": "5619",
+    "descripcion": "Otros tipos de expendio de comidas preparadas n.c.p."
+  },
+  {
+    "codigo": "5621",
+    "descripcion": "Catering para eventos"
+  },
+  {
+    "codigo": "5629",
+    "descripcion": "Actividades de otros servicios de comidas"
+  },
+  {
+    "codigo": "5630",
+    "descripcion": "Expendio de bebidas alcohólicas para el consumo dentro del establecimiento"
+  },
+  {
+    "codigo": "6201",
+    "descripcion": "Actividades de desarrollo de sistemas informáticos (planificación, análisis, diseño, programación, pruebas)"
+  },
+  {
+    "codigo": "6202",
+    "descripcion": "Actividades de consultoría informática y actividades de administración de instalaciones informáticas"
+  },
+  {
+    "codigo": "6209",
+    "descripcion": "Otras actividades de tecnologías de información y actividades de servicios informáticos"
+  },
+  {
+    "codigo": "6311",
+    "descripcion": "Procesamiento de datos, alojamiento (hosting) y actividades relacionadas"
+  },
+  {
+    "codigo": "6312",
+    "descripcion": "Portales web"
+  },
+  {
+    "codigo": "6391",
+    "descripcion": "Actividades de agencias de noticias"
+  },
+  {
+    "codigo": "6399",
+    "descripcion": "Otras actividades de servicio de información n.c.p."
+  },
+  {
+    "codigo": "6411",
+    "descripcion": "Banco Central"
+  },
+  {
+    "codigo": "6412",
+    "descripcion": "Bancos comerciales"
+  },
+  {
+    "codigo": "6421",
+    "descripcion": "Actividades de las corporaciones financieras"
+  },
+  {
+    "codigo": "6422",
+    "descripcion": "Actividades de las compañías de financiamiento"
+  },
+  {
+    "codigo": "6423",
+    "descripcion": "Banca de segundo piso"
+  },
+  {
+    "codigo": "6424",
+    "descripcion": "Actividades de las cooperativas financieras"
+  },
+  {
+    "codigo": "6431",
+    "descripcion": "Fideicomisos, fondos y entidades financieras similares"
+  },
+  {
+    "codigo": "6432",
+    "descripcion": "Fondos de cesantías"
+  },
+  {
+    "codigo": "6491",
+    "descripcion": "Leasing financiero (arrendamiento financiero)"
+  },
+  {
+    "codigo": "6492",
+    "descripcion": "Actividades financieras de fondos de empleados y otras formas asociativas del sector solidario"
+  },
+  {
+    "codigo": "6493",
+    "descripcion": "Actividades de compra de cartera o factoring"
+  },
+  {
+    "codigo": "6494",
+    "descripcion": "Otras actividades de distribución de fondos"
+  },
+  {
+    "codigo": "6495",
+    "descripcion": "Instituciones especiales oficiales"
+  },
+  {
+    "codigo": "6499",
+    "descripcion": "Otras actividades de servicio financiero, excepto las de seguros y pensiones n.c.p."
+  },
+  {
+    "codigo": "6511",
+    "descripcion": "Seguros generales"
+  },
+  {
+    "codigo": "6512",
+    "descripcion": "Seguros de vida"
+  },
+  {
+    "codigo": "6513",
+    "descripcion": "Reaseguros"
+  },
+  {
+    "codigo": "6521",
+    "descripcion": "Servicios de seguros sociales de salud"
+  },
+  {
+    "codigo": "6522",
+    "descripcion": "Servicios de seguros sociales de riesgos profesionales"
+  },
+  {
+    "codigo": "6531",
+    "descripcion": "Régimen de prima media con prestación definida (RPM)"
+  },
+  {
+    "codigo": "6532",
+    "descripcion": "Régimen de ahorro individual (RAI)"
+  },
+  {
+    "codigo": "6601",
+    "descripcion": "Administración de mercados financieros"
+  },
+  {
+    "codigo": "6602",
+    "descripcion": "Corretaje de valores y de contratos de productos básicos"
+  },
+  {
+    "codigo": "6609",
+    "descripcion": "Otras actividades auxiliares de las actividades de servicios financieros n.c.p."
+  },
+  {
+    "codigo": "6612",
+    "descripcion": "Corretaje y agenciamiento de seguros"
+  },
+  {
+    "codigo": "6613",
+    "descripcion": "Ajuste, tasación de seguros"
+  },
+  {
+    "codigo": "6614",
+    "descripcion": "Administración de fondos"
+  },
+  {
+    "codigo": "6615",
+    "descripcion": "Actividades de consultoría financiera"
+  },
+  {
+    "codigo": "6619",
+    "descripcion": "Otras actividades auxiliares de seguros y fondos de pensiones n.c.p."
+  },
+  {
+    "codigo": "6621",
+    "descripcion": "Actividades de evaluación de riesgos y daños"
+  },
+  {
+    "codigo": "6629",
+    "descripcion": "Otras actividades de evaluación de riesgos y daños n.c.p."
+  },
+  {
+    "codigo": "6630",
+    "descripcion": "Actividades de administración de fondos"
+  },
+  {
+    "codigo": "6810",
+    "descripcion": "Actividades inmobiliarias realizadas con bienes propios o arrendados"
+  },
+  {
+    "codigo": "6820",
+    "descripcion": "Actividades inmobiliarias realizadas a cambio de una retribución o por contrata"
+  },
+  {
+    "codigo": "6910",
+    "descripcion": "Actividades jurídicas"
+  },
+  {
+    "codigo": "6920",
+    "descripcion": "Actividades de contabilidad, teneduría de libros, auditoría financiera y asesoría tributaria"
+  },
+  {
+    "codigo": "7010",
+    "descripcion": "Actividades de administración empresarial"
+  },
+  {
+    "codigo": "7020",
+    "descripcion": "Actividades de consultoría de gestión"
+  },
+  {
+    "codigo": "7110",
+    "descripcion": "Actividades de arquitectura e ingeniería y otras actividades conexas de consultoría técnica"
+  },
+  {
+    "codigo": "7120",
+    "descripcion": "Ensayos y análisis técnicos"
+  },
+  {
+    "codigo": "7210",
+    "descripcion": "Investigaciones y desarrollo experimental en el campo de las ciencias naturales y la ingeniería"
+  },
+  {
+    "codigo": "7220",
+    "descripcion": "Investigaciones y desarrollo experimental en el campo de las ciencias sociales y las humanidades"
+  },
+  {
+    "codigo": "7310",
+    "descripcion": "Publicidad"
+  },
+  {
+    "codigo": "7320",
+    "descripcion": "Estudios de mercado y realización de encuestas de opinión pública"
+  },
+  {
+    "codigo": "7410",
+    "descripcion": "Actividades especializadas de diseño"
+  },
+  {
+    "codigo": "7420",
+    "descripcion": "Actividades de fotografía"
+  },
+  {
+    "codigo": "7490",
+    "descripcion": "Otras actividades profesionales, científicas y técnicas n.c.p."
+  },
+  {
+    "codigo": "7500",
+    "descripcion": "Actividades veterinarias"
+  },
+  {
+    "codigo": "7710",
+    "descripcion": "Alquiler y arrendamiento de vehículos automotores"
+  },
+  {
+    "codigo": "7721",
+    "descripcion": "Alquiler y arrendamiento de equipo recreativo y deportivo"
+  },
+  {
+    "codigo": "7722",
+    "descripcion": "Alquiler de videos y discos"
+  },
+  {
+    "codigo": "7729",
+    "descripcion": "Alquiler y arrendamiento de otros efectos personales y enseres domésticos n.c.p."
+  },
+  {
+    "codigo": "7730",
+    "descripcion": "Alquiler y arrendamiento de otros tipos de maquinaria, equipo y bienes tangibles n.c.p."
+  },
+  {
+    "codigo": "7740",
+    "descripcion": "Arrendamiento de propiedad intelectual y productos similares, excepto obras protegidas por derechos de autor"
+  },
+  {
+    "codigo": "8010",
+    "descripcion": "Actividades de seguridad privada"
+  },
+  {
+    "codigo": "8020",
+    "descripcion": "Actividades de servicios de sistemas de seguridad"
+  },
+  {
+    "codigo": "8030",
+    "descripcion": "Actividades de detectives e investigadores privados"
+  },
+  {
+    "codigo": "8110",
+    "descripcion": "Actividades combinadas de apoyo a instalaciones"
+  },
+  {
+    "codigo": "8121",
+    "descripcion": "Limpieza general interior de edificios"
+  },
+  {
+    "codigo": "8129",
+    "descripcion": "Otras actividades de limpieza de edificios e instalaciones industriales"
+  },
+  {
+    "codigo": "8130",
+    "descripcion": "Actividades de paisajismo y servicios de mantenimiento conexos"
+  },
+  {
+    "codigo": "8211",
+    "descripcion": "Actividades combinadas de servicios administrativos de oficina"
+  },
+  {
+    "codigo": "8219",
+    "descripcion": "Fotocopiado, preparación de documentos y otras actividades especializadas de apoyo a oficina"
+  },
+  {
+    "codigo": "8220",
+    "descripcion": "Actividades de centros de llamadas (Call center)"
+  },
+  {
+    "codigo": "8230",
+    "descripcion": "Organización de convenciones y eventos comerciales"
+  },
+  {
+    "codigo": "8291",
+    "descripcion": "Actividades de agencias de cobranza y oficinas de calificación crediticia"
+  },
+  {
+    "codigo": "8292",
+    "descripcion": "Actividades de envase y empaque"
+  },
+  {
+    "codigo": "8299",
+    "descripcion": "Otras actividades de servicio de apoyo a las empresas n.c.p."
+  },
+  {
+    "codigo": "8511",
+    "descripcion": "Educación de la primera infancia"
+  },
+  {
+    "codigo": "8512",
+    "descripcion": "Educación preescolar"
+  },
+  {
+    "codigo": "8513",
+    "descripcion": "Educación básica primaria"
+  },
+  {
+    "codigo": "8521",
+    "descripcion": "Educación básica secundaria"
+  },
+  {
+    "codigo": "8522",
+    "descripcion": "Educación media académica"
+  },
+  {
+    "codigo": "8523",
+    "descripcion": "Educación media técnica y de formación laboral"
+  },
+  {
+    "codigo": "8530",
+    "descripcion": "Establecimientos que combinan diferentes niveles de educación"
+  },
+  {
+    "codigo": "8541",
+    "descripcion": "Educación técnica profesional"
+  },
+  {
+    "codigo": "8542",
+    "descripcion": "Educación tecnológica"
+  },
+  {
+    "codigo": "8543",
+    "descripcion": "Educación de instituciones universitarias o de escuelas tecnológicas"
+  },
+  {
+    "codigo": "8544",
+    "descripcion": "Educación de universidades"
+  },
+  {
+    "codigo": "8551",
+    "descripcion": "Formación académica no formal"
+  },
+  {
+    "codigo": "8552",
+    "descripcion": "Enseñanza deportiva y recreativa"
+  },
+  {
+    "codigo": "8553",
+    "descripcion": "Enseñanza cultural"
+  },
+  {
+    "codigo": "8559",
+    "descripcion": "Otros tipos de educación n.c.p."
+  },
+  {
+    "codigo": "8560",
+    "descripcion": "Actividades de apoyo a la educación"
+  },
+  {
+    "codigo": "8610",
+    "descripcion": "Actividades de hospitales y clínicas, con internación"
+  },
+  {
+    "codigo": "8621",
+    "descripcion": "Actividades de la práctica médica, sin internación"
+  },
+  {
+    "codigo": "8622",
+    "descripcion": "Actividades de la práctica odontológica"
+  },
+  {
+    "codigo": "8691",
+    "descripcion": "Actividades de apoyo diagnóstico"
+  },
+  {
+    "codigo": "8692",
+    "descripcion": "Actividades de apoyo terapéutico"
+  },
+  {
+    "codigo": "8699",
+    "descripcion": "Otras actividades de atención de la salud humana"
+  },
+  {
+    "codigo": "8710",
+    "descripcion": "Actividades de atención residencial medicalizada de tipo general"
+  },
+  {
+    "codigo": "8720",
+    "descripcion": "Actividades de atención residencial, para el cuidado de pacientes con retardo mental, enfermedad mental y consumo de sustancias psicoactivas"
+  },
+  {
+    "codigo": "8730",
+    "descripcion": "Actividades de atención en instituciones para el cuidado de personas mayores y/o discapacitadas"
+  },
+  {
+    "codigo": "8790",
+    "descripcion": "Otras actividades de atención en instituciones con alojamiento"
+  },
+  {
+    "codigo": "8810",
+    "descripcion": "Actividades de asistencia social sin alojamiento para personas mayores y discapacitadas"
+  },
+  {
+    "codigo": "8890",
+    "descripcion": "Otras actividades de asistencia social sin alojamiento"
+  },
+  {
+    "codigo": "9001",
+    "descripcion": "Creación literaria"
+  },
+  {
+    "codigo": "9002",
+    "descripcion": "Creación musical"
+  },
+  {
+    "codigo": "9003",
+    "descripcion": "Creación teatral"
+  },
+  {
+    "codigo": "9004",
+    "descripcion": "Creación audiovisual"
+  },
+  {
+    "codigo": "9005",
+    "descripcion": "Artes plásticas y visuales"
+  },
+  {
+    "codigo": "9006",
+    "descripcion": "Actividades teatrales"
+  },
+  {
+    "codigo": "9007",
+    "descripcion": "Actividades de espectáculos musicales en vivo"
+  },
+  {
+    "codigo": "9008",
+    "descripcion": "Otras actividades de espectáculos en vivo"
+  },
+  {
+    "codigo": "9101",
+    "descripcion": "Actividades de bibliotecas y archivos"
+  },
+  {
+    "codigo": "9102",
+    "descripcion": "Actividades y funcionamiento de museos, conservación de edificios y sitios históricos"
+  },
+  {
+    "codigo": "9103",
+    "descripcion": "Actividades de jardines botánicos, zoológicos y reservas naturales"
+  },
+  {
+    "codigo": "9200",
+    "descripcion": "Actividades de juegos de azar y apuestas"
+  },
+  {
+    "codigo": "9311",
+    "descripcion": "Gestión de instalaciones deportivas"
+  },
+  {
+    "codigo": "9312",
+    "descripcion": "Actividades de clubes deportivos"
+  },
+  {
+    "codigo": "9319",
+    "descripcion": "Otras actividades deportivas"
+  },
+  {
+    "codigo": "9321",
+    "descripcion": "Actividades de parques de atracciones y parques temáticos"
+  },
+  {
+    "codigo": "9329",
+    "descripcion": "Otras actividades recreativas y de esparcimiento n.c.p."
+  },
+  {
+    "codigo": "9411",
+    "descripcion": "Actividades de asociaciones empresariales y de empleadores"
+  },
+  {
+    "codigo": "9412",
+    "descripcion": "Actividades de asociaciones profesionales"
+  },
+  {
+    "codigo": "9420",
+    "descripcion": "Actividades de sindicatos de empleados"
+  },
+  {
+    "codigo": "9491",
+    "descripcion": "Actividades de asociaciones religiosas"
+  },
+  {
+    "codigo": "9492",
+    "descripcion": "Actividades de asociaciones políticas"
+  },
+  {
+    "codigo": "9499",
+    "descripcion": "Actividades de otras asociaciones n.c.p."
+  },
+  {
+    "codigo": "9511",
+    "descripcion": "Mantenimiento y reparación de computadores y de equipo periférico"
+  },
+  {
+    "codigo": "9512",
+    "descripcion": "Mantenimiento y reparación de equipos de comunicación"
+  },
+  {
+    "codigo": "9521",
+    "descripcion": "Mantenimiento y reparación de aparatos electrónicos de consumo"
+  },
+  {
+    "codigo": "9522",
+    "descripcion": "Mantenimiento y reparación de aparatos y equipos domésticos y de jardinería"
+  },
+  {
+    "codigo": "9523",
+    "descripcion": "Reparación de calzado y artículos de cuero"
+  },
+  {
+    "codigo": "9524",
+    "descripcion": "Reparación de muebles y accesorios para el hogar"
+  },
+  {
+    "codigo": "9529",
+    "descripcion": "Mantenimiento y reparación de otros efectos personales y enseres domésticos"
+  },
+  {
+    "codigo": "9601",
+    "descripcion": "Lavado y limpieza, incluso la limpieza en seco, de productos textiles y de piel"
+  },
+  {
+    "codigo": "9602",
+    "descripcion": "Peluquería y otros tratamientos de belleza"
+  },
+  {
+    "codigo": "9603",
+    "descripcion": "Pompas fúnebres y actividades relacionadas"
+  },
+  {
+    "codigo": "9609",
+    "descripcion": "Otras actividades de servicios personales n.c.p."
+  }
+]

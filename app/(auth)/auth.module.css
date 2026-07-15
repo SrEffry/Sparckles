@@ -1,0 +1,155 @@
+/* ---------- Layout de dos paneles ---------- */
+.shell {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+/* Panel de marca (izquierda) */
+.brandPanel {
+  position: relative;
+  overflow: hidden;
+  background: var(--primary-gradient);
+  color: #fff;
+  padding: 48px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+}
+/* Patrón de fondo (fondo1.png) como en el sitio original */
+.brandPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/img/fondo1.png") repeat;
+  background-size: 120px;
+  opacity: 0.08;
+  pointer-events: none;
+}
+.brandTop,
+.ilustracion,
+.soporte {
+  position: relative;
+  z-index: 1;
+}
+.brandLogo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: 12px;
+}
+.brandTop h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.desc {
+  margin-top: 10px;
+  font-size: 15px;
+  opacity: 0.9;
+  line-height: 1.5;
+}
+.ilustracion {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 20px 0;
+}
+.ilustracionImg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  object-fit: contain;
+}
+.soporte {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Panel del formulario (derecha) */
+.formPanel {
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  background: var(--bg);
+}
+
+/* ---------- Tarjeta de formulario ---------- */
+.card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card h2 {
+  font-size: 24px;
+  font-weight: 700;
+}
+.card .sub {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: -8px;
+  margin-bottom: 4px;
+}
+.card input[type="text"],
+.card input[type="email"],
+.card input[type="password"] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  font-family: inherit;
+}
+.card input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+.terminos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.terminos input {
+  width: auto;
+}
+.alt {
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+}
+.alt a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.exito {
+  background: var(--success-tint);
+  color: var(--success);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 880px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .brandPanel {
+    padding: 32px 24px;
+  }
+  .ilustracion {
+    display: none;
+  }
+  .brandTop h1 {
+    font-size: 26px;
+  }
+}

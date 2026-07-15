@@ -1,0 +1,543 @@
+// Esquema Sparkles — dominio contable/tributario (Colombia).
+// Alcance: TODO se liga a un Usuario (data privada por usuario), según decisión del cliente.
+// Reglas de producción: dinero en Decimal(18,2); documentos fiscales anulables (no borrables);
+// numeración de factura secuencial garantizada por transacción.
+//
+// Entidades ya mapeadas del sitio actual están modeladas por completo. Nota/Asiento/Empleado/
+// Nomina/DocumentoSoporte/Compra se agregarán al portar cada módulo (mapeo campo a campo).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================ Usuario / Auth ============================
+model Usuario {
+  id             String   @id @default(cuid())
+  nombre         String
+  apellido       String
+  nombreCompleto String
+  email          String   @unique
+  password       String // hash bcrypt
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  empresas   Empresa[]
+  clientes   Cliente[]
+  productos  Producto[]
+  facturas   Factura[]
+  notas      Nota[]
+  empleados  Empleado[]
+  nominas    Nomina[]
+  compras    Compra[]
+  asientos   Asiento[]
+  soportes   DocumentoSoporte[]
+  configFact ConfigFacturacion?
+
+  @@map("usuarios")
+}
+
+// ============================ Empresa (wizard 4 pasos) ============================
+model Empresa {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tipoEntidad String // 'juridica' | 'natural'
+  estado      String @default("Activo") // 'Activo' | 'Inactivo'
+
+  // Persona jurídica
+  razonSocial String?
+  nit         String?
+  dv          String?
+
+  // Persona natural
+  nombres         String?
+  apellidos       String?
+  nombreCompleto  String?
+  tipoDocumento   String?
+  numeroDocumento String?
+
+  // Contacto (compartido)
+  telefono String?
+  email    String?
+
+  // Representante legal (solo jurídica)
+  repNombres         String?
+  repApellidos       String?
+  repTipoDocumento   String?
+  repNumeroDocumento String?
+  repTelefono        String?
+  repEmail           String?
+
+  // Ubicación
+  pais         String?
+  departamento String?
+  ciudad       String?
+  direccion    String?
+  codigoPostal String?
+
+  // Tributario
+  tarifaIvaRetenido          String?
+  aplicaIva                  Boolean  @default(false)
+  caracteristicasTributarias String[]
+
+  @@index([usuarioId])
+  @@map("empresas")
+}
+
+// ============================ Cliente ============================
+model Cliente {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tipo           String // 'natural' | 'empresa'
+  nombreCompleto String
+
+  // Persona natural
+  nombres         String?
+  apellidos       String?
+  tipoDocumento   String?
+  numeroDocumento String?
+
+  // Empresa
+  razonSocial     String?
+  nombreComercial String?
+  nit             String?
+  dv              String?
+  personaContacto String?
+
+  // Contacto
+  telefono     String?
+  email        String?
+  direccion    String?
+  ciudad       String?
+  departamento String?
+
+  // Retención (dirige el cálculo de retenciones en factura)
+  esAgenteRetenedor Boolean @default(false)
+  esAutorretenedor  Boolean @default(false)
+
+  @@index([usuarioId])
+  @@map("clientes")
+}
+
+// ============================ Producto ============================
+model Producto {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  codigo      String
+  descripcion String
+  unidad      String?
+  comoCompra  String?
+  comoVende   String?
+  tarifaIva   String?
+  precioVenta Decimal @db.Decimal(18, 2)
+  linea       String?
+
+  // Retención (nested `retencion` en el sitio actual)
+  retAplica    Boolean  @default(false)
+  retNombre    String?
+  retTarifa    Decimal? @db.Decimal(6, 3)
+  retCategoria String?
+  retConcepto  String?
+
+  @@unique([usuarioId, codigo])
+  @@index([usuarioId])
+  @@map("productos")
+}
+
+// ============================ Config de facturación (emisor + resolución DIAN) ============================
+model ConfigFacturacion {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logo               String? @db.Text // base64
+  razonSocial        String?
+  nit                String?
+  regimen            String?
+  direccion          String?
+  ciudad             String?
+  telefono           String?
+  email              String?
+  actividadEconomica String?
+  pieFact            String?
+  observaciones      String?
+
+  // Resolución DIAN
+  resNumero        String?
+  resFecha         String?
+  prefijo          String?
+  numeracionDesde  Int?
+  numeracionHasta  Int?
+  numeracionActual Int?
+  resVencimiento   String?
+
+  @@map("config_facturacion")
+}
+
+// ============================ Factura + items ============================
+model Factura {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numero           Int
+  prefijo          String
+  numeroCompleto   String
+  fecha            String
+  fechaVencimiento String?
+  formaPago        String?
+  medioPago        String?
+  instrumentos     Json?
+  observaciones    String?
+
+  // Estado fiscal: 'emitida' | 'anulada' (nunca se borra)
+  estado String @default("emitida")
+
+  // Snapshot del cliente (inmutable al momento de emitir)
+  clienteId                String?
+  clienteNombre            String
+  clienteTipo              String?
+  clienteTipoDocumento     String?
+  clienteNumeroDocumento   String?
+  clienteDv                String?
+  clienteTelefono          String?
+  clienteEmail             String?
+  clienteDireccion         String?
+  clienteEsAgenteRetenedor Boolean @default(false)
+  clienteEsAutorretenedor  Boolean @default(false)
+
+  // Totales
+  subtotal        Decimal @db.Decimal(18, 2)
+  totalDescuentos Decimal @default(0) @db.Decimal(18, 2)
+  iva             Decimal @default(0) @db.Decimal(18, 2)
+  retenciones     Decimal @default(0) @db.Decimal(18, 2)
+  total           Decimal @db.Decimal(18, 2)
+  totalACobrar    Decimal @db.Decimal(18, 2)
+
+  retencionesFiscales    Json?
+  retencionesPorConcepto Json?
+
+  // Snapshot del emisor (config al momento de emitir)
+  emisorRazonSocial String?
+  emisorNit         String?
+  emisorRegimen     String?
+  emisorSnapshot    Json?
+
+  // Saldos acumulados por notas aplicadas
+  saldoAplicadoNC Decimal @default(0) @db.Decimal(18, 2)
+  saldoAplicadoND Decimal @default(0) @db.Decimal(18, 2)
+
+  items FacturaItem[]
+  notas Nota[]
+
+  @@unique([usuarioId, numeroCompleto])
+  @@index([usuarioId])
+  @@map("facturas")
+}
+
+// ============================ Notas débito / crédito (DIAN Anexo 1.9) ============================
+model Nota {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numero String // NC-0001 | ND-0001
+  tipo   String // 'credito' | 'debito'
+  fecha  String
+
+  motivoCodigo String
+  motivoLabel  String
+
+  // Factura relacionada (opcional) + snapshot de referencia
+  factura    Factura? @relation(fields: [facturaId], references: [id])
+  facturaId  String?
+  facturaRef String?
+
+  // Snapshot del cliente (tomado de la factura)
+  clienteNombre    String?
+  clienteDocumento String?
+
+  subtotal        Decimal @db.Decimal(18, 2)
+  totalDescuentos Decimal @default(0) @db.Decimal(18, 2)
+  totalIva        Decimal @default(0) @db.Decimal(18, 2)
+  totalNota       Decimal @db.Decimal(18, 2)
+  observaciones   String?
+
+  items NotaItem[]
+
+  @@unique([usuarioId, numero])
+  @@index([usuarioId])
+  @@index([facturaId])
+  @@map("notas")
+}
+
+model NotaItem {
+  id     String @id @default(cuid())
+  nota   Nota   @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  notaId String
+
+  descripcion    String
+  cantidad       Decimal @db.Decimal(18, 3)
+  precioUnitario Decimal @db.Decimal(18, 2)
+  descuento      Decimal @default(0) @db.Decimal(6, 3) // porcentaje
+  iva            Decimal @default(0) @db.Decimal(6, 3) // porcentaje
+  base           Decimal @db.Decimal(18, 2)
+  subtotalItem   Decimal @db.Decimal(18, 2)
+
+  @@index([notaId])
+  @@map("nota_items")
+}
+
+// ============================ Nómina ============================
+model Empleado {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nombres      String
+  apellidos    String
+  documento    String
+  cargo        String
+  tipoContrato String?
+  salarioBase  Decimal @db.Decimal(18, 2)
+  eps          String?
+  afp          String?
+  activo       Boolean @default(true)
+
+  nominas Nomina[]
+
+  @@index([usuarioId])
+  @@map("empleados")
+}
+
+model Nomina {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+
+  empleado   Empleado? @relation(fields: [empleadoId], references: [id], onDelete: SetNull)
+  empleadoId String?
+
+  fechaLiquidacion DateTime @default(now())
+
+  // Snapshot del empleado
+  empleadoNombre    String
+  empleadoDocumento String?
+  empleadoCargo     String?
+  salarioBase       Decimal @db.Decimal(18, 2)
+
+  // Conceptos
+  diasTrabajados      Int     @default(30)
+  salarioProporcional Decimal @db.Decimal(18, 2)
+  transporte          Decimal @default(0) @db.Decimal(18, 2)
+  extras              Decimal @default(0) @db.Decimal(18, 2)
+  comisiones          Decimal @default(0) @db.Decimal(18, 2)
+  salud               Decimal @default(0) @db.Decimal(18, 2)
+  pension             Decimal @default(0) @db.Decimal(18, 2)
+  prestamos           Decimal @default(0) @db.Decimal(18, 2)
+  otrasDeducciones    Decimal @default(0) @db.Decimal(18, 2)
+
+  // Totales
+  totalDevengos    Decimal @db.Decimal(18, 2)
+  totalDeducciones Decimal @db.Decimal(18, 2)
+  neto             Decimal @db.Decimal(18, 2)
+
+  estado String @default("Pendiente") // Pendiente | Pagada | Anulada
+
+  @@index([usuarioId])
+  @@index([empleadoId])
+  @@map("nominas")
+}
+
+// ============================ Compras (facturas de proveedor) ============================
+model Compra {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numFactura       String
+  fecha            String
+  fechaVencimiento String?
+  tipoDoc          String?
+  condicionPago    String?
+  medioPago        String?
+
+  // Proveedor
+  proveedorNombre String
+  proveedorNit    String?
+  proveedorTel    String?
+
+  // Totales
+  subtotal         Decimal @db.Decimal(18, 2)
+  totalDescuentos  Decimal @default(0) @db.Decimal(18, 2)
+  totalIva         Decimal @default(0) @db.Decimal(18, 2)
+  totalRetenciones Decimal @default(0) @db.Decimal(18, 2)
+  totalBruto       Decimal @db.Decimal(18, 2)
+  totalAPagar      Decimal @db.Decimal(18, 2)
+
+  // Retenciones manuales: { retefuente:{activa,tarifa,valor}, reteiva:{...}, reteica:{...} }
+  retenciones   Json?
+  observaciones String?
+
+  items CompraItem[]
+
+  @@index([usuarioId])
+  @@map("compras")
+}
+
+model CompraItem {
+  id       String @id @default(cuid())
+  compra   Compra @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  compraId String
+
+  descripcion    String
+  cantidad       Decimal @db.Decimal(18, 3)
+  precioUnitario Decimal @db.Decimal(18, 2)
+  descuento      Decimal @default(0) @db.Decimal(6, 3) // porcentaje
+  iva            Decimal @default(0) @db.Decimal(6, 3) // porcentaje
+  base           Decimal @db.Decimal(18, 2)
+  subtotalItem   Decimal @db.Decimal(18, 2)
+
+  @@index([compraId])
+  @@map("compra_items")
+}
+
+// ============================ Catálogo PUC (referencia global) ============================
+// Plan Único de Cuentas. Dos sectores: 'comercial' (Decreto 2650) y 'esal' (entidades sin
+// ánimo de lucro / Catálogo de supervisión). Data cargada desde lib/data/puc*.json.
+model CuentaPUC {
+  id         String  @id @default(cuid())
+  sector     String // 'comercial' | 'esal'
+  codigo     String
+  nombre     String
+  clase      String
+  nivel      Int
+  naturaleza String? // Débito | Crédito
+  imputable  Boolean @default(true) // cuenta de detalle (permite movimientos)
+
+  @@unique([sector, codigo])
+  @@index([sector])
+  @@map("cuentas_puc")
+}
+
+// ============================ Asientos contables (partida doble) ============================
+model Asiento {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numero      String
+  sector      String  @default("comercial") // PUC usado: comercial | esal
+  fecha       String
+  descripcion String
+  tipo        String  @default("manual")
+  documentoRef String?
+  estado      String  @default("registrado") // borrador | registrado
+
+  totalDebitos  Decimal @db.Decimal(18, 2)
+  totalCreditos Decimal @db.Decimal(18, 2)
+  diferencia    Decimal @default(0) @db.Decimal(18, 2)
+
+  anulado         Boolean @default(false)
+  motivoAnulacion String?
+
+  movimientos AsientoMovimiento[]
+
+  @@unique([usuarioId, numero])
+  @@index([usuarioId])
+  @@map("asientos")
+}
+
+model AsientoMovimiento {
+  id        String  @id @default(cuid())
+  asiento   Asiento @relation(fields: [asientoId], references: [id], onDelete: Cascade)
+  asientoId String
+
+  cuenta       String // código PUC
+  nombreCuenta String
+  debito       Decimal @default(0) @db.Decimal(18, 2)
+  credito      Decimal @default(0) @db.Decimal(18, 2)
+  tercero      String?
+
+  @@index([asientoId])
+  @@map("asiento_movimientos")
+}
+
+// ============================ Documento soporte (adquisiciones a no obligados a facturar) ============================
+model DocumentoSoporte {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numero String
+  fecha  String
+
+  proveedorNombre    String
+  proveedorDocumento String?
+  concepto           String
+
+  bruto          Decimal @db.Decimal(18, 2)
+  porcReteFuente Decimal @default(0) @db.Decimal(6, 3) // porcentaje (%)
+  porcReteIca    Decimal @default(0) @db.Decimal(8, 4) // por mil (‰)
+  reteFuente     Decimal @default(0) @db.Decimal(18, 2)
+  reteIca        Decimal @default(0) @db.Decimal(18, 2)
+  neto           Decimal @db.Decimal(18, 2)
+
+  estado String @default("Emitido") // Emitido | Anulado
+
+  @@unique([usuarioId, numero])
+  @@index([usuarioId])
+  @@map("documentos_soporte")
+}
+
+model FacturaItem {
+  id        String  @id @default(cuid())
+  factura   Factura @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  facturaId String
+
+  productoCodigo String?
+  descripcion    String
+  cantidad       Decimal @db.Decimal(18, 3)
+  precioUnitario Decimal @db.Decimal(18, 2)
+  descuento      Decimal @default(0) @db.Decimal(18, 2)
+  base           Decimal @db.Decimal(18, 2)
+  tarifaIva      Decimal @default(0) @db.Decimal(6, 3)
+  valorIva       Decimal @default(0) @db.Decimal(18, 2)
+  subtotal       Decimal @db.Decimal(18, 2)
+  extra          Json?
+
+  @@index([facturaId])
+  @@map("factura_items")
+}

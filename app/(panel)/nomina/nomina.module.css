@@ -1,0 +1,245 @@
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.head h1 {
+  font-size: 28px;
+}
+.head p {
+  color: var(--text-soft);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.statValor {
+  font-size: 30px;
+  font-weight: 700;
+}
+.statValorChico {
+  font-size: 20px;
+  font-weight: 700;
+}
+.statLabel {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  background: none;
+  border: none;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tableWrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+.table th {
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-soft);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  vertical-align: middle;
+}
+.table tr:last-child td {
+  border-bottom: none;
+}
+.anulada td {
+  opacity: 0.55;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--primary-tint);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.sub {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.monto {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ded {
+  color: var(--danger);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+.actions button {
+  background: #f0f0f2;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.actions button:hover {
+  background: #e5e5ea;
+}
+.actions button:disabled {
+  opacity: 0.5;
+}
+.liq {
+  background: var(--primary-tint) !important;
+  color: var(--primary) !important;
+}
+.pay {
+  background: var(--success-tint) !important;
+  color: var(--success) !important;
+}
+.del {
+  color: var(--danger);
+}
+.del:hover {
+  background: var(--danger-tint) !important;
+}
+
+.empty {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 48px;
+  text-align: center;
+  color: var(--text-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.liqEmp {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.grupo {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin: 8px 0 10px;
+}
+.liqTot {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.totRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 5px 0;
+  color: var(--text-soft);
+}
+.totFinal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 12px;
+  margin-top: 6px;
+  border-top: 2px solid var(--border);
+}
+.totFinal strong {
+  font-size: 22px;
+  color: var(--primary);
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  font-size: 14px;
+  font-weight: 600;
+}
+.success {
+  background: var(--primary);
+}
+.error {
+  background: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

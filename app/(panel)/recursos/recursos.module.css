@@ -1,0 +1,141 @@
+.head {
+  margin-bottom: 24px;
+}
+.head h1 {
+  font-size: 28px;
+}
+.head p {
+  color: var(--text-soft);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  background: none;
+  border: none;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.stat {
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border);
+}
+.statValor {
+  font-size: 28px;
+  font-weight: 700;
+}
+.statLabel {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.blue {
+  background: #eff6ff;
+}
+.green {
+  background: #ecfdf5;
+}
+.purple {
+  background: #f5f3ff;
+}
+.orange {
+  background: #fff7ed;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.action {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.action h3 {
+  font-size: 17px;
+}
+.action p {
+  font-size: 13px;
+  color: var(--text-soft);
+  flex: 1;
+}
+.actionBtn {
+  align-self: flex-start;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 8px;
+}
+.actionBtn.blue {
+  background: #2563eb;
+}
+.actionBtn.green {
+  background: var(--primary);
+}
+.actionBtn.purple {
+  background: #7c3aed;
+}
+
+.placeholder {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 48px;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--text);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .actionsGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 import { obtenerConfig, guardarConfig } from "@/lib/configFacturacionApi";
 import styles from "./config.module.css";
 
+// Términos vigentes (los antiguos "Común"/"Simplificado" ya no se usan en la norma).
 const REGIMENES = [
   "Responsable de IVA",
-  "No Responsable de IVA",
-  "Régimen Simple (RST)",
-  "Común",
-  "Simplificado",
+  "No responsable de IVA",
+  "Régimen Simple de Tributación (RST)",
 ];
 
 const VACIO = {
@@ -17,6 +16,7 @@ const VACIO = {
   razonSocial: "",
   nit: "",
   regimen: "",
+  responsableIva: true,
   direccion: "",
   ciudad: "",
   telefono: "",
@@ -48,6 +48,7 @@ export default function ConfigurarFacturacionPage() {
           razonSocial: config.razonSocial || "",
           nit: config.nit || "",
           regimen: config.regimen || "",
+          responsableIva: config.responsableIva ?? true,
           direccion: config.direccion || "",
           ciudad: config.ciudad || "",
           telefono: config.telefono || "",
@@ -70,6 +71,20 @@ export default function ConfigurarFacturacionPage() {
 
   function set(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }));
+  }
+
+  // Al elegir régimen se ajusta "responsable de IVA"; en RST queda a criterio del contribuyente.
+  function cambiarRegimen(regimen) {
+    setForm((f) => ({
+      ...f,
+      regimen,
+      responsableIva:
+        regimen === "Responsable de IVA"
+          ? true
+          : regimen === "No responsable de IVA"
+          ? false
+          : f.responsableIva,
+    }));
   }
 
   function cargarLogo(e) {
@@ -142,13 +157,28 @@ export default function ConfigurarFacturacionPage() {
           </div>
           <div className="form-group">
             <label>Régimen *</label>
-            <select value={form.regimen} onChange={(e) => set("regimen", e.target.value)}>
+            <select value={form.regimen} onChange={(e) => cambiarRegimen(e.target.value)}>
               <option value="">Seleccione régimen</option>
               {REGIMENES.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
           </div>
+        </div>
+
+        <div className={styles.ivaBox}>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={form.responsableIva}
+              onChange={(e) => set("responsableIva", e.target.checked)}
+            />
+            Soy <strong>responsable de IVA</strong>
+          </label>
+          <small className={styles.hint}>
+            Si no eres responsable de IVA no puedes cobrarlo: tus facturas se emitirán con IVA en
+            cero, aunque los productos tengan tarifa.
+          </small>
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -180,7 +210,11 @@ export default function ConfigurarFacturacionPage() {
         <h2 className={styles.cardTitle}>Resolución DIAN</h2>
         {numeracionActual != null && (
           <div className={styles.info}>
-            Próximo número a facturar: <strong>{form.prefijo || ""}{String(numeracionActual).padStart(5, "0")}</strong>
+            Próximo número a facturar:{" "}
+            <strong>
+              {form.prefijo ? `${form.prefijo}-` : ""}
+              {String(numeracionActual).padStart(5, "0")}
+            </strong>
           </div>
         )}
         <div className="form-row">
@@ -199,7 +233,7 @@ export default function ConfigurarFacturacionPage() {
             <input value={form.prefijo} onChange={(e) => set("prefijo", e.target.value)} placeholder="FACT" />
           </div>
           <div className="form-group">
-            <label>Fecha de Vencimiento</label>
+            <label>Fecha de Vencimiento *</label>
             <input type="date" value={form.resVencimiento} onChange={(e) => set("resVencimiento", e.target.value)} />
           </div>
         </div>

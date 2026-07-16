@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { calcularFactura } from "@/lib/facturaCalc";
+import { validarFactura } from "@/lib/facturaValidation";
+import { hoyBogota } from "@/lib/fechas";
 
 // GET /api/facturas → historial del usuario
 export async function GET() {
@@ -27,15 +29,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
 
-  const clienteId = body.clienteId;
-  const items = Array.isArray(body.items) ? body.items : [];
+  // Validación de servidor (cantidad > 0, descuento 0-100, cliente, ítems, fecha)
+  const { errors } = validarFactura(body);
+  if (errors.length) {
+    return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
+  }
 
-  if (!clienteId) return NextResponse.json({ error: "Seleccione un cliente." }, { status: 400 });
-  if (items.length === 0)
-    return NextResponse.json({ error: "Agregue al menos un producto." }, { status: 400 });
+  const items = body.items;
 
   // Cliente y productos deben pertenecer al usuario
-  const cliente = await prisma.cliente.findUnique({ where: { id: clienteId } });
+  const cliente = await prisma.cliente.findUnique({ where: { id: body.clienteId } });
   if (!cliente || cliente.usuarioId !== sesion.id)
     return NextResponse.json({ error: "Cliente no válido." }, { status: 400 });
 
@@ -47,27 +50,77 @@ export async function POST(request) {
   if (items.some((i) => !productosPorId[i.productoId]))
     return NextResponse.json({ error: "Algún producto no es válido." }, { status: 400 });
 
-  const calc = calcularFactura({ cliente, productosPorId, items });
+  // La configuración define si el emisor cobra IVA y la resolución DIAN vigente.
+  const config = await prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+  if (!config || config.numeracionActual == null) {
+    return NextResponse.json(
+      { error: "Configura la facturación (resolución DIAN) antes de emitir." },
+      { status: 400 }
+    );
+  }
+
+  const fecha = body.fecha || hoyBogota();
+
+  let calc;
+  try {
+    calc = calcularFactura({
+      cliente,
+      productosPorId,
+      items,
+      emisorResponsableIva: config.responsableIva,
+    });
+  } catch (e) {
+    if (e.code === "CONCEPTO_RETENCION_INVALIDO") {
+      return NextResponse.json(
+        { error: `${e.message} Corrige el producto antes de facturar.` },
+        { status: 400 }
+      );
+    }
+    throw e;
+  }
 
   try {
     const factura = await prisma.$transaction(async (tx) => {
-      const config = await tx.configFacturacion.findUnique({
-        where: { usuarioId: sesion.id },
-      });
-      if (!config || config.numeracionActual == null) {
+      // Se relee dentro de la transacción: el consecutivo debe leerse e incrementarse de forma atómica.
+      const cfg = await tx.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+      if (!cfg || cfg.numeracionActual == null) {
         const e = new Error("SIN_CONFIG");
         e.code = "SIN_CONFIG";
         throw e;
       }
-      if (config.numeracionHasta != null && config.numeracionActual > config.numeracionHasta) {
+      // La numeración debe estar dentro del rango autorizado...
+      if (cfg.numeracionHasta != null && cfg.numeracionActual > cfg.numeracionHasta) {
         const e = new Error("RANGO");
         e.code = "RANGO";
         throw e;
       }
+      // ...y la fecha de emisión debe caer dentro de la vigencia de la resolución.
+      // Falla CERRADO: si la config no tiene vigencia, no se emite. Tratar "falta el dato" como
+      // "no hay nada que validar" es justo lo que permitía facturar con resolución vencida.
+      if (!cfg.resFecha || !cfg.resVencimiento) {
+        const e = new Error("SIN_VIGENCIA");
+        e.code = "SIN_VIGENCIA";
+        throw e;
+      }
+      if (fecha > cfg.resVencimiento) {
+        const e = new Error("VENCIDA");
+        e.code = "VENCIDA";
+        e.vencimiento = cfg.resVencimiento;
+        throw e;
+      }
+      if (fecha < cfg.resFecha) {
+        const e = new Error("ANTES_DE_RESOLUCION");
+        e.code = "ANTES_DE_RESOLUCION";
+        e.desde = cfg.resFecha;
+        throw e;
+      }
 
-      const numero = config.numeracionActual;
-      const prefijo = config.prefijo || "FACT";
-      const numeroCompleto = `${prefijo}-${String(numero).padStart(5, "0")}`;
+      const numero = cfg.numeracionActual;
+      // El prefijo es el autorizado en la resolución; si no hay, la numeración va sin prefijo.
+      // Inventar uno emitiría un número fuera de la numeración autorizada.
+      const prefijo = cfg.prefijo || "";
+      const consecutivo = String(numero).padStart(5, "0");
+      const numeroCompleto = prefijo ? `${prefijo}-${consecutivo}` : consecutivo;
 
       await tx.configFacturacion.update({
         where: { usuarioId: sesion.id },
@@ -80,7 +133,7 @@ export async function POST(request) {
           numero,
           prefijo,
           numeroCompleto,
-          fecha: body.fecha || new Date().toISOString().slice(0, 10),
+          fecha,
           fechaVencimiento: body.fechaVencimiento || null,
           formaPago: body.formaPago || null,
           medioPago: body.medioPago || null,
@@ -106,28 +159,28 @@ export async function POST(request) {
           retenciones: calc.totalRetenciones,
           total: calc.total,
           totalACobrar: calc.totalACobrar,
-          retencionesPorConcepto: calc.lineas
-            .filter((l) => l.extra.retencion.valor > 0)
-            .map((l) => ({
-              descripcion: l.descripcion,
-              concepto: l.extra.retencion.nombre,
-              tarifa: l.extra.retencion.tarifa,
-              valor: l.extra.retencion.valor,
-            })),
-          // Snapshot del emisor
-          emisorRazonSocial: config.razonSocial,
-          emisorNit: config.nit,
-          emisorRegimen: config.regimen,
+          retencionesPorConcepto: calc.retencionesPorConcepto,
+          // Snapshot del emisor (debe permitir reconstruir la representación gráfica histórica)
+          emisorRazonSocial: cfg.razonSocial,
+          emisorNit: cfg.nit,
+          emisorRegimen: cfg.regimen,
           emisorSnapshot: {
-            razonSocial: config.razonSocial,
-            nit: config.nit,
-            regimen: config.regimen,
-            direccion: config.direccion,
-            ciudad: config.ciudad,
-            telefono: config.telefono,
-            email: config.email,
-            resNumero: config.resNumero,
-            prefijo: config.prefijo,
+            razonSocial: cfg.razonSocial,
+            nit: cfg.nit,
+            regimen: cfg.regimen,
+            responsableIva: cfg.responsableIva,
+            direccion: cfg.direccion,
+            ciudad: cfg.ciudad,
+            telefono: cfg.telefono,
+            email: cfg.email,
+            actividadEconomica: cfg.actividadEconomica,
+            resNumero: cfg.resNumero,
+            resFecha: cfg.resFecha,
+            resVencimiento: cfg.resVencimiento,
+            prefijo: cfg.prefijo,
+            numeracionDesde: cfg.numeracionDesde,
+            numeracionHasta: cfg.numeracionHasta,
+            pieFact: cfg.pieFact,
           },
           items: { create: calc.lineas },
         },
@@ -144,7 +197,29 @@ export async function POST(request) {
       );
     if (e.code === "RANGO")
       return NextResponse.json(
-        { error: "Se agotó el rango de numeración de la resolución." },
+        { error: "Se agotó el rango de numeración de la resolución. Solicita una nueva resolución a la DIAN." },
+        { status: 400 }
+      );
+    if (e.code === "VENCIDA")
+      return NextResponse.json(
+        {
+          error: `La resolución DIAN venció el ${e.vencimiento}. No se puede emitir con una resolución vencida; solicita una nueva.`,
+        },
+        { status: 400 }
+      );
+    if (e.code === "SIN_VIGENCIA")
+      return NextResponse.json(
+        {
+          error:
+            "La configuración de facturación no tiene la vigencia de la resolución DIAN (fecha de expedición y vencimiento). Complétala antes de emitir.",
+        },
+        { status: 400 }
+      );
+    if (e.code === "ANTES_DE_RESOLUCION")
+      return NextResponse.json(
+        {
+          error: `La fecha de emisión es anterior a la resolución DIAN (expedida el ${e.desde}). No se puede facturar antes de su vigencia.`,
+        },
         { status: 400 }
       );
     if (e.code === "P2002")

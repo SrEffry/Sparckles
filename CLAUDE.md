@@ -111,12 +111,45 @@ Búsqueda: `GET /api/puc?sector=&q=&imputables=1`.
 - Numeración de documentos: **consecutivo en transacción** + `@@unique` como red de seguridad.
 - Si el módulo es submódulo, enlázalo desde su **hub**, no desde el Sidebar.
 
+## Revisión contable/tributaria (obligatoria por módulo)
+
+Existe un subagente especializado: **`contador-tributario`**
+([`.claude/agents/contador-tributario.md`](.claude/agents/contador-tributario.md)) — contador
+público senior colombiano que revisa que cada módulo cumpla la normativa (E.T., DIAN, PUC) y la
+práctica real.
+
+**Regla acordada con el cliente:** todo módulo nuevo o cambio con impacto fiscal/contable se pasa
+por este agente **antes de darlo por terminado**. Invocarlo con el Agent tool
+(`subagent_type: contador-tributario`), pasándole qué módulo revisar.
+
+Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgos clasificados en
+🔴 Bloqueante legal · 🟠 Riesgo · 🟡 Mejora · ✅ Correcto, con norma aplicable y ejemplo numérico.
+
+> ⚠️ Es una **primera línea de revisión, no reemplaza a un contador público humano** ni garantiza
+> cumplimiento normativo. Los valores que cambian por año (UVT, tarifas, salario mínimo) deben
+> confirmarse contra la norma vigente.
+
 ## Reglas de negocio clave (ya implementadas)
 - **ReteFuente automática en factura**: aplica solo si el producto tiene retención **Y** el cliente
-  es agente retenedor **Y** NO es autorretenedor (Art. 368-2 E.T.); respeta la base mínima del
-  concepto (`lib/data/tablaRetefuente.js`, tabla 2026).
+  es agente retenedor **Y** NO es autorretenedor (Art. 368-2 E.T.).
+  - La **base mínima se evalúa por CONCEPTO** (suma de todas las líneas de ese concepto en el
+    documento), no por renglón: la retención se practica sobre el pago por concepto. Dentro del
+    concepto, **cada tarifa liquida sobre su propia base** y el valor se prorratea a las líneas
+    (el remanente de centavos va a la última, así la suma cuadra exacta).
+  - Un **concepto desconocido falla cerrado** (nunca se asume base mínima 0 = "siempre retiene").
+    `productoValidation` valida el concepto contra la tabla y **fuerza la tarifa oficial** (la
+    tarifa es un atributo de la norma, no un dato del usuario).
+- **IVA según el emisor**: si `ConfigFacturacion.responsableIva` es false, la factura se liquida
+  con **IVA 0** aunque el producto tenga tarifa. `calcularFactura` **exige** el parámetro (sin
+  default) para que la vista previa nunca muestre un total distinto al que se emite.
 - **Numeración de facturas**: lee+incrementa `numeracionActual` de `ConfigFacturacion` dentro de
-  `prisma.$transaction`.
+  `prisma.$transaction`. El **prefijo no se inventa**: si la resolución no tiene prefijo, el número
+  va sin él.
+- **Vigencia de la resolución**: la fecha de emisión debe caer entre `resFecha` y `resVencimiento`;
+  ambas son **NOT NULL en la BD** (regla fiscal sostenida por la BD, no por convención) y el
+  endpoint **falla cerrado** si faltaran. No se admiten fechas futuras ni inexistentes.
+- **Fechas en hora de Colombia** (`lib/fechas.js` → `hoyBogota()`): `toISOString()` usa UTC y
+  Bogotá es UTC-5; después de las 19:00 fecharía los documentos al día siguiente.
 - **Notas D/C**: motivos DIAN (Anexo 1.9), consecutivo `NC-/ND-`, afectan `saldoAplicadoNC/ND` de
   la factura y **revierten** al eliminarse.
 - **Asientos**: partida doble; balance (débitos=créditos) exigido solo para estado `registrado`.

@@ -173,6 +173,8 @@ model ConfigFacturacion {
   razonSocial        String?
   nit                String?
   regimen            String?
+  // Si el emisor NO es responsable de IVA, no puede cobrarlo: la factura se liquida con IVA 0.
+  responsableIva     Boolean @default(true)
   direccion          String?
   ciudad             String?
   telefono           String?
@@ -181,14 +183,17 @@ model ConfigFacturacion {
   pieFact            String?
   observaciones      String?
 
-  // Resolución DIAN
+  // Resolución DIAN.
+  // La vigencia (expedición + vencimiento) es NOT NULL a propósito: es una regla fiscal y debe
+  // sostenerla la BD, no la convención de que otro módulo haya validado bien. Sin vigencia no se
+  // puede emitir, así que un nulo aquí sería una factura sin control de vigencia.
   resNumero        String?
-  resFecha         String?
+  resFecha         String
   prefijo          String?
   numeracionDesde  Int?
   numeracionHasta  Int?
   numeracionActual Int?
-  resVencimiento   String?
+  resVencimiento   String
 
   @@map("config_facturacion")
 }

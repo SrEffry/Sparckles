@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { listarClientes } from "@/lib/clientesApi";
 import { listarProductos } from "@/lib/productosApi";
 import { emitirFactura } from "@/lib/facturasApi";
+import { obtenerConfig } from "@/lib/configFacturacionApi";
 import { calcularFactura } from "@/lib/facturaCalc";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./nueva.module.css";
 
 const fmt = (v) =>
@@ -19,10 +21,12 @@ export default function NuevaFacturaPage() {
   const router = useRouter();
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
+  // undefined = cargando · null = no hay configuración · objeto = configurada
+  const [config, setConfig] = useState(undefined);
   const [clienteId, setClienteId] = useState("");
   const [lineas, setLineas] = useState([]); // {lineId, productoId, cantidad, descuentoPorcentaje}
   const [addProd, setAddProd] = useState("");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyBogota());
   const [formaPago, setFormaPago] = useState("Contado");
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState("");
@@ -31,6 +35,9 @@ export default function NuevaFacturaPage() {
   useEffect(() => {
     listarClientes().then(setClientes);
     listarProductos().then(setProductos);
+    // La configuración define si el emisor cobra IVA: sin esto la vista previa mostraría un
+    // total distinto al que el servidor va a emitir.
+    obtenerConfig().then(setConfig);
   }, []);
 
   const productosPorId = useMemo(
@@ -40,17 +47,23 @@ export default function NuevaFacturaPage() {
   const cliente = clientes.find((c) => c.id === clienteId) || null;
 
   const calc = useMemo(() => {
-    if (!cliente || lineas.length === 0) return null;
-    return calcularFactura({
-      cliente,
-      productosPorId,
-      items: lineas.map((l) => ({
-        productoId: l.productoId,
-        cantidad: l.cantidad,
-        descuentoPorcentaje: l.descuentoPorcentaje,
-      })),
-    });
-  }, [cliente, productosPorId, lineas]);
+    if (!cliente || lineas.length === 0 || !config) return null;
+    try {
+      return calcularFactura({
+        cliente,
+        productosPorId,
+        items: lineas.map((l) => ({
+          productoId: l.productoId,
+          cantidad: l.cantidad,
+          descuentoPorcentaje: l.descuentoPorcentaje,
+        })),
+        emisorResponsableIva: !!config.responsableIva,
+      });
+    } catch {
+      // p. ej. concepto de retención inválido: el servidor lo rechaza con un mensaje claro
+      return null;
+    }
+  }, [cliente, productosPorId, lineas, config]);
 
   function agregarProducto(id) {
     if (!id) return;
@@ -99,6 +112,18 @@ export default function NuevaFacturaPage() {
       </header>
 
       {error && <div className="mensaje-error">{error}</div>}
+      {config === null && (
+        <div className="mensaje-error">
+          Aún no has configurado la facturación (resolución DIAN). Ve a Configuración → Config.
+          Facturación antes de emitir.
+        </div>
+      )}
+      {config && !config.responsableIva && (
+        <div className={styles.aviso}>
+          No eres <strong>responsable de IVA</strong>: esta factura se emitirá <strong>sin IVA</strong>,
+          aunque los productos tengan tarifa.
+        </div>
+      )}
 
       <div className={styles.grid}>
         <div className={styles.left}>

@@ -202,7 +202,7 @@ function AsientoModal({ onClose, onGuardar }) {
             <div className="form-group">
               <label>PUC (sector)</label>
               <select value={sector} onChange={(e) => setSector(e.target.value)}>
-                <option value="comercial">Comercial (Decreto 2650)</option>
+                <option value="comercial">Comercial (NIIF)</option>
                 <option value="esal">Sin ánimo de lucro (ESAL)</option>
               </select>
             </div>

@@ -10,6 +10,14 @@ export async function POST(request) {
   const sesion = await obtenerSesion();
   if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
+  // Habilita la búsqueda insensible a acentos del catálogo (GET /api/puc). Si el rol de BD no
+  // tiene permiso para crear extensiones, no es fatal: el endpoint tiene fallback sin unaccent.
+  try {
+    await prisma.$executeRawUnsafe("CREATE EXTENSION IF NOT EXISTS unaccent");
+  } catch {
+    /* sin permisos: se usa el fallback */
+  }
+
   const force = new URL(request.url).searchParams.get("force") === "1";
   const existentes = await prisma.cuentaPUC.count();
   if (existentes > 0 && !force) {

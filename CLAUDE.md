@@ -93,9 +93,13 @@ Compra(+Item), DocumentoSoporte, Asiento(+Movimiento), Empleado, Nomina, CuentaP
 Mapeo detallado del dominio: [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
 ### PUC (catálogo global, `CuentaPUC`)
-Dos sectores **separados** (varias cuentas difieren): `comercial` (Decreto 2650, 2.506 cuentas) y
-`esal` (sin ánimo de lucro, 1.816). Cargado desde `lib/data/pucComercial.json` / `pucEsal.json`
-(generados de `PUC.md` / `catalogo.md`). Seed: `POST /api/puc/seed` (`?force=1` recarga).
+Dos sectores **separados** (varias cuentas difieren): `comercial` (marco **NIIF/IFRS**, 403 cuentas
+con auxiliares de 8 dígitos; reemplazó al Decreto 2650 por decisión del cliente — Ley 1314/2009) y
+`esal` (sin ánimo de lucro, marco **NIIF para Pymes**, 438 cuentas — modelo de referencia sobre la
+Orientación Técnica 014 del CTCP; revisado por el agente `contador-tributario` antes de cargar).
+Cargado desde `lib/data/pucComercial.json` (generado de `PUC_NIIF_Auxiliares.md`) y `pucEsal.json`
+(generado de `Catalogo_Cuentas_ESAL_NIIF.md`). Seed: `POST /api/puc/seed`
+(`?force=1` recarga). El catálogo Decreto 2650 anterior sigue en git (commit `ee203f0`).
 Búsqueda: `GET /api/puc?sector=&q=&imputables=1`.
 
 ## Convenciones para agregar/tocar un módulo

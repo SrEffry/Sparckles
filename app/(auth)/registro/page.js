@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registrarUsuario } from "@/lib/auth";
+import { OjoIcon, OjoOffIcon } from "../icons";
 import styles from "../auth.module.css";
 
 export default function RegistroPage() {
@@ -15,6 +16,8 @@ export default function RegistroPage() {
     confirmPassword: "",
     aceptarTerminos: false,
   });
+  const [verPass, setVerPass] = useState(false);
+  const [intentado, setIntentado] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -22,9 +25,11 @@ export default function RegistroPage() {
   function set(campo, valor) {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
+  const vacio = (v) => intentado && !v;
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setIntentado(true);
     setError("");
     const { nombreCompleto, email, password, confirmPassword, aceptarTerminos } = form;
 
@@ -56,44 +61,91 @@ export default function RegistroPage() {
       setError(res.error);
       return;
     }
-    setOk("🎉 ¡Cuenta creada! Entrando...");
+    setOk("🎉 ¡Cuenta creada! Entrando…");
     setTimeout(() => router.replace("/dashboard"), 1200);
   }
 
   return (
-    <form className={styles.card} onSubmit={handleSubmit}>
-      <h2>Crea tu cuenta</h2>
-      <p className={styles.sub}>Completa los datos básicos para empezar</p>
-      {error && <div className="mensaje-error">{error}</div>}
+    <form className={styles.card} onSubmit={handleSubmit} noValidate>
+      <div className={styles.header}>
+        <h2>Crea tu cuenta</h2>
+        <p className={styles.sub}>Completa los datos básicos para empezar</p>
+      </div>
+
+      {error && (
+        <div className="mensaje-error" role="alert">
+          {error}
+        </div>
+      )}
       {ok && <div className={styles.exito}>{ok}</div>}
-      <input
-        type="text"
-        placeholder="Nombre completo"
-        value={form.nombreCompleto}
-        onChange={(e) => set("nombreCompleto", e.target.value)}
-        autoComplete="name"
-      />
-      <input
-        type="email"
-        placeholder="Correo electrónico"
-        value={form.email}
-        onChange={(e) => set("email", e.target.value)}
-        autoComplete="email"
-      />
-      <input
-        type="password"
-        placeholder="Contraseña (mínimo 6 caracteres)"
-        value={form.password}
-        onChange={(e) => set("password", e.target.value)}
-        autoComplete="new-password"
-      />
-      <input
-        type="password"
-        placeholder="Confirmar contraseña"
-        value={form.confirmPassword}
-        onChange={(e) => set("confirmPassword", e.target.value)}
-        autoComplete="new-password"
-      />
+
+      <div className={styles.field}>
+        <label htmlFor="nombre">Nombre completo</label>
+        <input
+          id="nombre"
+          className={styles.control}
+          type="text"
+          placeholder="Ej: Ana Pérez"
+          value={form.nombreCompleto}
+          onChange={(e) => set("nombreCompleto", e.target.value)}
+          autoComplete="name"
+          aria-invalid={vacio(form.nombreCompleto) ? "true" : undefined}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="email">Correo electrónico</label>
+        <input
+          id="email"
+          className={styles.control}
+          type="email"
+          placeholder="tucorreo@empresa.com"
+          value={form.email}
+          onChange={(e) => set("email", e.target.value)}
+          autoComplete="email"
+          aria-invalid={vacio(form.email) ? "true" : undefined}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="password">Contraseña</label>
+        <div className={styles.passwordWrap}>
+          <input
+            id="password"
+            className={styles.control}
+            type={verPass ? "text" : "password"}
+            placeholder="Mínimo 6 caracteres"
+            value={form.password}
+            onChange={(e) => set("password", e.target.value)}
+            autoComplete="new-password"
+            aria-invalid={vacio(form.password) ? "true" : undefined}
+          />
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={() => setVerPass((v) => !v)}
+            aria-label={verPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+            aria-pressed={verPass}
+          >
+            {verPass ? <OjoOffIcon /> : <OjoIcon />}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="confirm">Confirmar contraseña</label>
+        <input
+          id="confirm"
+          className={styles.control}
+          type={verPass ? "text" : "password"}
+          placeholder="Repite la contraseña"
+          value={form.confirmPassword}
+          onChange={(e) => set("confirmPassword", e.target.value)}
+          autoComplete="new-password"
+          aria-invalid={vacio(form.confirmPassword) ? "true" : undefined}
+        />
+      </div>
+
       <label className={styles.terminos}>
         <input
           type="checkbox"
@@ -102,9 +154,12 @@ export default function RegistroPage() {
         />
         Acepto los términos y condiciones
       </label>
-      <button type="submit" className="btn-primary" disabled={cargando}>
-        {cargando ? "Creando..." : "Crear cuenta"}
+
+      <button type="submit" className={`btn-primary ${styles.submit}`} disabled={cargando}>
+        {cargando && <span className={styles.spinner} aria-hidden="true" />}
+        {cargando ? "Creando…" : "Crear cuenta"}
       </button>
+
       <p className={styles.alt}>
         ¿Ya tienes cuenta? <Link href="/login">Inicia sesión</Link>
       </p>

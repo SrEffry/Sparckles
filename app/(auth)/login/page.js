@@ -4,17 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { iniciarSesion } from "@/lib/auth";
+import { OjoIcon, OjoOffIcon } from "../icons";
 import styles from "../auth.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verPass, setVerPass] = useState(false);
+  const [intentado, setIntentado] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setIntentado(true);
     setError("");
     if (!email || !password) {
       setError("Por favor complete todos los campos.");
@@ -31,29 +35,64 @@ export default function LoginPage() {
   }
 
   return (
-    <form className={styles.card} onSubmit={handleSubmit}>
-      <h2>Iniciar sesión</h2>
-      <p className={styles.sub}>Accede a tu cuenta para continuar</p>
-      {error && <div className="mensaje-error">{error}</div>}
-      <input
-        type="email"
-        placeholder="Correo electrónico"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        autoComplete="email"
-      />
-      <input
-        type="password"
-        placeholder="Contraseña"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        autoComplete="current-password"
-      />
-      <button type="submit" className="btn-primary" disabled={cargando}>
-        {cargando ? "Entrando..." : "Entrar"}
+    <form className={styles.card} onSubmit={handleSubmit} noValidate>
+      <div className={styles.header}>
+        <h2>Iniciar sesión</h2>
+        <p className={styles.sub}>Accede a tu cuenta para continuar</p>
+      </div>
+
+      {error && (
+        <div className="mensaje-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      <div className={styles.field}>
+        <label htmlFor="email">Correo electrónico</label>
+        <input
+          id="email"
+          className={styles.control}
+          type="email"
+          placeholder="tucorreo@empresa.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          aria-invalid={intentado && !email ? "true" : undefined}
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label htmlFor="password">Contraseña</label>
+        <div className={styles.passwordWrap}>
+          <input
+            id="password"
+            className={styles.control}
+            type={verPass ? "text" : "password"}
+            placeholder="Tu contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            aria-invalid={intentado && !password ? "true" : undefined}
+          />
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={() => setVerPass((v) => !v)}
+            aria-label={verPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+            aria-pressed={verPass}
+          >
+            {verPass ? <OjoOffIcon /> : <OjoIcon />}
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" className={`btn-primary ${styles.submit}`} disabled={cargando}>
+        {cargando && <span className={styles.spinner} aria-hidden="true" />}
+        {cargando ? "Entrando…" : "Entrar"}
       </button>
+
       <p className={styles.alt}>
-        ¿Primera vez? <Link href="/registro">Crea tu cuenta</Link>
+        ¿Primera vez en Sparkles? <Link href="/registro">Crea tu cuenta</Link>
       </p>
     </form>
   );

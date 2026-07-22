@@ -1,155 +1,581 @@
-/* ---------- Layout de dos paneles ---------- */
-.shell {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 100vh;
-}
+/* ======================================================================
+   Autenticación — Login / Registro
+   Identidad fija: burdeos + logo. Todo lo demás, desde cero.
+   Dirección: escena editorial premium — burdeos profundo + aurora viva
+   reactiva al puntero, héroe tipográfico y tarjeta de vidrio esmerilado.
+   Creativo pero ordenado. Sin split muerto, sin caja blanca pegada.
+   ====================================================================== */
 
-/* Panel de marca (izquierda) */
-.brandPanel {
+.shell {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
-  overflow: hidden;
-  background: var(--primary-gradient);
-  color: #fff;
-  padding: 48px 40px;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  justify-content: space-between;
-  text-align: center;
+  gap: 30px;
+  padding: 72px 24px 56px;
+  isolation: isolate;
+  color: #fff;
+  /* Burdeos profundo y premium (no el rosa plano) */
+  background:
+    radial-gradient(120% 120% at 50% -10%, rgba(150, 28, 60, 0.55), transparent 60%),
+    radial-gradient(110% 80% at 50% 118%, rgba(0, 0, 0, 0.5), transparent 55%),
+    linear-gradient(158deg, #47101f 0%, #340b16 52%, #21060e 100%);
 }
-/* Patrón de fondo (fondo1.png) como en el sitio original */
-.brandPanel::before {
-  content: "";
+
+/* ---------------- Aurora reactiva ---------------- */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* deriva de tono lentísima: los resplandores respiran dentro del burdeos */
+  animation: hueDrift 42s ease-in-out infinite alternate;
+}
+@keyframes hueDrift {
+  from {
+    filter: hue-rotate(-11deg);
+  }
+  to {
+    filter: hue-rotate(13deg);
+  }
+}
+.orbit {
   position: absolute;
   inset: 0;
-  background: url("/img/fondo1.png") repeat;
-  background-size: 120px;
-  opacity: 0.08;
-  pointer-events: none;
+  will-change: transform;
 }
-.brandTop,
-.ilustracion,
-.soporte {
+.ambient span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  mix-blend-mode: screen; /* la luz suma sobre el burdeos oscuro → glow */
+  will-change: transform;
+}
+.blob1 {
+  width: 44vw;
+  height: 44vw;
+  left: -8vw;
+  top: -10vw;
+  background: radial-gradient(circle, rgba(235, 66, 116, 0.85), transparent 68%);
+  animation: float1 16s ease-in-out infinite alternate;
+}
+.blob2 {
+  width: 52vw;
+  height: 52vw;
+  right: -12vw;
+  bottom: -16vw;
+  background: radial-gradient(circle, rgba(150, 26, 62, 0.9), transparent 66%);
+  animation: float2 21s ease-in-out infinite alternate;
+}
+.blob3 {
+  width: 30vw;
+  height: 30vw;
+  left: 44vw;
+  top: 30vh;
+  background: radial-gradient(circle, rgba(255, 150, 180, 0.55), transparent 70%);
+  animation: float3 13s ease-in-out infinite alternate;
+}
+@keyframes float1 {
+  to {
+    transform: translate(16vw, 12vh) scale(1.15);
+  }
+}
+@keyframes float2 {
+  to {
+    transform: translate(-14vw, -10vh) scale(1.12);
+  }
+}
+@keyframes float3 {
+  to {
+    transform: translate(10vw, -14vh) scale(1.25);
+  }
+}
+
+/* ---------------- Escena editorial ---------------- */
+.scene {
   position: relative;
   z-index: 1;
-}
-.brandLogo {
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  margin-bottom: 12px;
-}
-.brandTop h1 {
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
-.desc {
-  margin-top: 10px;
-  font-size: 15px;
-  opacity: 0.9;
-  line-height: 1.5;
-}
-.ilustracion {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  padding: 20px 0;
-}
-.ilustracionImg {
-  width: 100%;
-  max-width: 340px;
-  height: auto;
-  object-fit: contain;
-}
-.soporte {
-  font-size: 13px;
-  opacity: 0.85;
-}
-
-/* Panel del formulario (derecha) */
-.formPanel {
+  max-width: 1140px;
   display: grid;
-  place-items: center;
-  padding: 40px 24px;
-  background: var(--bg);
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: clamp(40px, 6vw, 84px);
+  padding: 0 clamp(20px, 4vw, 48px);
+  animation: sceneIn 0.7s var(--ease-out) both;
 }
 
-/* ---------- Tarjeta de formulario ---------- */
-.card {
-  width: 100%;
-  max-width: 380px;
+/* Héroe (izquierda) */
+.hero {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: flex-start;
+}
+.brandRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+/* Placa clara para que el logo burdeos resalte sobre el fondo burdeos */
+.brandBadge {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 28px -12px rgba(0, 0, 0, 0.6);
+}
+.brandLogo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.brandWord {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.heroTitle {
+  font-size: clamp(2.2rem, 1.4rem + 2.4vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  max-width: 15ch;
+  /* seguro de legibilidad sobre la aurora en movimiento (invisible) */
+  text-shadow: 0 1px 24px rgba(26, 5, 12, 0.35);
+}
+.accent {
+  color: #ffb9cb; /* rosa suave: dos tonos sin fuente nueva */
+}
+.heroSub {
+  margin-top: 20px;
+  max-width: 42ch;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.84);
+  text-wrap: pretty;
+  text-shadow: 0 1px 16px rgba(26, 5, 12, 0.3);
+}
+/* Firma: factura viva que se liquida y cuadra */
+.invoice {
+  width: 100%;
+  max-width: 340px;
+  margin-top: 32px;
+  padding: 20px 22px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 22px 54px -26px rgba(0, 0, 0, 0.7);
+  animation: invoiceIn 0.6s var(--ease-out) 0.15s both;
+}
+.invoiceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.invoiceTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+.invoiceTag {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.58);
+  font-variant-numeric: tabular-nums;
+}
+.invoiceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+.invoiceRow span:last-child {
+  font-variant-numeric: tabular-nums; /* dígitos de ancho fijo: no saltan al contar */
+}
+.invoiceDivider {
+  height: 1px;
+  margin: 9px 0;
+  background: rgba(255, 255, 255, 0.15);
+}
+.invoiceTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 2px;
+}
+.invoiceTotalLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+.invoiceTotalAmount {
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.cuadra {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #86e6ac; /* verde éxito, aclarado para contraste sobre burdeos */
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-out);
+}
+.cuadra[data-done="true"] {
+  opacity: 1;
+  transform: none;
+}
+.cuadra svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Columna del formulario (derecha) */
+.formCol {
+  display: flex;
+  justify-content: center;
+}
+
+.footer {
+  position: relative;
+  z-index: 1;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* ---------------- Tarjeta de vidrio ---------------- */
+.card {
+  width: 100%;
+  max-width: 416px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  padding: 38px 34px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(28px) saturate(1.2);
+  /* highlight superior (borde de vidrio) + profundidad, sin combo borde+sombra */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 30px 70px -28px rgba(0, 0, 0, 0.7);
+}
+/* Fallback si no hay backdrop-filter o el usuario reduce transparencia */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card {
+    background: #fff;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .card {
+    background: #fff;
+    backdrop-filter: none;
+  }
+}
+
+/* Entrada con stagger sutil (una sola vez, decorativa) */
+.card > * {
+  animation: authIn 0.5s var(--ease-out) both;
+}
+.card > *:nth-child(1) {
+  animation-delay: 0.06s;
+}
+.card > *:nth-child(2) {
+  animation-delay: 0.11s;
+}
+.card > *:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.card > *:nth-child(4) {
+  animation-delay: 0.21s;
+}
+.card > *:nth-child(5) {
+  animation-delay: 0.26s;
+}
+.card > *:nth-child(n + 6) {
+  animation-delay: 0.31s;
+}
+
+.header {
+  margin-bottom: 24px;
 }
 .card h2 {
-  font-size: 24px;
+  font-size: 1.55rem;
   font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text);
 }
-.card .sub {
-  font-size: 14px;
-  color: var(--text-soft);
-  margin-top: -8px;
-  margin-bottom: 4px;
+.sub {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: #55555a;
 }
-.card input[type="text"],
-.card input[type="email"],
-.card input[type="password"] {
+
+/* ---------------- Campos ---------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3a3a3d;
+}
+.control {
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 14px;
-  background: #fff;
+  font-size: 0.9rem;
   font-family: inherit;
+  color: var(--text);
+  caret-color: var(--primary);
+  background: #fff;
+  transition: border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
 }
-.card input:focus {
+.control::placeholder {
+  color: #70707a;
+}
+.control:hover {
+  border-color: #c9c9cf;
+}
+.control:focus {
   outline: none;
   border-color: var(--primary);
+  background: #fff;
   box-shadow: 0 0 0 3px var(--primary-tint);
 }
+.control[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.control[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px var(--danger-tint);
+}
+.control:disabled {
+  background: #f4f4f6;
+  color: var(--text-soft);
+  cursor: not-allowed;
+}
+
+/* Contraseña con botón mostrar/ocultar */
+.passwordWrap {
+  position: relative;
+}
+.passwordWrap .control {
+  padding-right: 44px;
+}
+.toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: color 0.15s var(--ease-out), background 0.15s var(--ease-out);
+}
+.toggle:hover {
+  color: var(--text);
+  background: #f0f0f2;
+}
+.toggle:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* Términos */
 .terminos {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-soft);
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.85rem;
+  color: #4b4b4f;
+  margin-bottom: 18px;
+  cursor: pointer;
 }
 .terminos input {
-  width: auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
 }
+
+/* Botón enviar */
+.submit {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  min-height: 46px;
+  box-shadow: 0 6px 18px -6px rgba(128, 25, 49, 0.5);
+  transition: filter 0.16s var(--ease-out), transform 0.16s var(--ease-out),
+    box-shadow 0.2s var(--ease-out), opacity 0.15s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .submit:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px -8px rgba(128, 25, 49, 0.6);
+  }
+}
+.submit:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 4px 12px -6px rgba(128, 25, 49, 0.5);
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: authSpin 0.6s linear infinite;
+}
+
 .alt {
-  font-size: 13px;
-  color: var(--text-soft);
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: #55555a;
   text-align: center;
 }
 .alt a {
   color: var(--primary);
   font-weight: 600;
+  border-radius: 4px;
 }
+.alt a:hover {
+  text-decoration: underline;
+}
+.alt a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .exito {
   background: var(--success-tint);
   color: var(--success);
   padding: 10px 14px;
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
 }
 
-@media (max-width: 880px) {
-  .shell {
+/* ---------------- Motion ---------------- */
+@keyframes authIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes sceneIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes invoiceIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes authSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient,
+  .ambient span,
+  .scene,
+  .invoice,
+  .cuadra,
+  .card > * {
+    animation: none;
+    transition: none;
+  }
+  .spinner {
+    animation-duration: 1.4s;
+  }
+  .control,
+  .toggle,
+  .submit {
+    transition: none;
+  }
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 920px) {
+  .scene {
     grid-template-columns: 1fr;
+    gap: 40px;
+    max-width: 460px;
+    text-align: center;
   }
-  .brandPanel {
-    padding: 32px 24px;
+  .hero {
+    align-items: center;
   }
-  .ilustracion {
-    display: none;
+  .heroTitle {
+    max-width: 20ch;
   }
-  .brandTop h1 {
-    font-size: 26px;
+  .heroSub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .pills {
+    justify-content: center;
+  }
+}
+@media (max-width: 480px) {
+  .shell {
+    padding: 48px 16px 40px;
+  }
+  .card {
+    padding: 30px 24px;
+  }
+  .heroSub {
+    display: none; /* en móvil, foco al formulario */
   }
 }

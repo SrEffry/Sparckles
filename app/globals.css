@@ -34,7 +34,10 @@ body {
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
+  /* Lienzo tintado (tinte rosa de marca, no beige): claramente un tono, no
+     blanco, para que las superficies blancas se separen y floten. */
+  background: linear-gradient(180deg, #f2edf1 0%, #e7e3ea 100%);
+  background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }

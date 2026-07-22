@@ -1,0 +1,485 @@
+/* ======================================================================
+   Dashboard (Inicio) — registro de producto.
+   Reutiliza los tokens de globals.css. Jerarquía clara, densidad calmada,
+   estados de carga con skeleton, cifras con significado. Sin coreografía.
+   ====================================================================== */
+
+.page {
+  max-width: 1120px;
+}
+
+/* Etiqueta secundaria legible (AA): más oscura que --text-soft (#86868b ≈ 3.5:1) */
+.page {
+  --label: #5b5b60; /* ≈ 4.7:1 sobre blanco */
+}
+
+/* ---------------- Franja de marca (encabezado + KPIs) ---------------- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 26px 26px 28px;
+  margin-bottom: 20px;
+  background: linear-gradient(150deg, #8c1d35 0%, #801931 46%, #6c1228 100%);
+  box-shadow: 0 20px 44px -24px rgba(108, 18, 40, 0.65);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 120% at 88% -25%, rgba(255, 255, 255, 0.16), transparent 55%),
+    radial-gradient(50% 120% at 5% 130%, rgba(0, 0, 0, 0.22), transparent 60%);
+}
+.heroHead {
+  position: relative;
+  margin-bottom: 20px;
+}
+.heroHead h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+.heroHead p {
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* ---------------- KPIs (sobre la franja) ---------------- */
+.kpis {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
+}
+/* KPI destacado (Total facturado): valor en burdeos, mismo card blanco */
+.kpiValueEmph {
+  color: var(--primary);
+}
+.kpiLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--label);
+  letter-spacing: 0.01em;
+}
+.kpiValue {
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.kpiSub {
+  font-size: 12px;
+  color: var(--label);
+}
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.kpiIcon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--c-tint, var(--primary-tint));
+  color: var(--c, var(--primary));
+}
+.kpiIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Colores por dominio (tinte + glifo legible ≥3:1 sobre el tinte) */
+.cPrimary {
+  --c: #801931;
+  --c-tint: #f7e9ec;
+}
+.cInfo {
+  --c: #1565c0;
+  --c-tint: #e3f2fd;
+}
+.cSuccess {
+  --c: #2d7a4b;
+  --c-tint: #e6f7ed;
+}
+.cWarning {
+  --c: #b45309;
+  --c-tint: #fbe7cf;
+}
+.cViolet {
+  --c: #6a3fb5;
+  --c-tint: #eee7fb;
+}
+.cTeal {
+  --c: #0f766e;
+  --c-tint: #d6efeb;
+}
+
+/* ---------------- Columnas (tributario + recientes) ---------------- */
+.cols {
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.panelTitle {
+  font-size: 15px;
+  font-weight: 700;
+}
+.panelLink {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  transition: gap 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.panelLink:hover {
+  gap: 7px;
+}
+.panelLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* Tributario */
+.taxRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.taxLabel {
+  color: var(--label);
+}
+.taxVal {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.taxNeg {
+  color: var(--label);
+}
+.taxResult {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 12px;
+  padding: 13px 15px;
+  border-radius: 11px;
+  background: var(--primary-tint);
+}
+.taxResult.favorBg {
+  background: var(--success-tint);
+}
+.taxResultLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+.taxResultVal {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+.taxResultVal.favor {
+  color: var(--success);
+}
+.taxHint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--label);
+}
+.taxSplit {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Recientes */
+.recent {
+  width: 100%;
+  border-collapse: collapse;
+}
+.recent th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--label);
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+.recent th.right,
+.recent td.right {
+  text-align: right;
+}
+.recent td {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f2;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.recent tbody tr:last-child td {
+  border-bottom: none;
+}
+.recent tbody tr {
+  transition: background 0.12s ease;
+}
+.recent tbody tr:hover {
+  background: #fafafa;
+}
+.rNum {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rClient {
+  color: var(--text);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rDate {
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rAmount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  text-align: center;
+  padding: 22px 12px 12px;
+}
+.emptyText {
+  font-size: 14px;
+  color: var(--label);
+  margin-bottom: 12px;
+}
+.emptyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  border-radius: 8px;
+  transition: gap 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.emptyLink:hover {
+  gap: 9px;
+}
+.emptyLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* ---------------- Accesos rápidos ---------------- */
+.actionsTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--label);
+  margin-bottom: 12px;
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
+}
+.action:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 20px -12px rgba(128, 25, 49, 0.5);
+  transform: translateY(-1px);
+}
+.action:active {
+  transform: translateY(0);
+}
+.action:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.actionIcon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--c-tint, var(--primary-tint));
+  color: var(--c, var(--primary));
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.action:hover .actionIcon {
+  transform: scale(1.07);
+}
+.actionBody {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.actionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.actionCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c, var(--primary));
+  font-variant-numeric: tabular-nums;
+}
+.actionDesc {
+  font-size: 12.5px;
+  color: var(--label);
+  margin-top: 2px;
+}
+.actionArrow {
+  flex-shrink: 0;
+  color: var(--text-soft);
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), color 0.15s ease;
+}
+.action:hover .actionArrow {
+  color: var(--primary);
+  transform: translateX(3px);
+}
+
+/* ---------------- Skeletons (carga) ---------------- */
+.skel {
+  background: linear-gradient(90deg, #ececef 25%, #f6f6f8 37%, #ececef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 6px;
+}
+.skelValue {
+  height: 26px;
+  width: 62%;
+  margin-top: 2px;
+}
+.skelLabel {
+  height: 11px;
+  width: 44%;
+}
+.skelRow {
+  height: 13px;
+  width: 100%;
+  margin: 11px 0;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Aparición del contenido real (cambio de estado carga→datos, no coreografía) */
+.enter {
+  animation: fadeIn 0.2s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel {
+    animation: none;
+    background: #ececef;
+  }
+  .enter,
+  .action,
+  .actionIcon,
+  .actionArrow,
+  .panelLink,
+  .emptyLink,
+  .recent tbody tr {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 900px) {
+  .kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cols {
+    grid-template-columns: 1fr;
+  }
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    padding: 20px 18px 22px;
+  }
+}

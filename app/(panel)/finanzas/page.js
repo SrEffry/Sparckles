@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { obtenerResumen } from "@/lib/resumenApi";
+import { SoporteIcon, ComprasIcon, FacturaIcon, ChevronIcon } from "../moduleIcons";
 import styles from "../hubs.module.css";
 
 const fmt = (v) =>
@@ -78,21 +79,25 @@ export default function FinanzasPage() {
       )}
 
       <section className={styles.cardsGrid} style={{ marginTop: 24 }}>
-        <button className={styles.linkCard} onClick={() => router.push("/documentos-soportes")}>
-          <h3>Documentos soporte</h3>
-          <p>Adquisiciones a no obligados a facturar</p>
-          {r?.soportes != null && <span className={styles.linkCount}>{r.soportes}</span>}
-        </button>
-        <button className={styles.linkCard} onClick={() => router.push("/compras")}>
-          <h3>Compras</h3>
-          <p>Facturas de proveedores</p>
-          {r?.compras != null && <span className={styles.linkCount}>{r.compras}</span>}
-        </button>
-        <button className={styles.linkCard} onClick={() => router.push("/facturacion")}>
-          <h3>Facturas</h3>
-          <p>Ingresos facturados</p>
-          {r?.facturas != null && <span className={styles.linkCount}>{r.facturas}</span>}
-        </button>
+        {[
+          { icon: <SoporteIcon />, color: styles.cTeal, t: "Documentos soporte", d: "Adquisiciones a no obligados a facturar", count: r?.soportes, href: "/documentos-soportes" },
+          { icon: <ComprasIcon />, color: styles.cWarning, t: "Compras", d: "Facturas de proveedores", count: r?.compras, href: "/compras" },
+          { icon: <FacturaIcon />, color: styles.cPrimary, t: "Facturas", d: "Ingresos facturados", count: r?.facturas, href: "/facturacion" },
+        ].map((x) => (
+          <button key={x.t} className={`${styles.linkCard} ${x.color}`} onClick={() => router.push(x.href)}>
+            <span className={styles.linkIcon}>{x.icon}</span>
+            <span className={styles.linkBody}>
+              <span className={styles.linkHead}>
+                {x.t}
+                {x.count != null && <span className={styles.linkCount}>{x.count}</span>}
+              </span>
+              <span className={styles.linkDesc}>{x.d}</span>
+            </span>
+            <span className={styles.linkArrow}>
+              <ChevronIcon />
+            </span>
+          </button>
+        ))}
       </section>
     </div>
   );

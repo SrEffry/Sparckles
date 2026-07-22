@@ -2,7 +2,7 @@
   --bg: #f5f5f7;
   --surface: #ffffff;
   --text: #1d1d1f;
-  --text-soft: #86868b;
+  --text-soft: #6b6b70; /* gris secundario legible (≈4.7:1 sobre blanco, AA) */
   --border: #e0e0e0;
   /* Marca real del sitio actual: vino/burdeos */
   --primary: #801931;

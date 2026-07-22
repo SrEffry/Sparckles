@@ -14,7 +14,7 @@ import {
   ProductoIcon,
   BilleteIcon,
   ChevronIcon,
-} from "./icons";
+} from "../moduleIcons";
 import styles from "./dashboard.module.css";
 
 const cop = new Intl.NumberFormat("es-CO", {

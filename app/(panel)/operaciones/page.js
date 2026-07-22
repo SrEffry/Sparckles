@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { obtenerResumen } from "@/lib/resumenApi";
+import {
+  FacturaIcon,
+  NotasIcon,
+  ComprasIcon,
+  AsientosIcon,
+  ConfigIcon,
+  ChevronIcon,
+} from "../moduleIcons";
 import styles from "../hubs.module.css";
 
 export default function OperacionesPage() {
@@ -14,12 +22,12 @@ export default function OperacionesPage() {
   }, []);
 
   const cards = [
-    { t: "Nueva factura", d: "Emitir una factura de venta", href: "/facturacion/nueva" },
-    { t: "Facturas", d: "Historial de facturación", c: r?.facturas, href: "/facturacion" },
-    { t: "Notas D/C", d: "Notas débito y crédito (DIAN)", c: r?.notas, href: "/notas" },
-    { t: "Compras", d: "Facturas de proveedores", c: r?.compras, href: "/compras" },
-    { t: "Asientos contables", d: "Registro de partida doble sobre el PUC", c: r?.asientos, href: "/asientos-contables" },
-    { t: "Config. Facturación", d: "Emisor y resolución DIAN", href: "/facturacion/configurar" },
+    { icon: <FacturaIcon />, color: styles.cPrimary, t: "Nueva factura", d: "Emitir una factura de venta", href: "/facturacion/nueva" },
+    { icon: <FacturaIcon />, color: styles.cPrimary, t: "Facturas", d: "Historial de facturación", count: r?.facturas, href: "/facturacion" },
+    { icon: <NotasIcon />, color: styles.cTeal, t: "Notas D/C", d: "Notas débito y crédito (DIAN)", count: r?.notas, href: "/notas" },
+    { icon: <ComprasIcon />, color: styles.cWarning, t: "Compras", d: "Facturas de proveedores", count: r?.compras, href: "/compras" },
+    { icon: <AsientosIcon />, color: styles.cViolet, t: "Asientos contables", d: "Registro de partida doble sobre el PUC", count: r?.asientos, href: "/asientos-contables" },
+    { icon: <ConfigIcon />, color: styles.cSlate, t: "Config. Facturación", d: "Emisor y resolución DIAN", href: "/facturacion/configurar" },
   ];
 
   return (
@@ -30,10 +38,18 @@ export default function OperacionesPage() {
       </div>
       <section className={styles.cardsGrid}>
         {cards.map((x) => (
-          <button key={x.t} className={styles.linkCard} onClick={() => router.push(x.href)}>
-            <h3>{x.t}</h3>
-            <p>{x.d}</p>
-            {x.c != null && <span className={styles.linkCount}>{x.c}</span>}
+          <button key={x.t} className={`${styles.linkCard} ${x.color}`} onClick={() => router.push(x.href)}>
+            <span className={styles.linkIcon}>{x.icon}</span>
+            <span className={styles.linkBody}>
+              <span className={styles.linkHead}>
+                {x.t}
+                {x.count != null && <span className={styles.linkCount}>{x.count}</span>}
+              </span>
+              <span className={styles.linkDesc}>{x.d}</span>
+            </span>
+            <span className={styles.linkArrow}>
+              <ChevronIcon />
+            </span>
           </button>
         ))}
       </section>

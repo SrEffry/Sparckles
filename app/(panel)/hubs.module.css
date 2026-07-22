@@ -1,33 +1,89 @@
+/* ======================================================================
+   Hubs (Operaciones, Finanzas, Configuración) — mismo lenguaje que el
+   dashboard: franja de marca, tarjetas que flotan, color por dominio.
+   ====================================================================== */
+
 .page {
-  max-width: 1080px;
+  max-width: 1120px;
+  --label: #5b5b60; /* etiqueta secundaria legible (AA) */
 }
 
+/* ---------------- Franja de marca (encabezado del hub) ---------------- */
 .welcome {
-  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 26px 28px;
+  margin-bottom: 22px;
+  background: linear-gradient(150deg, #8c1d35 0%, #801931 46%, #6c1228 100%);
+  box-shadow: 0 20px 44px -24px rgba(108, 18, 40, 0.65);
+}
+.welcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 120% at 88% -25%, rgba(255, 255, 255, 0.16), transparent 55%),
+    radial-gradient(50% 120% at 5% 130%, rgba(0, 0, 0, 0.22), transparent 60%);
 }
 .welcome h1 {
-  font-size: 28px;
+  position: relative;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
 }
 .welcome p {
-  color: var(--text-soft);
-  font-size: 14px;
+  position: relative;
   margin-top: 4px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.82);
 }
 
+/* ---------------- Tabs (Finanzas / Recursos) ---------------- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  background: none;
+  border: none;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--label);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tabActive {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ---------------- KPIs ---------------- */
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .kpi {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
 }
 .kpi.brand {
   background: var(--primary-gradient);
@@ -35,33 +91,33 @@
   color: #fff;
 }
 .kpiValor {
-  font-size: 26px;
+  font-size: 25px;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 .kpiLabel {
   font-size: 13px;
-  color: var(--text-soft);
+  font-weight: 500;
+  color: var(--label);
 }
 .kpi.brand .kpiLabel {
   color: rgba(255, 255, 255, 0.85);
 }
 
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 24px;
-}
-
+/* ---------------- Paneles ---------------- */
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
 }
 .panelTitle {
-  font-size: 16px;
-  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
@@ -77,108 +133,169 @@
   border-bottom: none;
 }
 .row span {
-  color: var(--text-soft);
+  color: var(--label);
 }
 .row strong {
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .rowHi {
-  padding-top: 12px;
-  margin-top: 6px;
-  border-top: 2px solid var(--border);
+  margin-top: 10px;
+  padding: 13px 15px;
+  border-radius: 11px;
+  background: var(--primary-tint);
   border-bottom: none;
 }
 .rowHi strong {
   font-size: 18px;
   color: var(--primary);
 }
-.pos strong {
+.rowHi.pos {
+  background: var(--success-tint);
+}
+.rowHi.pos strong {
   color: var(--success);
 }
-.neg strong {
+.rowHi.neg {
+  background: var(--danger-tint);
+}
+.rowHi.neg strong {
   color: var(--danger);
 }
 
-.recent {
-  width: 100%;
-  border-collapse: collapse;
-}
-.recent td {
-  padding: 9px 0;
-  border-bottom: 1px solid #f0f0f2;
-  font-size: 13px;
-}
-.recent tr:last-child td {
-  border-bottom: none;
-}
-.recentEmpty {
-  color: var(--text-soft);
-  font-size: 14px;
-  padding: 12px 0;
-}
-
+/* ---------------- Grilla de accesos (tarjetas de dominio) ---------------- */
 .cardsGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 14px;
 }
 .linkCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 22px;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  padding: 16px 18px;
   text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
 }
 .linkCard:hover {
   border-color: var(--primary);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 20px -12px rgba(128, 25, 49, 0.5);
+  transform: translateY(-1px);
 }
-.linkCard h3 {
-  font-size: 16px;
+.linkCard:active {
+  transform: translateY(0);
 }
-.linkCard p {
-  font-size: 13px;
-  color: var(--text-soft);
+.linkCard:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
-.linkCount {
-  margin-top: 8px;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--primary);
+.linkIcon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--c-tint, var(--primary-tint));
+  color: var(--c, var(--primary));
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1);
 }
-
-.tabs {
+.linkCard:hover .linkIcon {
+  transform: scale(1.07);
+}
+.linkBody {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  gap: 8px;
-  margin-bottom: 22px;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
 }
-.tab {
-  background: none;
-  border: none;
-  padding: 12px 18px;
+.linkHead {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-soft);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
-.tabActive {
+.linkCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c, var(--primary));
+  font-variant-numeric: tabular-nums;
+}
+.linkDesc {
+  font-size: 12.5px;
+  color: var(--label);
+  margin-top: 2px;
+}
+.linkArrow {
+  flex-shrink: 0;
+  color: var(--text-soft);
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), color 0.15s ease;
+}
+.linkCard:hover .linkArrow {
   color: var(--primary);
-  border-bottom-color: var(--primary);
+  transform: translateX(3px);
 }
 
+/* ---------------- Colores por dominio ---------------- */
+.cPrimary {
+  --c: #801931;
+  --c-tint: #f7e9ec;
+}
+.cInfo {
+  --c: #1565c0;
+  --c-tint: #e3f2fd;
+}
+.cSuccess {
+  --c: #2d7a4b;
+  --c-tint: #e6f7ed;
+}
+.cWarning {
+  --c: #b45309;
+  --c-tint: #fbe7cf;
+}
+.cViolet {
+  --c: #6a3fb5;
+  --c-tint: #eee7fb;
+}
+.cTeal {
+  --c: #0f766e;
+  --c-tint: #d6efeb;
+}
+.cSlate {
+  --c: #475569;
+  --c-tint: #eef1f5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linkCard,
+  .linkIcon,
+  .linkArrow,
+  .tab {
+    transition: none;
+  }
+}
+
+/* ---------------- Responsive ---------------- */
 @media (max-width: 900px) {
   .kpis {
     grid-template-columns: repeat(2, 1fr);
   }
-  .grid2,
   .cardsGrid {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+  .welcome {
+    padding: 20px 18px;
   }
 }

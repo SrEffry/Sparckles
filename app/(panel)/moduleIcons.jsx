@@ -1,4 +1,4 @@
-// Iconos de línea para los accesos rápidos del dashboard. Estilo uniforme:
+// Iconos de línea compartidos por el dashboard y los hubs. Estilo uniforme:
 // 20px, viewBox 24, stroke currentColor 1.75, caps/joins redondeados.
 const base = {
   width: 20,
@@ -88,6 +88,37 @@ export function BilleteIcon() {
       <rect x="2.5" y="6.5" width="19" height="11" rx="2" />
       <circle cx="12" cy="12" r="2.4" />
       <path d="M6 10v4M18 10v4" />
+    </svg>
+  );
+}
+
+export function EmpresaIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 21V6a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v15" />
+      <path d="M13 10h5a1 1 0 0 1 1 1v10" />
+      <path d="M3 21h18" />
+      <path d="M7 8.5h2.5M7 12h2.5M7 15.5h2.5M16 14h0M16 17.5h0" />
+    </svg>
+  );
+}
+
+export function ConfigIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+      <circle cx="9" cy="7" r="2" />
+      <circle cx="15" cy="12" r="2" />
+      <circle cx="8" cy="17" r="2" />
+    </svg>
+  );
+}
+
+export function SoporteIcon() {
+  return (
+    <svg {...base}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+      <path d="M9.5 8h5M9.5 12h5" />
     </svg>
   );
 }

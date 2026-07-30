@@ -45,6 +45,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 22px;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
 }
 .cardTitle {
   font-size: 17px;
@@ -145,6 +146,86 @@
   padding: 22px;
   position: sticky;
   top: 20px;
+  box-shadow: 0 1px 2px rgba(30, 12, 20, 0.04), 0 6px 14px -10px rgba(30, 12, 20, 0.18);
+}
+
+.atajos {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.chipBtn {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.chipBtn:hover {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 8px 0;
+  cursor: pointer;
+}
+.checkRow input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.mediosHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.instrumento {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1.3fr 0.9fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.instrumento select,
+.instrumento input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fafafa;
+  font-family: inherit;
+}
+.instrumento select:focus,
+.instrumento input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+.cuadre {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+}
+.cuadre[data-ok="false"] {
+  color: var(--danger);
+}
+@media (max-width: 620px) {
+  .instrumento {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .row {
   display: flex;

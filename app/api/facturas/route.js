@@ -68,6 +68,9 @@ export async function POST(request) {
       productosPorId,
       items,
       emisorResponsableIva: config.responsableIva,
+      descuentoGlobalPorcentaje: Number(body.descuentoGlobalPorcentaje) || 0,
+      reteIvaPorcentaje: Number(body.reteIvaPorcentaje) || 0,
+      reteIcaPorMil: Number(body.reteIcaPorMil) || 0,
     });
   } catch (e) {
     if (e.code === "CONCEPTO_RETENCION_INVALIDO") {
@@ -77,6 +80,18 @@ export async function POST(request) {
       );
     }
     throw e;
+  }
+
+  // Los instrumentos de cobro deben cuadrar con el total a cobrar (cálculo autoritativo).
+  const instrumentos = Array.isArray(body.instrumentos) ? body.instrumentos : [];
+  if (instrumentos.length) {
+    const suma = instrumentos.reduce((a, x) => a + (Number(x.valor) || 0), 0);
+    if (Math.abs(suma - Number(calc.totalACobrar)) > 1) {
+      return NextResponse.json(
+        { error: "Los medios de pago registrados no cuadran con el total a cobrar." },
+        { status: 400 }
+      );
+    }
   }
 
   try {
@@ -136,7 +151,15 @@ export async function POST(request) {
           fecha,
           fechaVencimiento: body.fechaVencimiento || null,
           formaPago: body.formaPago || null,
-          medioPago: body.medioPago || null,
+          medioPago: body.medioPago || instrumentos[0]?.medio || null,
+          instrumentos: instrumentos.length
+            ? instrumentos.map((x) => ({
+                medio: String(x.medio),
+                banco: x.banco || null,
+                referencia: x.referencia || null,
+                valor: Number(x.valor) || 0,
+              }))
+            : null,
           observaciones: (body.observaciones || "").trim() || null,
           estado: "emitida",
           // Snapshot del cliente
@@ -160,6 +183,7 @@ export async function POST(request) {
           total: calc.total,
           totalACobrar: calc.totalACobrar,
           retencionesPorConcepto: calc.retencionesPorConcepto,
+          retencionesFiscales: calc.retencionesFiscales,
           // Snapshot del emisor (debe permitir reconstruir la representación gráfica histórica)
           emisorRazonSocial: cfg.razonSocial,
           emisorNit: cfg.nit,

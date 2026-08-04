@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { listarCompras, crearCompra, actualizarCompra, eliminarCompra, obtenerCompra } from "@/lib/comprasApi";
+import ImportExport from "@/components/ImportExport";
 import styles from "./compras.module.css";
 
 const fmt = (v) =>
@@ -78,7 +79,10 @@ export default function ComprasPage() {
           <h1>Compras</h1>
           <p>Facturas de proveedores</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ compra: null })}>+ Nueva compra</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ImportExport modulo="compras" soportaImport onImported={recargar} />
+          <button className="btn-primary" onClick={() => setModal({ compra: null })}>+ Nueva compra</button>
+        </div>
       </header>
 
       <section className={styles.stats}>

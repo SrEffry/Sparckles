@@ -8,6 +8,7 @@ import {
   actualizarProducto,
   eliminarProducto,
 } from "@/lib/productosApi";
+import ImportExport from "@/components/ImportExport";
 import styles from "./productos.module.css";
 
 const UNIDADES = ["Unidad", "Kilogramo", "Gramo", "Libra", "Metro", "Litro", "Hora", "Servicio"];
@@ -88,9 +89,12 @@ export default function ProductosPage() {
           <h1>Mis Productos</h1>
           <p>Catálogo de productos y servicios</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ producto: null })}>
-          + Nuevo producto
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ImportExport modulo="productos" soportaImport onImported={recargar} />
+          <button className="btn-primary" onClick={() => setModal({ producto: null })}>
+            + Nuevo producto
+          </button>
+        </div>
       </header>
 
       <section className={styles.stats}>

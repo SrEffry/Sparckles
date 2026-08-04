@@ -8,6 +8,7 @@ import {
   actualizarCliente,
   eliminarCliente,
 } from "@/lib/clientesApi";
+import ImportExport from "@/components/ImportExport";
 import styles from "./clientes.module.css";
 
 const TIPOS_DOC = [
@@ -96,9 +97,12 @@ export default function ClientesPage() {
           <h1>Clientes</h1>
           <p>Gestiona tus clientes y su información de retención</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ cliente: null })}>
-          + Nuevo cliente
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ImportExport modulo="clientes" soportaImport onImported={recargar} />
+          <button className="btn-primary" onClick={() => setModal({ cliente: null })}>
+            + Nuevo cliente
+          </button>
+        </div>
       </header>
 
       <section className={styles.stats}>

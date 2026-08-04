@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listarFacturas, obtenerFactura, anularFactura } from "@/lib/facturasApi";
 import { generarFacturaPDF } from "@/lib/pdf/facturaPdf";
+import ImportExport from "@/components/ImportExport";
 import styles from "./facturacion.module.css";
 
 const fmt = (v) =>
@@ -69,9 +70,12 @@ export default function HistorialFacturasPage() {
           <h1>Facturas</h1>
           <p>Historial de facturación</p>
         </div>
-        <button className="btn-primary" onClick={() => router.push("/facturacion/nueva")}>
-          + Nueva factura
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ImportExport modulo="ventas" />
+          <button className="btn-primary" onClick={() => router.push("/facturacion/nueva")}>
+            + Nueva factura
+          </button>
+        </div>
       </header>
 
       <section className={styles.stats}>

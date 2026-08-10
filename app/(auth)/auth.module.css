@@ -1,295 +1,104 @@
 /* ======================================================================
    Autenticación — Login / Registro
-   Identidad fija: burdeos + logo. Todo lo demás, desde cero.
-   Dirección: escena editorial premium — burdeos profundo + aurora viva
-   reactiva al puntero, héroe tipográfico y tarjeta de vidrio esmerilado.
-   Creativo pero ordenado. Sin split muerto, sin caja blanca pegada.
+   Escena final: video de marca a la derecha + panel oscuro a la izquierda
+   con el formulario. La tarjeta no lleva chrome propio: el formulario vive
+   directamente sobre el panel, en texto claro.
+   La estructura del formulario (label + control + toggle de contraseña +
+   spinner) está reestilizada para fondo oscuro; el marcado y los estados
+   de accesibilidad no cambian.
    ====================================================================== */
 
 .shell {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 30px;
-  padding: 72px 24px 56px;
-  isolation: isolate;
-  color: #fff;
-  /* Burdeos profundo y premium (no el rosa plano) */
-  background:
-    radial-gradient(120% 120% at 50% -10%, rgba(150, 28, 60, 0.55), transparent 60%),
-    radial-gradient(110% 80% at 50% 118%, rgba(0, 0, 0, 0.5), transparent 55%),
-    linear-gradient(158deg, #47101f 0%, #340b16 52%, #21060e 100%);
+  min-height: 100vh;
+  background: #ffffff;
 }
 
-/* ---------------- Aurora reactiva ---------------- */
-.ambient {
+/* ---------------- Zona de video (a la derecha del panel) ---------------- */
+.videoZone {
   position: fixed;
-  inset: 0;
+  inset: 0 0 0 min(50%, 560px);
   z-index: 0;
+  /* mismo tono que el fondo del video, para que no se note el borde */
+  background: #c9c4bb;
   overflow: hidden;
-  pointer-events: none;
-  /* deriva de tono lentísima: los resplandores respiran dentro del burdeos */
-  animation: hueDrift 42s ease-in-out infinite alternate;
 }
-@keyframes hueDrift {
-  from {
-    filter: hue-rotate(-11deg);
-  }
-  to {
-    filter: hue-rotate(13deg);
-  }
-}
-.orbit {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-}
-.ambient span {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(72px);
-  mix-blend-mode: screen; /* la luz suma sobre el burdeos oscuro → glow */
-  will-change: transform;
-}
-.blob1 {
-  width: 44vw;
-  height: 44vw;
-  left: -8vw;
-  top: -10vw;
-  background: radial-gradient(circle, rgba(235, 66, 116, 0.85), transparent 68%);
-  animation: float1 16s ease-in-out infinite alternate;
-}
-.blob2 {
-  width: 52vw;
-  height: 52vw;
-  right: -12vw;
-  bottom: -16vw;
-  background: radial-gradient(circle, rgba(150, 26, 62, 0.9), transparent 66%);
-  animation: float2 21s ease-in-out infinite alternate;
-}
-.blob3 {
-  width: 30vw;
-  height: 30vw;
-  left: 44vw;
-  top: 30vh;
-  background: radial-gradient(circle, rgba(255, 150, 180, 0.55), transparent 70%);
-  animation: float3 13s ease-in-out infinite alternate;
-}
-@keyframes float1 {
-  to {
-    transform: translate(16vw, 12vh) scale(1.15);
-  }
-}
-@keyframes float2 {
-  to {
-    transform: translate(-14vw, -10vh) scale(1.12);
-  }
-}
-@keyframes float3 {
-  to {
-    transform: translate(10vw, -14vh) scale(1.25);
-  }
-}
-
-/* ---------------- Escena editorial ---------------- */
-.scene {
-  position: relative;
-  z-index: 1;
+.bgVideo {
   width: 100%;
-  max-width: 1140px;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  align-items: center;
-  gap: clamp(40px, 6vw, 84px);
-  padding: 0 clamp(20px, 4vw, 48px);
-  animation: sceneIn 0.7s var(--ease-out) both;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-/* Héroe (izquierda) */
-.hero {
+/* ---------------- Panel lateral ---------------- */
+.authPanel {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  height: 100vh;
+  width: min(50%, 560px);
+  min-width: 380px;
+  background: linear-gradient(180deg, #0c0a0b 0%, #050405 100%);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  padding: 48px 56px;
+  box-shadow: 40px 0 90px rgba(0, 0, 0, 0.55);
+  overflow-y: auto;
 }
-.brandRow {
-  display: inline-flex;
+
+/* Logo + nombre, arriba del panel */
+.topBlock {
+  flex-shrink: 0;
+}
+.brandBlock {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 30px;
+  gap: 14px;
 }
-/* Placa clara para que el logo burdeos resalte sobre el fondo burdeos */
-.brandBadge {
+.logoBadge {
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 15px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
   background: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 12px 28px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
 }
-.brandLogo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-.brandWord {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.heroTitle {
-  font-size: clamp(2.2rem, 1.4rem + 2.4vw, 3.35rem);
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  text-wrap: balance;
-  max-width: 15ch;
-  /* seguro de legibilidad sobre la aurora en movimiento (invisible) */
-  text-shadow: 0 1px 24px rgba(26, 5, 12, 0.35);
-}
-.accent {
-  color: #ffb9cb; /* rosa suave: dos tonos sin fuente nueva */
-}
-.heroSub {
-  margin-top: 20px;
-  max-width: 42ch;
-  font-size: 1.02rem;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.84);
-  text-wrap: pretty;
-  text-shadow: 0 1px 16px rgba(26, 5, 12, 0.3);
-}
-/* Firma: factura viva que se liquida y cuadra */
-.invoice {
-  width: 100%;
-  max-width: 340px;
-  margin-top: 32px;
-  padding: 20px 22px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 22px 54px -26px rgba(0, 0, 0, 0.7);
-  animation: invoiceIn 0.6s var(--ease-out) 0.15s both;
-}
-.invoiceHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.invoiceTitle {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
-}
-.invoiceTag {
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.58);
-  font-variant-numeric: tabular-nums;
-}
-.invoiceRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
-}
-.invoiceRow span:last-child {
-  font-variant-numeric: tabular-nums; /* dígitos de ancho fijo: no saltan al contar */
-}
-.invoiceDivider {
-  height: 1px;
-  margin: 9px 0;
-  background: rgba(255, 255, 255, 0.15);
-}
-.invoiceTotal {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding-top: 2px;
-}
-.invoiceTotalLabel {
-  font-size: 0.85rem;
-  font-weight: 600;
+.brandName {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   color: #fff;
 }
-.invoiceTotalAmount {
-  font-size: 1.18rem;
-  font-weight: 700;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-}
-.cuadra {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 12px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #86e6ac; /* verde éxito, aclarado para contraste sobre burdeos */
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-out);
-}
-.cuadra[data-done="true"] {
-  opacity: 1;
-  transform: none;
-}
-.cuadra svg {
-  width: 13px;
-  height: 13px;
-}
 
-/* Columna del formulario (derecha) */
-.formCol {
-  display: flex;
-  justify-content: center;
-}
-
-.footer {
-  position: relative;
-  z-index: 1;
-  font-size: 0.8rem;
-  letter-spacing: 0.01em;
-  color: rgba(255, 255, 255, 0.62);
-}
-
-/* ---------------- Tarjeta de vidrio ---------------- */
-.card {
-  width: 100%;
-  max-width: 416px;
-  text-align: left;
+/* Formulario centrado verticalmente entre el logo y el pie */
+.formWrap {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 38px 34px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(28px) saturate(1.2);
-  /* highlight superior (borde de vidrio) + profundidad, sin combo borde+sombra */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 30px 70px -28px rgba(0, 0, 0, 0.7);
-}
-/* Fallback si no hay backdrop-filter o el usuario reduce transparencia */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .card {
-    background: #fff;
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .card {
-    background: #fff;
-    backdrop-filter: none;
-  }
+  justify-content: center;
+  padding: 32px 0;
 }
 
-/* Entrada con stagger sutil (una sola vez, decorativa) */
+/* Pie del panel */
+.soporte {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  padding-top: 24px;
+}
+
+/* ---------------- Formulario ---------------- */
+.card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
+}
+
+/* Entrada con stagger sutil (decorativa, una sola vez) */
 .card > * {
   animation: authIn 0.5s var(--ease-out) both;
 }
@@ -316,15 +125,15 @@
   margin-bottom: 24px;
 }
 .card h2 {
-  font-size: 1.55rem;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--text);
+  letter-spacing: -0.5px;
+  color: #fff;
 }
 .sub {
-  margin-top: 4px;
-  font-size: 0.9rem;
-  color: #55555a;
+  margin-top: 6px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ---------------- Campos ---------------- */
@@ -337,42 +146,51 @@
 .field label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #3a3a3d;
+  color: rgba(255, 255, 255, 0.72);
 }
 .control {
   width: 100%;
-  padding: 11px 14px;
-  border: 1px solid var(--border);
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-family: inherit;
-  color: var(--text);
-  caret-color: var(--primary);
-  background: #fff;
-  transition: border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  color: #fff;
+  caret-color: #f2a6bd;
+  background: rgba(255, 255, 255, 0.06);
+  transition: border-color 0.15s var(--ease-out), background 0.15s var(--ease-out),
+    box-shadow 0.15s var(--ease-out);
 }
 .control::placeholder {
-  color: #70707a;
+  color: rgba(255, 255, 255, 0.4);
 }
 .control:hover {
-  border-color: #c9c9cf;
+  border-color: rgba(255, 255, 255, 0.28);
 }
 .control:focus {
   outline: none;
-  border-color: var(--primary);
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--primary-tint);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(160, 34, 68, 0.4);
 }
 .control[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: #e27070;
 }
 .control[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px var(--danger-tint);
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.35);
 }
 .control:disabled {
-  background: #f4f4f6;
-  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.4);
   cursor: not-allowed;
+}
+/* Autofill de Chrome: sin esto el navegador pinta el campo de blanco */
+.control:-webkit-autofill,
+.control:-webkit-autofill:hover,
+.control:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px #161214 inset;
+  caret-color: #fff;
 }
 
 /* Contraseña con botón mostrar/ocultar */
@@ -394,19 +212,19 @@
   border: none;
   border-radius: 8px;
   background: none;
-  color: var(--text-soft);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: color 0.15s var(--ease-out), background 0.15s var(--ease-out);
 }
 .toggle:hover {
-  color: var(--text);
-  background: #f0f0f2;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 .toggle:active {
   transform: translateY(-50%) scale(0.92);
 }
 .toggle:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid #f2a6bd;
   outline-offset: 1px;
 }
 
@@ -415,8 +233,8 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  font-size: 0.85rem;
-  color: #4b4b4f;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 18px;
   cursor: pointer;
 }
@@ -463,13 +281,13 @@
 .alt {
   margin-top: 20px;
   padding-top: 18px;
-  border-top: 1px solid var(--border);
-  font-size: 0.85rem;
-  color: #55555a;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
   text-align: center;
 }
 .alt a {
-  color: var(--primary);
+  color: #f2a6bd;
   font-weight: 600;
   border-radius: 4px;
 }
@@ -477,16 +295,17 @@
   text-decoration: underline;
 }
 .alt a:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid #f2a6bd;
   outline-offset: 2px;
 }
 
 .exito {
-  background: var(--success-tint);
-  color: var(--success);
+  background: rgba(45, 122, 75, 0.2);
+  border: 1px solid rgba(45, 122, 75, 0.5);
+  color: #8fe0ab;
   padding: 10px 14px;
   border-radius: 10px;
-  font-size: 0.85rem;
+  font-size: 13px;
   margin-bottom: 16px;
 }
 
@@ -501,40 +320,14 @@
     transform: translateY(0);
   }
 }
-@keyframes sceneIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-@keyframes invoiceIn {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 @keyframes authSpin {
   to {
     transform: rotate(360deg);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ambient,
-  .ambient span,
-  .scene,
-  .invoice,
-  .cuadra,
   .card > * {
     animation: none;
-    transition: none;
   }
   .spinner {
     animation-duration: 1.4s;
@@ -544,38 +337,30 @@
   .submit {
     transition: none;
   }
+  .bgVideo {
+    display: none;
+  }
 }
 
 /* ---------------- Responsive ---------------- */
-@media (max-width: 920px) {
-  .scene {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    max-width: 460px;
-    text-align: center;
+@media (max-width: 880px) {
+  .videoZone {
+    display: none;
   }
-  .hero {
-    align-items: center;
+  .authPanel {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 100vh;
+    padding: 36px 28px;
+    box-shadow: none;
   }
-  .heroTitle {
-    max-width: 20ch;
+  .brandName {
+    font-size: 24px;
   }
-  .heroSub {
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .pills {
-    justify-content: center;
-  }
-}
-@media (max-width: 480px) {
-  .shell {
-    padding: 48px 16px 40px;
-  }
-  .card {
-    padding: 30px 24px;
-  }
-  .heroSub {
-    display: none; /* en móvil, foco al formulario */
+  .card h2 {
+    font-size: 26px;
   }
 }

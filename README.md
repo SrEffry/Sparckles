@@ -23,8 +23,9 @@ contabilidad de partida doble sobre el **PUC**, nómina y tableros financieros.
 | **Nómina** | Empleados y liquidación (salario proporcional, salud/pensión 4%, devengos y deducciones). |
 | **Dashboard / Operaciones / Finanzas** | Hubs con datos reales agregados: facturado, IVA generado/descontable, **IVA por pagar**, retenciones. |
 
-> **Catálogo PUC incluido:** 4.322 cuentas cargables a la base de datos, **separadas por sector** —
-> comercial (Decreto 2650) y entidades sin ánimo de lucro (ESAL), porque varias cuentas difieren.
+> **Catálogo PUC incluido:** 841 cuentas bajo **NIIF** cargables a la base de datos, **separadas por
+> sector** — comercial (403) y entidades sin ánimo de lucro (438, NIIF para Pymes), porque varias
+> cuentas difieren.
 
 ---
 
@@ -36,25 +37,33 @@ cd Sparckles
 npm install
 ```
 
-**1. Base de datos** (elige una):
+**1. Base de datos.** Con PostgreSQL instalado, crea un rol y una base dedicados
+(como superusuario `postgres`):
 
-```bash
-npx prisma dev      # Postgres local para desarrollo → copia el DATABASE_URL al .env
-npx create-db       # Prisma Postgres en la nube
+```sql
+CREATE ROLE sparkles WITH LOGIN CREATEDB PASSWORD 'tu-contraseña';
+CREATE DATABASE sparkles OWNER sparkles;
 ```
 
-**2. Configura el `.env`:**
+> `CREATEDB` solo hace falta en desarrollo: `prisma migrate dev` crea una *shadow database*
+> temporal. En producción se usa `migrate deploy` y el rol va sin ese permiso.
+
+**2. Configura el `.env`** (copia la plantilla y rellena):
+
+```bash
+cp .env.example .env
+```
 
 ```env
-DATABASE_URL="postgres://..."
-JWT_SECRET="un-secreto-fuerte"
+DATABASE_URL="postgresql://sparkles:tu-contraseña@localhost:5432/sparkles?schema=public"
+JWT_SECRET="genéralo con: openssl rand -base64 32"
 ```
 
-**3. Crea las tablas y arranca:**
+**3. Aplica las migraciones y arranca:**
 
 ```bash
-npx prisma db push
-npm run dev          # http://localhost:3000
+npx prisma migrate dev    # crea las tablas y genera el cliente Prisma
+npm run dev               # http://localhost:3000
 ```
 
 **4. Carga el catálogo PUC** (una sola vez): crea tu cuenta en la app y llama a
@@ -86,8 +95,9 @@ docs/                # modelo de datos y notas de migración
 
 ## 🔐 Antes de producción
 
-- Apuntar `DATABASE_URL` a un Postgres real y correr `npx prisma db push`.
-- Cambiar `JWT_SECRET` por un secreto fuerte.
+- Postgres gestionado (backups + TLS), desplegando el esquema con `npx prisma migrate deploy`.
+- Rol de aplicación **sin `CREATEDB`** y `JWT_SECRET` **distinto** al de desarrollo, ambos en el
+  gestor de secretos de la plataforma y no en un `.env` en disco.
 - **Facturación electrónica DIAN** (XML UBL, firma digital, CUFE, QR): requiere integrar un
   **proveedor tecnológico autorizado**. Los PDF incluidos son la **representación gráfica**, no
   reemplazan el documento electrónico.

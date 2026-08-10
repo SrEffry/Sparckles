@@ -26,17 +26,38 @@ profesional y de largo plazo en cada tarea:
 
 ```bash
 npm install
-npx prisma dev          # (opcional) Postgres local efímero; imprime el DATABASE_URL
-npx prisma db push      # crea/sincroniza las tablas
+cp .env.example .env    # y rellenar DATABASE_URL + JWT_SECRET
+npx prisma migrate dev  # aplica las migraciones y genera el cliente
 npm run dev             # http://localhost:3000
 ```
 Luego, **cargar el catálogo PUC una vez**: `POST /api/puc/seed` (autenticado; idempotente).
 
-**Base de datos:** en Prisma 7 la URL va en `prisma.config.ts` (CLI) y en `DATABASE_URL` del `.env`
-(runtime); el `PrismaClient` recibe un **driver adapter** (`@prisma/adapter-pg`), no la url.
-⚠️ El `DATABASE_URL` del `.env` apunta a un **Postgres local efímero** (`prisma dev`) usado para
-desarrollo. **Para producción** reemplázalo por tu Postgres real (`npx create-db` o gestionado),
-corre `npx prisma db push` y **cambia `JWT_SECRET`**.
+## Base de datos
+
+**PostgreSQL local**, con **base y rol dedicados** (el rol NO es superusuario). Para crearlos desde
+cero, como superusuario `postgres`:
+
+```sql
+CREATE ROLE sparkles WITH LOGIN CREATEDB PASSWORD '<contraseña>';
+CREATE DATABASE sparkles OWNER sparkles;
+```
+
+El `CREATEDB` es **solo para desarrollo**: `prisma migrate dev` crea una *shadow database* temporal
+para detectar cambios manuales en el esquema. En producción se despliega con `prisma migrate deploy`,
+que no la necesita → **allí el rol va sin `CREATEDB`**.
+
+**Migraciones, no `db push`.** El historial vive en `prisma/migrations/` y **se versiona**. Todo
+cambio de esquema se hace con `prisma migrate dev --name <cambio>`; en producción,
+`prisma migrate deploy`. `db push` queda fuera salvo experimentos desechables: pisa el esquema sin
+dejar historial, y con datos fiscales reales eso no es aceptable.
+
+**Prisma 7:** la URL va en `prisma.config.ts` (CLI) y en `DATABASE_URL` del `.env` (runtime); el
+`PrismaClient` recibe un **driver adapter** (`@prisma/adapter-pg`), no la url. El cliente se genera
+en `lib/generated/prisma/` (ignorado por git — correr `prisma generate` tras clonar, o dejar que
+`migrate dev` lo dispare).
+
+⚠️ **Para producción**: Postgres gestionado (backups + TLS), rol **sin `CREATEDB`**, `JWT_SECRET`
+**distinto** al de desarrollo, y las credenciales en un gestor de secretos, no en un `.env` en disco.
 
 ## Estructura
 

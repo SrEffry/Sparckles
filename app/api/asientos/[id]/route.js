@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
-import { normalizarAsiento } from "@/lib/asientoValidation";
+import { normalizarAsiento, validarCuentasPUC } from "@/lib/asientoValidation";
 
 async function asientoDelUsuario(id, usuarioId) {
   const a = await prisma.asiento.findUnique({ where: { id } });
@@ -39,9 +39,13 @@ export async function PUT(request, { params }) {
   const { data, movimientos, errors } = normalizarAsiento(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
+  const puc = await validarCuentasPUC(prisma, data.sector, movimientos);
+  if (puc.errors.length)
+    return NextResponse.json({ error: puc.errors[0], errores: puc.errors }, { status: 400 });
+
   const asiento = await prisma.asiento.update({
     where: { id },
-    data: { ...data, movimientos: { deleteMany: {}, create: movimientos } },
+    data: { ...data, movimientos: { deleteMany: {}, create: puc.movimientos } },
     include: { movimientos: true },
   });
   return NextResponse.json({ asiento });

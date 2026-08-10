@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
-import { normalizarAsiento } from "@/lib/asientoValidation";
+import { normalizarAsiento, validarCuentasPUC } from "@/lib/asientoValidation";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -28,6 +28,11 @@ export async function POST(request) {
   const { data, movimientos, errors } = normalizarAsiento(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
+  // Las cuentas deben existir en el catálogo y ser imputables; el nombre lo fija el catálogo.
+  const puc = await validarCuentasPUC(prisma, data.sector, movimientos);
+  if (puc.errors.length)
+    return NextResponse.json({ error: puc.errors[0], errores: puc.errors }, { status: 400 });
+
   try {
     const asiento = await prisma.$transaction(async (tx) => {
       const count = await tx.asiento.count({ where: { usuarioId: sesion.id } });
@@ -37,7 +42,7 @@ export async function POST(request) {
           ...data,
           numero,
           usuarioId: sesion.id,
-          movimientos: { create: movimientos },
+          movimientos: { create: puc.movimientos },
         },
         include: { movimientos: true },
       });

@@ -14,6 +14,18 @@ const TIPOS_DOC = ["Factura", "Documento equivalente", "Cuenta de cobro"];
 const CONDICIONES = ["Contado", "Crédito"];
 const MEDIOS = ["Efectivo", "Transferencia", "Tarjeta", "Cheque"];
 
+// Unidad de cada retención. El ICA se expresa POR MIL (‰), no en porcentaje: es la tarifa
+// municipal. Debe coincidir con `RETENCIONES` de lib/compraValidation.js, que es la autoridad.
+const UNIDAD_RETENCION = { retefuente: "%", reteiva: "%", reteica: "‰" };
+
+// Vista previa. El valor definitivo lo recalcula el servidor; esto solo evita que el usuario
+// vea un total distinto al que se guarda.
+function valorRetencion(r, base, key) {
+  if (!r?.activa) return 0;
+  const divisor = UNIDAD_RETENCION[key] === "‰" ? 1000 : 100;
+  return base * ((Number(r.tarifa) || 0) / divisor);
+}
+
 export default function ComprasPage() {
   const [compras, setCompras] = useState(null);
   const [search, setSearch] = useState("");
@@ -199,9 +211,9 @@ function CompraModal({ inicial, onClose, onGuardar }) {
     }
     const bruto = subtotal + totalIva;
     const r = form.retenciones;
-    const vRF = r.retefuente.activa ? subtotal * ((Number(r.retefuente.tarifa) || 0) / 100) : 0;
-    const vRI = r.reteiva.activa ? totalIva * ((Number(r.reteiva.tarifa) || 0) / 100) : 0;
-    const vRC = r.reteica.activa ? bruto * ((Number(r.reteica.tarifa) || 0) / 100) : 0;
+    const vRF = valorRetencion(r.retefuente, subtotal, "retefuente");
+    const vRI = valorRetencion(r.reteiva, totalIva, "reteiva");
+    const vRC = valorRetencion(r.reteica, subtotal, "reteica");
     const totalRet = vRF + vRI + vRC;
     return { subtotal, totalIva, bruto, totalRet, totalAPagar: bruto - totalRet };
   }, [form]);
@@ -230,8 +242,17 @@ function CompraModal({ inicial, onClose, onGuardar }) {
       </label>
       {form.retenciones[k].activa && (
         <>
-          <input type="number" min="0" step="0.1" className={styles.retTarifa} value={form.retenciones[k].tarifa} onChange={(e) => setRet(k, "tarifa", e.target.value)} placeholder="%" />
-          <span className={styles.retVal}>−{fmt(base * ((Number(form.retenciones[k].tarifa) || 0) / 100))}</span>
+          <input
+            type="number"
+            min="0"
+            step={UNIDAD_RETENCION[k] === "‰" ? "0.01" : "0.1"}
+            className={styles.retTarifa}
+            value={form.retenciones[k].tarifa}
+            onChange={(e) => setRet(k, "tarifa", e.target.value)}
+            placeholder={UNIDAD_RETENCION[k]}
+            aria-label={`Tarifa de ${label} en ${UNIDAD_RETENCION[k] === "‰" ? "por mil" : "porcentaje"}`}
+          />
+          <span className={styles.retVal}>−{fmt(valorRetencion(form.retenciones[k], base, k))}</span>
         </>
       )}
     </div>
@@ -284,9 +305,9 @@ function CompraModal({ inicial, onClose, onGuardar }) {
           <button className={styles.addItem} onClick={() => setForm((f) => ({ ...f, items: [...f.items, itemVacio()] }))}>+ Agregar ítem</button>
 
           <h3 className={styles.grupo}>Retenciones</h3>
-          <RetRow k="retefuente" label="ReteFuente (sobre subtotal)" base={calc.subtotal} />
-          <RetRow k="reteiva" label="ReteIVA (sobre IVA)" base={calc.totalIva} />
-          <RetRow k="reteica" label="ReteICA (sobre bruto)" base={calc.bruto} />
+          <RetRow k="retefuente" label="ReteFuente (% sobre subtotal)" base={calc.subtotal} />
+          <RetRow k="reteiva" label="ReteIVA (% sobre IVA)" base={calc.totalIva} />
+          <RetRow k="reteica" label="ReteICA (‰ sobre subtotal)" base={calc.subtotal} />
 
           <div className="form-group" style={{ marginTop: 14 }}>
             <label>Observaciones</label>

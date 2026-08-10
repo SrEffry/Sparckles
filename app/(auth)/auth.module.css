@@ -45,6 +45,24 @@
   padding: 48px 56px;
   box-shadow: 40px 0 90px rgba(0, 0, 0, 0.55);
   overflow-y: auto;
+  /* La barra nativa sobre el panel negro se ve como una franja clara. Fina y
+     traslúcida: sigue siendo alcanzable, pero deja de competir con el contenido. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+/* WebKit antiguo, que ignora scrollbar-width/-color */
+.authPanel::-webkit-scrollbar {
+  width: 8px;
+}
+.authPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.authPanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+.authPanel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Logo + nombre, arriba del panel */
@@ -74,12 +92,15 @@
 }
 
 /* Formulario centrado verticalmente entre el logo y el pie */
+/* `flex: 1 0 auto` (y no `flex: 1`): al centrar con justify-content, un ítem que
+   puede encogerse por debajo de su contenido lo recorta por arriba y esa parte
+   queda inalcanzable al hacer scroll. Sin shrink, el panel crece y scrollea bien. */
 .formWrap {
-  flex: 1;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 32px 0;
+  padding: 24px 0;
 }
 
 /* Pie del panel */

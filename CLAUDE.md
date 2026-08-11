@@ -2,8 +2,10 @@
 
 Guía para trabajar en este repositorio. Léela antes de tocar código.
 
-> ⚠️ **Next.js 16**: trae breaking changes respecto a versiones anteriores. Ver [`AGENTS.md`](AGENTS.md)
-> y los docs incluidos en `node_modules/next/dist/docs/` antes de asumir APIs.
+> ⚠️ **Next.js 16**: trae breaking changes respecto a versiones anteriores — APIs, convenciones
+> y estructura de archivos pueden diferir de lo que asumas. Consulta los docs incluidos en
+> `node_modules/next/dist/docs/` antes de dar por buena una API, y atiende los avisos de
+> obsolescencia.
 
 ## Qué es
 

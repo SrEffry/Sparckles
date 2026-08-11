@@ -38,7 +38,9 @@ model Usuario {
   asientos   Asiento[]
   soportes   DocumentoSoporte[]
   impuestos  Impuesto[]
+  tesoreria  CuentaTesoreria[]
   configFact ConfigFacturacion?
+  mapaCuentas MapaCuentas?
 
   @@map("usuarios")
 }
@@ -488,6 +490,82 @@ model CompraItem {
 
   @@index([compraId])
   @@map("compra_items")
+}
+
+// ============================ Mapa de cuentas contables ============================
+// Qué cuenta del PUC usa cada usuario para cada concepto. Sin esto, el generador de
+// comprobantes tendría que traer códigos cableados, y el catálogo cargado es un modelo de
+// referencia con auxiliares de ejemplo ("Zona Norte", "Proveedor Insumos SAS"): ninguna
+// empresa real tiene exactamente esos.
+//
+// El sistema PROPONE desde el catálogo y el usuario CONFIRMA. La cuenta concreta es una
+// decisión contable, no algo que el software deba adivinar.
+model MapaCuentas {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Catálogo contra el que se validan estas cuentas.
+  sector String @default("comercial") // 'comercial' | 'esal'
+
+  // Cartera y proveedores
+  clientes         String?
+  proveedores      String?
+  anticipoClientes String?
+
+  // Retenciones que NOS practican: son un ACTIVO (anticipo de impuesto a favor).
+  reteFuenteFavor String?
+  reteIvaFavor    String?
+  reteIcaFavor    String?
+
+  // Retenciones que NOSOTROS practicamos: son un PASIVO (se le deben a la DIAN o al
+  // municipio). Confundir los dos sentidos es el error más común del módulo.
+  reteFuentePorPagar String?
+  reteIvaPorPagar    String?
+  reteIcaPorPagar    String?
+
+  // Impuestos
+  ivaGenerado    String?
+  ivaDescontable String?
+  incPorPagar    String?
+
+  // Otros conceptos que aparecen al pagar o recaudar
+  gmf              String? // gravamen a los movimientos financieros
+  descuentoProntoPago String?
+  ajusteAlPeso     String?
+
+  // Política contable: ¿las retenciones se registran al causar el documento (lo estándar) o
+  // al pagarlo? De esto depende si el comprobante debe volver a moverlas. Si se registran en
+  // la causación y el comprobante las repite, se duplica el activo por retenciones.
+  retencionesEnCausacion Boolean @default(true)
+
+  @@map("mapa_cuentas")
+}
+
+// Cajas y cuentas bancarias del usuario. El comprobante propone una según el medio de pago,
+// pero cuál banco concreto sale del dinero lo decide siempre el usuario.
+model CuentaTesoreria {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+
+  nombre    String // "Bancolombia — Cta. Corriente 123"
+  cuentaPuc String // código del catálogo
+  tipo      String @default("banco") // 'caja' | 'banco'
+
+  // Medio de pago que la sugiere por defecto (códigos de lib/data/mediosPago.js).
+  medioPago String?
+
+  // Si la cuenta está gravada con el 4x1000, el egreso debe proponer el GMF.
+  gravadaGmf     Boolean @default(true)
+  predeterminada Boolean @default(false)
+  activa         Boolean @default(true)
+
+  @@index([usuarioId])
+  @@map("cuentas_tesoreria")
 }
 
 // ============================ Catálogo de impuestos ============================

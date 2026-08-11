@@ -1,0 +1,377 @@
+/* Mapa de cuentas contables. */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.head h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+.head p {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: 4px;
+}
+.cargando,
+.vacio {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+/* Arranque: el mapa vacío no sirve de nada, así que se ofrece sembrarlo. */
+.arranque {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--primary-tint);
+  border: 1px solid #edd3da;
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.arranque p {
+  font-size: 13px;
+  color: #6b3040;
+  margin-top: 4px;
+  max-width: 60ch;
+  line-height: 1.5;
+}
+
+.alerta {
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13.5px;
+  color: #8a5b00;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.panelHead h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+.sub {
+  font-size: 13px;
+  color: var(--text-soft);
+  margin-top: 4px;
+  max-width: 62ch;
+  line-height: 1.5;
+}
+.sectorSel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.sectorSel select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fafafa;
+}
+
+.grupo {
+  margin-bottom: 22px;
+}
+.grupo h3 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+  margin-bottom: 10px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+}
+.campoLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ayuda {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--info-tint);
+  color: var(--info);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+/* Cuenta ya elegida: se muestra código + nombre, porque un código suelto no dice nada. */
+.elegida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fafafa;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+.elegida:hover {
+  border-color: var(--primary);
+  background: #fff;
+}
+.elegida code {
+  font-weight: 700;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.elegida span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-soft);
+}
+.elegida em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.buscador {
+  position: relative;
+}
+.buscador input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+.buscador input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+.opciones {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+}
+.opcion,
+.quitar,
+.cerrar {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12.5px;
+  border-radius: 6px;
+  line-height: 1.35;
+}
+.opcion:hover,
+.quitar:hover,
+.cerrar:hover {
+  background: var(--primary-tint);
+}
+.opcion code {
+  font-weight: 700;
+  color: var(--primary);
+  margin-right: 6px;
+}
+.quitar,
+.cerrar {
+  color: var(--text-soft);
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+.quitar {
+  color: var(--danger);
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
+.pista {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+/* Política de retenciones: la decisión que más errores produce. */
+.politica {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 6px;
+}
+.politica label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.politica input {
+  margin-top: 3px;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+.politica span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13.5px;
+}
+.politica small {
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.tabla th {
+  text-align: left;
+  padding: 9px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  border-bottom: 1px solid var(--border);
+}
+.tabla td {
+  padding: 11px 10px;
+  border-bottom: 1px solid #f2f2f4;
+}
+.tabla code {
+  font-weight: 600;
+  color: var(--primary);
+}
+.pred {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--success-tint);
+  color: var(--success);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.del {
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.del:hover {
+  text-decoration: underline;
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.check input {
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  max-width: 460px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
+}
+.success {
+  background: var(--success-tint);
+  color: var(--success);
+}
+.error {
+  background: var(--danger-tint);
+  color: var(--danger);
+}

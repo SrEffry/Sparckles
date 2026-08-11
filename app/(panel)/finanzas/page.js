@@ -71,6 +71,16 @@ export default function FinanzasPage() {
             <div className={styles.row}><span>IVA generado (facturas de venta)</span><strong>{fmt(r?.ivaGenerado)}</strong></div>
             <div className={styles.row}><span>IVA descontable (compras)</span><strong>{fmt(r?.ivaDescontable)}</strong></div>
             <div className={`${styles.row} ${styles.rowHi}`}><span>Saldo IVA por pagar</span><strong>{fmt(r?.ivaPorPagar)}</strong></div>
+            {/* El INC no entra en el saldo de IVA: es otro impuesto, con formulario propio,
+                y no se compensa contra el IVA descontable de las compras. */}
+            {r?.incGenerado > 0 && (
+              <div className={styles.row}>
+                <span title="Impuesto Nacional al Consumo. Se declara en su propio formulario y no se compensa contra el IVA descontable.">
+                  Impuesto al Consumo generado (declara aparte)
+                </span>
+                <strong>{fmt(r?.incGenerado)}</strong>
+              </div>
+            )}
             <div className={styles.row}><span>ReteFuente practicada a clientes</span><strong>{fmt(r?.retencionesVentas)}</strong></div>
             <div className={styles.row}><span>Retenciones asumidas en compras</span><strong>{fmt(r?.retencionesCompras)}</strong></div>
             <div className={styles.row}><span>Retenciones en documentos soporte</span><strong>{fmt(r?.retencionesSoportes)}</strong></div>

@@ -11,7 +11,7 @@ export async function GET(_request, { params }) {
   const { id } = await params;
   const factura = await prisma.factura.findUnique({
     where: { id },
-    include: { items: true },
+    include: { items: { include: { impuestos: true } } },
   });
   if (!factura || factura.usuarioId !== sesion.id)
     return NextResponse.json({ error: "Factura no encontrada." }, { status: 404 });

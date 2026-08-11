@@ -47,6 +47,8 @@ export async function GET(request) {
         baseSinClasificar: true,
         totalDescuentos: true,
         iva: true,
+        inc: true,
+        otrosImpuestos: true,
         retenciones: true,
         reteIva: true,
         reteIca: true,
@@ -82,6 +84,10 @@ export async function GET(request) {
       subtotal: n(s.subtotal),
       totalDescuentos: n(s.totalDescuentos),
       iva: n(s.iva),
+      // El INC va aparte del IVA: es otro tributo, con su propio formulario, y no se
+      // compensa contra el IVA descontable de las compras.
+      inc: n(s.inc),
+      otrosImpuestos: n(s.otrosImpuestos),
       // `total` = valor del documento (base + IVA). Es el que va a la declaración.
       total: n(s.total),
       reteFuente: n(s.retenciones),
@@ -122,8 +128,10 @@ export async function POST(request) {
     return NextResponse.json({ error: "Cliente no válido." }, { status: 400 });
 
   const ids = [...new Set(items.map((i) => i.productoId).filter(Boolean))];
+  // Se traen los impuestos del catálogo: la tarifa la fija la norma, no el cliente HTTP.
   const productos = await prisma.producto.findMany({
     where: { id: { in: ids }, usuarioId: sesion.id },
+    include: { impuestos: { include: { impuesto: true } } },
   });
   const productosPorId = Object.fromEntries(productos.map((p) => [p.id, p]));
   if (items.some((i) => !productosPorId[i.productoId]))
@@ -263,7 +271,10 @@ export async function POST(request) {
           baseNoResponsable: calc.baseNoResponsable,
           baseSinClasificar: calc.baseSinClasificar,
           totalDescuentos: calc.totalDescuentos,
+          // IVA e INC separados: el INC no es IVA, no es descontable y se declara aparte.
           iva: calc.totalIva,
+          inc: calc.totalInc,
+          otrosImpuestos: calc.totalOtrosImpuestos,
           retenciones: calc.totalRetenciones,
           reteIva: calc.reteIva,
           reteIca: calc.reteIca,
@@ -293,9 +304,16 @@ export async function POST(request) {
             numeracionHasta: cfg.numeracionHasta,
             pieFact: cfg.pieFact,
           },
-          items: { create: calc.lineas },
+          // Cada línea con sus impuestos como filas hijas (un `TaxSubtotal` de UBL por
+          // impuesto), para poder emitir la factura electrónica sin reconstruir el cálculo.
+          items: {
+            create: calc.lineas.map(({ impuestos, ...linea }) => ({
+              ...linea,
+              impuestos: { create: impuestos },
+            })),
+          },
         },
-        include: { items: true },
+        include: { items: { include: { impuestos: true } } },
       });
     });
 

@@ -60,6 +60,10 @@ export default function PieTotales({ agregados: a, avisos = [], filtros = {} }) 
         <div className={styles.bloque}>
           <h3>Impuestos y documento</h3>
           <Linea label="IVA generado" valor={a.iva} />
+          {/* El INC se muestra aparte porque va en otro formulario y no se compensa contra
+              el IVA descontable. Sumarlo al IVA inflaba la declaración. */}
+          {a.inc > 0 && <Linea label="INC generado (declara aparte)" valor={a.inc} />}
+          {a.otrosImpuestos > 0 && <Linea label="Otros impuestos" valor={a.otrosImpuestos} />}
           <div className={`${styles.linea} ${styles.lineaFuerte}`}>
             <span>TOTAL FACTURADO</span>
             <strong>{money(a.total)}</strong>
@@ -116,10 +120,20 @@ export default function PieTotales({ agregados: a, avisos = [], filtros = {} }) 
             <span>{t}</span>
           </div>
         ))}
+        {a.inc > 0 && (
+          <div className={styles.aviso}>
+            <span className={styles.avisoIcono}>·</span>
+            <span>
+              El <strong>Impuesto al Consumo no es IVA</strong>: se declara en su propio
+              formulario, no entra en el IVA por pagar y no es descontable para el comprador.
+              Por eso va en línea separada y no sumado al IVA generado.
+            </span>
+          </div>
+        )}
         <div className={styles.aviso}>
           <span className={styles.avisoIcono}>·</span>
           <span>
-            <strong>Total facturado</strong> es el valor del documento (base + IVA).{" "}
+            <strong>Total facturado</strong> es el valor del documento (base + impuestos).{" "}
             <strong>Total a cobrar</strong> es el flujo de caja esperado tras retenciones: no es
             ingreso ni base de ningún impuesto.
           </span>

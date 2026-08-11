@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { TABLA_RETEFUENTE_2026 } from "@/lib/data/tablaRetefuente";
-import { TARIFAS_IVA, GRUPOS_TARIFA, tratamientoIva } from "@/lib/data/tarifasIva";
+import { TRATAMIENTOS_IVA } from "@/lib/data/impuestos";
+import { listarImpuestos } from "@/lib/impuestosApi";
+import { hoyBogota } from "@/lib/fechas";
 import {
   listarProductos,
   crearProducto,
@@ -15,8 +17,8 @@ import styles from "./productos.module.css";
 const UNIDADES = ["Unidad", "Kilogramo", "Gramo", "Libra", "Metro", "Litro", "Hora", "Servicio"];
 const COMO_COMPRA = ["Compras", "Productos Terminados", "Materia Prima", "No Aplica"];
 const COMO_VENDE = ["Productos", "Servicios", "Activos Fijos", "No Aplica"];
-// La lista vive en lib/data/tarifasIva.js: la comparten la validación del servidor, el
-// cálculo de la factura y el importador de Excel.
+// Los impuestos vienen del catálogo (tabla `Impuesto`), no de una lista en código: las
+// tarifas cambian por ley y no deben requerir un despliegue.
 const LINEAS = ["", "Línea A", "Línea B", "Línea C"];
 
 // Categorías que efectivamente tienen conceptos en la tabla
@@ -27,10 +29,22 @@ const fmtCOP = (v) =>
     Number(v) || 0
   );
 
-// Un producto "tiene IVA" solo si su tratamiento es gravado. Exento y excluido liquidan en 0,
-// y "0%" (heredado) está sin clasificar: ninguno de los tres cobra IVA.
+// Un producto "tiene IVA" solo si su tratamiento es gravado Y tiene algún impuesto de tipo
+// IVA asignado. Exento liquida al 0% y excluido no lleva impuesto en absoluto.
 function tieneIva(p) {
-  return tratamientoIva(p.tarifaIva) === "gravado";
+  return (
+    p.tratamientoIva === "gravado" &&
+    (p.impuestos || []).some((pi) => pi.impuesto?.tipo === "IVA" && Number(pi.impuesto.tarifa) > 0)
+  );
+}
+
+/** Etiqueta compacta de los impuestos del producto, para la tabla. */
+function etiquetaImpuestos(p) {
+  const lista = (p.impuestos || []).map((pi) => pi.impuesto).filter(Boolean);
+  if (p.tratamientoIva === "excluido") return "Excluido";
+  if (p.tratamientoIva === "no_gravado") return "No gravado";
+  if (lista.length === 0) return "—";
+  return lista.map((i) => `${i.tipo} ${Number(i.tarifa)}%`).join(" + ");
 }
 
 export default function ProductosPage() {
@@ -150,14 +164,14 @@ export default function ProductosPage() {
                   <td>{p.unidad}</td>
                   <td>
                     <span className={`badge-regimen ${tieneIva(p) ? "comun" : "simplificado"}`}>
-                      {p.tarifaIva}
+                      {etiquetaImpuestos(p)}
                     </span>
-                    {tratamientoIva(p.tarifaIva) === "sin_clasificar" && (
+                    {p.tratamientoIva === "no_gravado" && p.tarifaIva && (
                       <div
                         className={styles.sub}
-                        title="La tarifa 0% no es una categoría del régimen de IVA. Defínelo como Exento (Art. 477, da derecho a IVA descontable) o Excluido (Art. 476, no lo da)."
+                        title={`Venía con la tarifa heredada "${p.tarifaIva}", que no es una categoría del régimen. Defínelo como Exento (Art. 477, da derecho a IVA descontable) o Excluido (Art. 476, no lo da).`}
                       >
-                        ⚠ Sin clasificar
+                        ⚠ Por clasificar
                       </div>
                     )}
                   </td>
@@ -213,7 +227,8 @@ function estadoInicial(p) {
     unidad: p?.unidad || "Unidad",
     comoCompra: p?.comoCompra || "Compras",
     comoVende: p?.comoVende || "Productos",
-    tarifaIva: p?.tarifaIva || "19%",
+    tratamientoIva: p?.tratamientoIva || "gravado",
+    impuestoIds: (p?.impuestos || []).map((pi) => pi.impuestoId),
     precioVenta: p?.precioVenta != null ? String(p.precioVenta) : "",
     linea: p?.linea || "",
     retAplica: p?.retAplica || false,
@@ -228,6 +243,13 @@ function ProductoModal({ inicial, onGuardar, onClose }) {
   const [form, setForm] = useState(() => estadoInicial(inicial));
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [impuestos, setImpuestos] = useState([]);
+
+  // Solo los vigentes hoy: una tarifa derogada no debe poder asignarse a un producto que se
+  // va a facturar. Las históricas siguen en el catálogo para consultar documentos viejos.
+  useEffect(() => {
+    listarImpuestos({ fecha: hoyBogota() }).then(setImpuestos);
+  }, []);
 
   const conceptos = form.retCategoria
     ? TABLA_RETEFUENTE_2026.conceptos.filter((c) => c.categoria === form.retCategoria)
@@ -285,26 +307,77 @@ function ProductoModal({ inicial, onGuardar, onClose }) {
               </select>
             </div>
             <div className="form-group">
-              <label>Tarifa de IVA *</label>
-              {/* Agrupadas para que se distinga de un vistazo la tarifa vigente de la que no
-                  lo es: varias de estas son históricas o de otro impuesto. */}
-              <select value={form.tarifaIva} onChange={(e) => set("tarifaIva", e.target.value)}>
-                {GRUPOS_TARIFA.map((g) => (
-                  <optgroup key={g.clave} label={g.etiqueta}>
-                    {TARIFAS_IVA.filter((t) => t.grupo === g.clave).map((t) => (
-                      <option key={t.valor} value={t.valor}>{t.valor}</option>
-                    ))}
-                  </optgroup>
+              {/* El TRATAMIENTO va primero y es una categoría, no un porcentaje: decide si el
+                  producto causa IVA y si da derecho a descontable. La tarifa viene después. */}
+              <label>Tratamiento de IVA *</label>
+              <select
+                value={form.tratamientoIva}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  // Un excluido no lleva impuestos: el anexo técnico de la DIAN lo prohíbe.
+                  setForm((f) => ({
+                    ...f,
+                    tratamientoIva: v,
+                    impuestoIds: v === "excluido" || v === "no_gravado" ? [] : f.impuestoIds,
+                  }));
+                }}
+              >
+                {TRATAMIENTOS_IVA.map((t) => (
+                  <option key={t.valor} value={t.valor}>{t.etiqueta}</option>
                 ))}
               </select>
-              {form.tarifaIva && TARIFAS_IVA.find((t) => t.valor === form.tarifaIva)?.grupo === "otras" && (
+              <small className={styles.ayudaTratamiento}>
+                {TRATAMIENTOS_IVA.find((t) => t.valor === form.tratamientoIva)?.ayuda}
+              </small>
+            </div>
+          </div>
+
+          {/* Un producto puede llevar VARIOS impuestos: un licor lleva IVA e impuesto al
+              consumo a la vez, y un solo campo de tarifa no podía representarlo. */}
+          {form.tratamientoIva !== "excluido" && form.tratamientoIva !== "no_gravado" && (
+            <div className="form-group">
+              <label>Impuestos que aplica *</label>
+              <div className={styles.impuestosGrid}>
+                {impuestos.length === 0 ? (
+                  <p className={styles.sub}>Cargando catálogo de impuestos…</p>
+                ) : (
+                  impuestos.map((imp) => (
+                    <label key={imp.id} className={styles.impuestoOpcion}>
+                      <input
+                        type="checkbox"
+                        checked={form.impuestoIds.includes(imp.id)}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            impuestoIds: e.target.checked
+                              ? [...f.impuestoIds, imp.id]
+                              : f.impuestoIds.filter((x) => x !== imp.id),
+                          }))
+                        }
+                      />
+                      <span>
+                        <strong>{imp.nombre}</strong>
+                        <span className={`${styles.tipoTag} ${imp.tipo === "INC" ? styles.tipoInc : ""}`}>
+                          {imp.tipo}
+                        </span>
+                        {imp.notas && <span className={styles.impuestoNota}>{imp.notas}</span>}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+              {form.impuestoIds.some(
+                (id) => impuestos.find((i) => i.id === id)?.tipo === "INC"
+              ) && (
                 <small className={styles.avisoTarifa}>
-                  No es una tarifa de IVA vigente en Colombia (hoy son 5% y 19%). Se liquidará y
-                  se reportará como IVA.
+                  El Impuesto al Consumo <strong>no es IVA</strong>: se declara en su propio
+                  formulario y no es descontable para el comprador. Se liquida y se reporta
+                  aparte del IVA.
                 </small>
               )}
             </div>
-          </div>
+          )}
+
           <div className="form-row">
             <div className="form-group">
               <label>Cómo se Compra *</label>

@@ -37,6 +37,7 @@ model Usuario {
   compras    Compra[]
   asientos   Asiento[]
   soportes   DocumentoSoporte[]
+  impuestos  Impuesto[]
   configFact ConfigFacturacion?
 
   @@map("usuarios")
@@ -145,9 +146,22 @@ model Producto {
   unidad      String?
   comoCompra  String?
   comoVende   String?
-  tarifaIva   String?
   precioVenta Decimal @db.Decimal(18, 2)
   linea       String?
+
+  // Tratamiento frente al IVA. Es una CATEGORÍA, no un porcentaje: exento (Art. 477 E.T., da
+  // derecho a IVA descontable) y excluido (Art. 476, no lo da y su IVA va al costo) no son
+  // tarifas, y meterlos en el mismo campo que un número fue el origen de la confusión.
+  // 'gravado' | 'exento' | 'excluido' | 'no_gravado'
+  tratamientoIva String @default("gravado")
+
+  // Impuestos que aplica el producto. Vacío cuando el tratamiento no es 'gravado'.
+  impuestos ProductoImpuesto[]
+
+  // Tarifa heredada, en texto ("19%", "Exento"). Se conserva solo como respaldo de la
+  // migración al catálogo de impuestos; NADA la lee para calcular. Se elimina cuando esté
+  // confirmado que todos los productos quedaron bien clasificados.
+  tarifaIva String?
 
   // Retención (nested `retencion` en el sitio actual)
   retAplica    Boolean  @default(false)
@@ -240,7 +254,12 @@ model Factura {
   // Totales
   subtotal        Decimal @db.Decimal(18, 2)
   totalDescuentos Decimal @default(0) @db.Decimal(18, 2)
+  // SOLO IVA. El Impuesto al Consumo va aparte: es otro tributo, con su propio formulario,
+  // y NO es descontable para el comprador. Sumarlo aquí inflaba el IVA generado y el IVA por
+  // pagar de Finanzas con un impuesto que no es IVA.
   iva             Decimal @default(0) @db.Decimal(18, 2)
+  inc             Decimal @default(0) @db.Decimal(18, 2)
+  otrosImpuestos  Decimal @default(0) @db.Decimal(18, 2)
   // `retenciones` es SOLO ReteFuente. ReteIVA y ReteICA son impuestos distintos, con
   // certificado distinto y cuenta contable distinta: se guardan aparte para poder sumarlos
   // por separado en SQL. Un único "total retenciones" impide cuadrar cada uno con su
@@ -471,6 +490,74 @@ model CompraItem {
   @@map("compra_items")
 }
 
+// ============================ Catálogo de impuestos ============================
+// Las tarifas las fija la ley, no el usuario: por eso el catálogo es un dato de referencia
+// (como CuentaPUC) y no una lista en código. Tenerla en código obligaba a un despliegue por
+// cada cambio normativo, y en 2025-2026 hubo varios.
+//
+// La forma imita la del UBL 2.1 que exige la DIAN (TaxTotal → TaxSubtotal → TaxCategory /
+// TaxScheme). Así, generar el XML para el proveedor tecnológico es serializar filas en vez
+// de reconstruir el modelo. Hacerlo después de emitir facturas electrónicas significaría
+// migrar documentos fiscales ya declarados, que no se pueden tocar.
+model Impuesto {
+  id String @id @default(cuid())
+
+  // null = catálogo del sistema (normativo, compartido). Con valor = impuesto propio del
+  // usuario, para casos que la norma general no cubre.
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String?
+  esSistema Boolean  @default(false)
+
+  codigo String // clave estable: 'IVA_19', 'INC_8'
+  nombre String // "IVA 19% general"
+
+  // El TIPO es lo que faltaba: sin él, IVA e Impuesto al Consumo caían en el mismo campo y
+  // el INC terminaba declarado como IVA. Son formularios distintos y el INC no es descontable.
+  tipo String // 'IVA' | 'INC' | 'IC' | 'ICA' | 'BOLSAS' | 'OTRO'
+
+  // Códigos del anexo técnico (tabla 13.2.2). Un código que no esté en esa tabla hace que la
+  // DIAN RECHACE el documento (regla FAX16) — a diferencia de una tarifa fuera de tabla, que
+  // solo genera notificación y deja pasar la factura mal liquidada.
+  codigoDian String
+  nombreDian String
+
+  // Porcentual o nominal por unidad: las bolsas plásticas y el IBUA no son un porcentaje,
+  // y no caben en un campo de tarifa.
+  esNominal     Boolean  @default(false)
+  tarifa        Decimal? @db.Decimal(6, 3)
+  valorUnitario Decimal? @db.Decimal(18, 2)
+  unidadMedida  String?
+
+  // Vigencia. Sin ella se podía emitir HOY una factura con una tarifa derogada: el selector
+  // ofrecía el 35% sin reparar en la fecha del documento.
+  vigenteDesde String // YYYY-MM-DD
+  vigenteHasta String? // null = vigente
+
+  // Por qué existe esta tarifa, cuando no es obvio (regímenes de transición, etc.).
+  notas  String?
+  activo Boolean @default(true)
+
+  productos ProductoImpuesto[]
+
+  @@unique([usuarioId, codigo])
+  @@index([tipo])
+  @@index([vigenteDesde])
+  @@map("impuestos")
+}
+
+// Un producto puede llevar VARIOS impuestos a la vez: un licor lleva IVA e impuesto al
+// consumo simultáneamente, y un solo campo de tarifa no puede representarlo.
+model ProductoImpuesto {
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  productoId String
+  impuesto   Impuesto @relation(fields: [impuestoId], references: [id], onDelete: Restrict)
+  impuestoId String
+
+  @@id([productoId, impuestoId])
+  @@index([impuestoId])
+  @@map("producto_impuestos")
+}
+
 // ============================ Catálogo PUC (referencia global) ============================
 // Plan Único de Cuentas. Dos sectores: 'comercial' (Decreto 2650) y 'esal' (entidades sin
 // ánimo de lucro / Catálogo de supervisión). Data cargada desde lib/data/puc*.json.
@@ -587,7 +674,38 @@ model FacturaItem {
   // vez de adivinar por ellos.
   tipoIva String @default("gravado")
 
+  impuestos FacturaItemImpuesto[]
+
   @@index([facturaId])
   @@index([facturaId, tipoIva])
   @@map("factura_items")
+}
+
+// Un impuesto liquidado sobre un renglón. Es, campo por campo, un `cac:TaxSubtotal` del
+// UBL 2.1: base gravable, tarifa (o valor unitario) y valor, bajo un `TaxScheme` con su
+// código DIAN. Con esta tabla, emitir la factura electrónica es serializar filas.
+//
+// Se snapshotean código y nombre del tributo, no solo el `impuestoId`: si mañana cambia la
+// tarifa de un impuesto del catálogo, la factura ya emitida debe seguir mostrando la que se
+// liquidó. Es la misma razón por la que se snapshotea el emisor y el cliente.
+model FacturaItemImpuesto {
+  id            String      @id @default(cuid())
+  item          FacturaItem @relation(fields: [facturaItemId], references: [id], onDelete: Cascade)
+  facturaItemId String
+
+  impuestoId String? // referencia al catálogo; null si el impuesto se eliminó después
+  tipo       String // 'IVA' | 'INC' | ...
+  codigoDian String
+  nombreDian String
+
+  base          Decimal  @db.Decimal(18, 2)
+  esNominal     Boolean  @default(false)
+  tarifa        Decimal? @db.Decimal(6, 3)
+  valorUnitario Decimal? @db.Decimal(18, 2)
+  cantidad      Decimal? @db.Decimal(18, 3) // para los nominales por unidad
+  valor         Decimal  @db.Decimal(18, 2)
+
+  @@index([facturaItemId])
+  @@index([tipo])
+  @@map("factura_item_impuestos")
 }

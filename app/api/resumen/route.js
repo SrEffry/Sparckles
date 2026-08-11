@@ -27,7 +27,9 @@ export async function GET() {
   ] = await Promise.all([
     prisma.factura.aggregate({
       where: { usuarioId: uid, estado: "emitida" },
-      _sum: { totalACobrar: true, iva: true, retenciones: true, subtotal: true },
+      // `iva` es solo IVA. El Impuesto al Consumo se suma aparte: no entra en la declaración
+      // de IVA ni se compensa contra el IVA descontable de las compras.
+      _sum: { totalACobrar: true, iva: true, inc: true, retenciones: true, subtotal: true },
     }),
     prisma.factura.count({ where: { usuarioId: uid } }),
     prisma.factura.count({ where: { usuarioId: uid, estado: "anulada" } }),
@@ -80,6 +82,9 @@ export async function GET() {
       ivaGenerado,
       ivaDescontable,
       ivaPorPagar: ivaGenerado - ivaDescontable,
+      // El INC se declara en su propio formulario y NO se compensa contra el IVA
+      // descontable: por eso va como cifra aparte y no dentro de `ivaPorPagar`.
+      incGenerado: n(facturasAgg._sum.inc),
       retencionesVentas: n(facturasAgg._sum.retenciones),
       retencionesCompras: n(comprasAgg._sum.totalRetenciones),
       // recientes

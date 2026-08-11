@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarProducto } from "@/lib/productoValidation";
+import { validarImpuestos } from "@/lib/impuestoValidation";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -10,6 +11,7 @@ export async function GET() {
   const productos = await prisma.producto.findMany({
     where: { usuarioId: sesion.id },
     orderBy: { createdAt: "desc" },
+    include: { impuestos: { include: { impuesto: true } } },
   });
   return NextResponse.json({ productos });
 }
@@ -25,14 +27,24 @@ export async function POST(request) {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
 
-  const { data, errors } = normalizarProducto(body);
+  const { data, impuestoIds, errors } = normalizarProducto(body);
   if (errors.length) {
     return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
   }
 
+  const val = await validarImpuestos(sesion.id, impuestoIds);
+  if (val.errors.length) {
+    return NextResponse.json({ error: val.errors[0] }, { status: 400 });
+  }
+
   try {
     const producto = await prisma.producto.create({
-      data: { ...data, usuarioId: sesion.id },
+      data: {
+        ...data,
+        usuarioId: sesion.id,
+        impuestos: { create: impuestoIds.map((impuestoId) => ({ impuestoId })) },
+      },
+      include: { impuestos: { include: { impuesto: true } } },
     });
     return NextResponse.json({ producto }, { status: 201 });
   } catch (e) {

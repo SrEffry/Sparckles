@@ -21,7 +21,7 @@ const NAV = [
     label: "Finanzas",
     href: "/finanzas",
     ready: true,
-    rutas: ["/finanzas", "/documentos-soportes"],
+    rutas: ["/finanzas", "/documentos-soportes", "/comprobantes"],
   },
   { label: "Recursos", href: "/recursos", ready: true, rutas: ["/recursos", "/nomina"] },
   {

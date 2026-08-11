@@ -90,9 +90,11 @@ export default function FinanzasPage() {
 
       <section className={styles.cardsGrid} style={{ marginTop: 24 }}>
         {[
+          // Tesorería: el movimiento real del dinero. Facturas y compras son la causación y
+          // viven en Operaciones; aquí va lo que se cobró y lo que se pagó.
+          { icon: <FacturaIcon />, color: styles.cSuccess, t: "Comprobante de ingreso", d: "Recaudos aplicados a facturas de venta", href: "/comprobantes?tipo=ingreso" },
+          { icon: <ComprasIcon />, color: styles.cWarning, t: "Comprobante de egreso", d: "Pagos aplicados a compras de proveedores", href: "/comprobantes?tipo=egreso" },
           { icon: <SoporteIcon />, color: styles.cTeal, t: "Documentos soporte", d: "Adquisiciones a no obligados a facturar", count: r?.soportes, href: "/documentos-soportes" },
-          { icon: <ComprasIcon />, color: styles.cWarning, t: "Compras", d: "Facturas de proveedores", count: r?.compras, href: "/compras" },
-          { icon: <FacturaIcon />, color: styles.cPrimary, t: "Facturas", d: "Ingresos facturados", count: r?.facturas, href: "/facturacion" },
         ].map((x) => (
           <button key={x.t} className={`${styles.linkCard} ${x.color}`} onClick={() => router.push(x.href)}>
             <span className={styles.linkIcon}>{x.icon}</span>

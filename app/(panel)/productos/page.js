@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { TABLA_RETEFUENTE_2026 } from "@/lib/data/tablaRetefuente";
+import { TARIFAS_IVA, GRUPOS_TARIFA, tratamientoIva } from "@/lib/data/tarifasIva";
 import {
   listarProductos,
   crearProducto,
@@ -14,7 +15,8 @@ import styles from "./productos.module.css";
 const UNIDADES = ["Unidad", "Kilogramo", "Gramo", "Libra", "Metro", "Litro", "Hora", "Servicio"];
 const COMO_COMPRA = ["Compras", "Productos Terminados", "Materia Prima", "No Aplica"];
 const COMO_VENDE = ["Productos", "Servicios", "Activos Fijos", "No Aplica"];
-const TARIFAS_IVA = ["0%", "5%", "19%", "Exento", "Excluido"];
+// La lista vive en lib/data/tarifasIva.js: la comparten la validación del servidor, el
+// cálculo de la factura y el importador de Excel.
 const LINEAS = ["", "Línea A", "Línea B", "Línea C"];
 
 // Categorías que efectivamente tienen conceptos en la tabla
@@ -25,8 +27,10 @@ const fmtCOP = (v) =>
     Number(v) || 0
   );
 
+// Un producto "tiene IVA" solo si su tratamiento es gravado. Exento y excluido liquidan en 0,
+// y "0%" (heredado) está sin clasificar: ninguno de los tres cobra IVA.
 function tieneIva(p) {
-  return !["0%", "Exento", "Excluido"].includes(p.tarifaIva);
+  return tratamientoIva(p.tarifaIva) === "gravado";
 }
 
 export default function ProductosPage() {
@@ -144,7 +148,19 @@ export default function ProductosPage() {
                     {p.linea && <div className={styles.sub}>{p.linea}</div>}
                   </td>
                   <td>{p.unidad}</td>
-                  <td><span className={`badge-regimen ${tieneIva(p) ? "comun" : "simplificado"}`}>{p.tarifaIva}</span></td>
+                  <td>
+                    <span className={`badge-regimen ${tieneIva(p) ? "comun" : "simplificado"}`}>
+                      {p.tarifaIva}
+                    </span>
+                    {tratamientoIva(p.tarifaIva) === "sin_clasificar" && (
+                      <div
+                        className={styles.sub}
+                        title="La tarifa 0% no es una categoría del régimen de IVA. Defínelo como Exento (Art. 477, da derecho a IVA descontable) o Excluido (Art. 476, no lo da)."
+                      >
+                        ⚠ Sin clasificar
+                      </div>
+                    )}
+                  </td>
                   <td className={styles.precio}>{fmtCOP(p.precioVenta)}</td>
                   <td>
                     {p.retAplica ? (
@@ -270,9 +286,23 @@ function ProductoModal({ inicial, onGuardar, onClose }) {
             </div>
             <div className="form-group">
               <label>Tarifa de IVA *</label>
+              {/* Agrupadas para que se distinga de un vistazo la tarifa vigente de la que no
+                  lo es: varias de estas son históricas o de otro impuesto. */}
               <select value={form.tarifaIva} onChange={(e) => set("tarifaIva", e.target.value)}>
-                {TARIFAS_IVA.map((t) => <option key={t} value={t}>{t}</option>)}
+                {GRUPOS_TARIFA.map((g) => (
+                  <optgroup key={g.clave} label={g.etiqueta}>
+                    {TARIFAS_IVA.filter((t) => t.grupo === g.clave).map((t) => (
+                      <option key={t.valor} value={t.valor}>{t.valor}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
+              {form.tarifaIva && TARIFAS_IVA.find((t) => t.valor === form.tarifaIva)?.grupo === "otras" && (
+                <small className={styles.avisoTarifa}>
+                  No es una tarifa de IVA vigente en Colombia (hoy son 5% y 19%). Se liquidará y
+                  se reportará como IVA.
+                </small>
+              )}
             </div>
           </div>
           <div className="form-row">

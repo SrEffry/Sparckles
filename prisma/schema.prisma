@@ -36,11 +36,13 @@ model Usuario {
   nominas    Nomina[]
   compras    Compra[]
   asientos   Asiento[]
-  soportes   DocumentoSoporte[]
-  impuestos  Impuesto[]
-  tesoreria  CuentaTesoreria[]
-  configFact ConfigFacturacion?
-  mapaCuentas MapaCuentas?
+  soportes     DocumentoSoporte[]
+  impuestos    Impuesto[]
+  tesoreria    CuentaTesoreria[]
+  comprobantes ComprobanteTesoreria[]
+  consecutivos ConsecutivoDocumento[]
+  configFact   ConfigFacturacion?
+  mapaCuentas  MapaCuentas?
 
   @@map("usuarios")
 }
@@ -302,8 +304,14 @@ model Factura {
   saldoAplicadoNC Decimal @default(0) @db.Decimal(18, 2)
   saldoAplicadoND Decimal @default(0) @db.Decimal(18, 2)
 
-  items FacturaItem[]
-  notas Nota[]
+  // Recaudado mediante comprobantes de ingreso. Se materializa (y no solo se deriva) para
+  // poder validar el saldo dentro de la transacción y para que el filtro de cartera del
+  // historial deje de ser una promesa: hasta ahora el sistema no sabía qué se había cobrado.
+  totalRecaudado Decimal @default(0) @db.Decimal(18, 2)
+
+  items        FacturaItem[]
+  notas        Nota[]
+  aplicaciones ComprobanteAplicacion[]
 
   @@unique([usuarioId, numeroCompleto])
   @@index([usuarioId])
@@ -465,11 +473,15 @@ model Compra {
   totalBruto       Decimal @db.Decimal(18, 2)
   totalAPagar      Decimal @db.Decimal(18, 2)
 
-  // Retenciones manuales: { retefuente:{activa,tarifa,valor}, reteiva:{...}, reteica:{...} }
+  // Retenciones manuales: { retefuente:{activa,tarifa,unidad,base,valor}, reteiva, reteica }
   retenciones   Json?
   observaciones String?
 
-  items CompraItem[]
+  // Pagado mediante comprobantes de egreso. Ver la nota de `Factura.totalRecaudado`.
+  totalPagado Decimal @default(0) @db.Decimal(18, 2)
+
+  items        CompraItem[]
+  aplicaciones ComprobanteAplicacion[]
 
   @@index([usuarioId])
   @@map("compras")
@@ -490,6 +502,165 @@ model CompraItem {
 
   @@index([compraId])
   @@map("compra_items")
+}
+
+// ============================ Comprobantes de tesorería ============================
+// Comprobante de ingreso (recibo de caja) y de egreso (comprobante de pago).
+//
+// Naturaleza legal: son comprobantes de contabilidad, no documentos de facturación
+// electrónica. No requieren resolución DIAN, ni prefijo autorizado, ni CUFE, ni se
+// transmiten. Pero SÍ son exigencia normativa: el Código de Comercio (art. 53) manda que los
+// asientos se hagan con base en comprobantes, y el Decreto 2649 de 1993 (arts. 123 y 124,
+// vigentes por remisión del Decreto 2420 de 2015) exige que estén numerados consecutivamente,
+// en español, con el día de preparación y las personas que los elaboraron y autorizaron, y en
+// correspondencia con los libros.
+//
+// Conservación: 10 años (C.Co. art. 60, modificado por la Ley 962 de 2005). La ley admite
+// medio electrónico si garantiza reproducción exacta, así que no hace falta papel firmado —
+// pero tampoco se pueden borrar.
+//
+// OJO: el comprobante de egreso prueba que se pagó, NO vuelve deducible el gasto. El soporte
+// fiscal de la deducción sigue siendo la factura electrónica o el documento soporte
+// (art. 771-2 E.T.).
+model ComprobanteTesoreria {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tipo String // 'ingreso' | 'egreso'
+
+  // Numeración consecutiva e independiente por tipo y año. Se asigna al EMITIR, no al crear
+  // el borrador: así un borrador descartado no deja un hueco en la serie.
+  // Prefijo CI/CE (no NC-, que ya lo usa la nota crédito y colisionaría).
+  prefijo     String?
+  consecutivo Int?
+  anio        Int?
+  numero      String? // "CI-2026-00001"
+
+  fecha  String // fecha real del movimiento, no la de generación
+  ciudad String?
+
+  // Tercero
+  terceroNombre    String
+  terceroDocumento String?
+  terceroDireccion String? // requerida para el certificado de retención
+
+  // Medio de pago y trazabilidad bancaria
+  medioPago          String?
+  cuentaTesoreria    CuentaTesoreria? @relation(fields: [cuentaTesoreriaId], references: [id], onDelete: SetNull)
+  cuentaTesoreriaId  String?
+  cuentaTesoreriaPuc String? // snapshot: el comprobante debe seguir mostrando de dónde salió
+  cuentaTesoreriaNombre String?
+  bancoRef           String?
+  numTransaccion     String? // número de transacción, cheque o consignación
+  chequeBanco        String?
+  chequeFecha        String?
+
+  concepto      String  @db.Text
+  observaciones String?
+
+  // Liquidación. El valor en letras y el "recibí" del beneficiario son sobre el NETO, no
+  // sobre el bruto: es lo que efectivamente se entregó o se recibió.
+  valorBruto       Decimal @db.Decimal(18, 2)
+  totalRetenciones Decimal @default(0) @db.Decimal(18, 2)
+  otrosDescuentos  Decimal @default(0) @db.Decimal(18, 2)
+  neto             Decimal @db.Decimal(18, 2)
+
+  // Ciclo de vida:
+  //   borrador  → aún no afectó libros; se puede editar o descartar sin dejar hueco.
+  //   emitido   → tiene consecutivo y asiento; ya no se edita.
+  //   anulado   → se anuló ANTES de afectar libros; conserva el número, que nunca se reutiliza.
+  //   reversado → ya había afectado libros: se corrige con un comprobante que invierte los
+  //               movimientos, no editando el original.
+  estado          String  @default("borrador")
+  motivoAnulacion String?
+
+  // Asiento generado al contabilizar. Guardarlo evita el doble registro: si ya existe, el
+  // comprobante no vuelve a contabilizar.
+  asientoId String?
+
+  // Reversión
+  reversaAId  String? // comprobante que este reversa
+  reversadoEn String?
+
+  // Art. 124 D. 2649 pide "las personas que lo elaboraron y autorizaron". Pide indicación de
+  // las personas, NO rúbrica manuscrita: el usuario autenticado con fecha y hora cumple mejor
+  // que una raya en blanco.
+  elaboradoPor String?
+  elaboradoEn  DateTime?
+  autorizadoPor String?
+  autorizadoEn  DateTime?
+
+  aplicaciones ComprobanteAplicacion[]
+  retenciones  ComprobanteRetencion[]
+
+  @@unique([usuarioId, tipo, anio, consecutivo])
+  @@index([usuarioId, tipo, fecha])
+  @@index([usuarioId, estado])
+  @@map("comprobantes_tesoreria")
+}
+
+// A qué documentos se aplica el dinero. Sin esto nada impide emitir dos recibos del 50% y
+// luego otro del 100% sobre la misma factura: la cartera nunca cerraría y el comprobante
+// impreso contradiría los libros.
+model ComprobanteAplicacion {
+  id            String               @id @default(cuid())
+  comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  comprobanteId String
+
+  factura   Factura? @relation(fields: [facturaId], references: [id])
+  facturaId String?
+  compra    Compra?  @relation(fields: [compraId], references: [id])
+  compraId  String?
+
+  docRef         String // "FE-00001", para que el impreso lo muestre aunque se borre el vínculo
+  valorDocumento Decimal @db.Decimal(18, 2)
+  saldoAnterior  Decimal @db.Decimal(18, 2)
+  valorAplicado  Decimal @db.Decimal(18, 2)
+  saldoNuevo     Decimal @db.Decimal(18, 2)
+
+  @@index([comprobanteId])
+  @@index([facturaId])
+  @@index([compraId])
+  @@map("comprobante_aplicaciones")
+}
+
+// Retenciones del comprobante, con concepto, base y tarifa. No es adorno: es la información
+// con la que después se expide el certificado de retención al proveedor y se llenan las
+// declaraciones mensuales.
+model ComprobanteRetencion {
+  id            String               @id @default(cuid())
+  comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  comprobanteId String
+
+  tipo     String // 'retefuente' | 'reteiva' | 'reteica'
+  concepto String?
+  base     Decimal @db.Decimal(18, 2)
+  tarifa   Decimal @db.Decimal(8, 4)
+  unidad   String  @default("%") // '%' o '‰' (el ICA va por mil)
+  valor    Decimal @db.Decimal(18, 2)
+  // El ICA se descuenta en la declaración del municipio donde se practicó: mezclarlos en una
+  // sola cuenta liquida mal esa declaración.
+  municipio String?
+
+  @@index([comprobanteId])
+  @@map("comprobante_retenciones")
+}
+
+// Consecutivos por usuario, tipo y año. `count(*)` NO es un consecutivo: si se borra o filtra
+// algo, se repiten números, y el @@unique lo convierte en un 409 en producción en vez de en
+// un número correcto. Se lee e incrementa con UPDATE dentro de la transacción.
+model ConsecutivoDocumento {
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  tipo      String // 'ingreso' | 'egreso' | 'nota_contabilidad'
+  anio      Int
+  actual    Int     @default(0)
+
+  @@id([usuarioId, tipo, anio])
+  @@map("consecutivos_documento")
 }
 
 // ============================ Mapa de cuentas contables ============================
@@ -563,6 +734,8 @@ model CuentaTesoreria {
   gravadaGmf     Boolean @default(true)
   predeterminada Boolean @default(false)
   activa         Boolean @default(true)
+
+  comprobantes ComprobanteTesoreria[]
 
   @@index([usuarioId])
   @@map("cuentas_tesoreria")

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { hoyBogota } from "@/lib/fechas";
 
 // GET /api/facturas/:id → detalle con ítems
 export async function GET(_request, { params }) {
@@ -38,9 +39,16 @@ export async function PATCH(request, { params }) {
   if (body.accion === "anular") {
     if (factura.estado === "anulada")
       return NextResponse.json({ error: "La factura ya está anulada." }, { status: 400 });
+    // Se fecha la anulación: sin ella, un periodo ya declarado deja de ser reproducible.
+    // Anular hoy una factura de marzo no debe cambiar lo que devolvía el filtro del
+    // bimestre marzo-abril cuando se presentó la declaración.
     const actualizada = await prisma.factura.update({
       where: { id },
-      data: { estado: "anulada" },
+      data: {
+        estado: "anulada",
+        fechaAnulacion: hoyBogota(),
+        motivoAnulacion: (body.motivo || "").trim() || null,
+      },
     });
     return NextResponse.json({ factura: actualizada });
   }

@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listarFacturas, obtenerFactura, anularFactura } from "@/lib/facturasApi";
 import { generarFacturaPDF } from "@/lib/pdf/facturaPdf";
+import { hoyBogota } from "@/lib/fechas";
 import ImportExport from "@/components/ImportExport";
+import FiltrosFacturas from "./FiltrosFacturas";
+import PieTotales from "./PieTotales";
+import filtroStyles from "./filtros.module.css";
 import styles from "./facturacion.module.css";
 
 const fmt = (v) =>
@@ -14,36 +18,30 @@ const fmt = (v) =>
 
 export default function HistorialFacturasPage() {
   const router = useRouter();
-  const [facturas, setFacturas] = useState(null);
-  const [search, setSearch] = useState("");
+  const hoy = hoyBogota();
+  // El estado por defecto es "emitidas" y se muestra como chip: sumar las anuladas infla la
+  // declaración, pero ocultarlas en silencio hace creer que se ve el histórico completo.
+  const [filtros, setFiltros] = useState({ estado: "emitida", page: 1, hoy });
+  const [panelAbierto, setPanelAbierto] = useState(false);
+  const [datos, setDatos] = useState(null);
+  const [cargando, setCargando] = useState(true);
   const [detalle, setDetalle] = useState(null);
   const [notif, setNotif] = useState(null);
 
-  async function recargar() {
-    setFacturas(await listarFacturas());
-  }
+  const recargar = useCallback(async () => {
+    setCargando(true);
+    setDatos(await listarFacturas({ ...filtros, hoy }));
+    setCargando(false);
+  }, [filtros, hoy]);
+
   useEffect(() => {
-    recargar();
-  }, []);
+    // Pequeño retardo: los campos de texto y monto disparan un cambio por tecla.
+    const t = setTimeout(recargar, 250);
+    return () => clearTimeout(t);
+  }, [recargar]);
 
-  const stats = useMemo(() => {
-    const l = facturas || [];
-    const emitidas = l.filter((f) => f.estado === "emitida");
-    return {
-      total: l.length,
-      emitidas: emitidas.length,
-      anuladas: l.filter((f) => f.estado === "anulada").length,
-      facturado: emitidas.reduce((a, f) => a + Number(f.totalACobrar || 0), 0),
-    };
-  }, [facturas]);
-
-  const filtradas = useMemo(() => {
-    const l = facturas || [];
-    const q = search.toLowerCase();
-    return l.filter((f) =>
-      [f.numeroCompleto, f.clienteNombre].filter(Boolean).some((v) => v.toLowerCase().includes(q))
-    );
-  }, [facturas, search]);
+  const facturas = datos?.facturas || null;
+  const paginacion = datos?.paginacion;
 
   function notificar(mensaje, tipo = "success") {
     setNotif({ mensaje, tipo });
@@ -57,7 +55,8 @@ export default function HistorialFacturasPage() {
 
   async function anular(f) {
     if (!confirm(`¿Anular la factura ${f.numeroCompleto}? Esta acción no se puede revertir.`)) return;
-    const res = await anularFactura(f.id);
+    const motivo = prompt("Motivo de la anulación (queda registrado en el documento):") || "";
+    const res = await anularFactura(f.id, motivo);
     if (res.error) return notificar(res.error, "error");
     await recargar();
     notificar("Factura anulada");
@@ -78,29 +77,21 @@ export default function HistorialFacturasPage() {
         </div>
       </header>
 
-      <section className={styles.stats}>
-        <StatCard label="Total facturas" valor={stats.total} />
-        <StatCard label="Emitidas" valor={stats.emitidas} />
-        <StatCard label="Anuladas" valor={stats.anuladas} />
-        <StatCard label="Facturado" valor={fmt(stats.facturado)} chico />
-      </section>
+      <FiltrosFacturas
+        filtros={filtros}
+        onCambio={setFiltros}
+        abierto={panelAbierto}
+        onToggle={() => setPanelAbierto((v) => !v)}
+        hoy={hoy}
+      />
 
-      <div className={styles.toolbar}>
-        <input
-          className={styles.search}
-          placeholder="Buscar por número o cliente..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      {facturas === null ? (
+      {facturas === null || (cargando && !facturas) ? (
         <div className={styles.empty}>Cargando...</div>
-      ) : filtradas.length === 0 ? (
+      ) : facturas.length === 0 ? (
         <div className={styles.empty}>
-          <p>No hay facturas emitidas.</p>
+          <p>Ninguna factura coincide con los filtros aplicados.</p>
           <button className="btn-secondary" onClick={() => router.push("/facturacion/nueva")}>
-            Emitir la primera
+            Emitir una factura
           </button>
         </div>
       ) : (
@@ -111,22 +102,31 @@ export default function HistorialFacturasPage() {
                 <th>Número</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
+                <th>Documento</th>
+                {/* Dos columnas distintas a propósito: el total facturado es el valor del
+                    documento; el total a cobrar es caja tras retenciones. */}
+                <th>Total facturado</th>
                 <th>Total a cobrar</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((f) => (
+              {facturas.map((f) => (
                 <tr key={f.id} className={f.estado === "anulada" ? styles.anulada : ""}>
                   <td><strong>{f.numeroCompleto}</strong></td>
                   <td>{f.fecha}</td>
                   <td>{f.clienteNombre}</td>
+                  <td>{f.clienteNumeroDocumento || "—"}</td>
+                  <td className={styles.monto}>{fmt(f.total)}</td>
                   <td className={styles.monto}>{fmt(f.totalACobrar)}</td>
                   <td>
                     <span className={`badge-estado ${f.estado === "anulada" ? "inactivo" : "activo"}`}>
                       {f.estado === "anulada" ? "Anulada" : "Emitida"}
                     </span>
+                    {f.fechaAnulacion && (
+                      <div className={styles.detSub}>el {f.fechaAnulacion}</div>
+                    )}
                   </td>
                   <td>
                     <div className={styles.actions}>
@@ -143,17 +143,30 @@ export default function HistorialFacturasPage() {
         </div>
       )}
 
+      {paginacion && paginacion.paginas > 1 && (
+        <div className={filtroStyles.paginacion}>
+          <button
+            disabled={paginacion.page <= 1}
+            onClick={() => setFiltros((f) => ({ ...f, page: paginacion.page - 1 }))}
+          >
+            ← Anterior
+          </button>
+          <span className={filtroStyles.pagInfo}>
+            Página {paginacion.page} de {paginacion.paginas} · {paginacion.total} documentos
+          </span>
+          <button
+            disabled={paginacion.page >= paginacion.paginas}
+            onClick={() => setFiltros((f) => ({ ...f, page: paginacion.page + 1 }))}
+          >
+            Siguiente →
+          </button>
+        </div>
+      )}
+
+      <PieTotales agregados={datos?.agregados} avisos={datos?.avisos} filtros={datos?.filtros} />
+
       {detalle && <FacturaDetalle factura={detalle} onClose={() => setDetalle(null)} />}
       {notif && <div className={`${styles.toast} ${styles[notif.tipo]}`}>{notif.mensaje}</div>}
-    </div>
-  );
-}
-
-function StatCard({ label, valor, chico }) {
-  return (
-    <div className={styles.stat}>
-      <span className={chico ? styles.statValorChico : styles.statValor}>{valor}</span>
-      <span className={styles.statLabel}>{label}</span>
     </div>
   );
 }

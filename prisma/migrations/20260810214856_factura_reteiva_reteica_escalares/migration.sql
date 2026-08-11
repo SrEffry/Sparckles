@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "facturas" ADD COLUMN     "reteIca" DECIMAL(18,2) NOT NULL DEFAULT 0,
+ADD COLUMN     "reteIva" DECIMAL(18,2) NOT NULL DEFAULT 0;

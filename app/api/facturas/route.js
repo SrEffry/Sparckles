@@ -3,18 +3,97 @@ import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { calcularFactura } from "@/lib/facturaCalc";
 import { validarFactura } from "@/lib/facturaValidation";
+import { construirWhere } from "@/lib/facturaFiltros";
 import { hoyBogota } from "@/lib/fechas";
 
-// GET /api/facturas → historial del usuario
-export async function GET() {
+// GET /api/facturas → historial filtrado, paginado y con agregados fiscales.
+//
+// Los agregados se calculan sobre EL MISMO `where` que la tabla. Antes los KPI se calculaban
+// sobre el histórico completo ignorando el filtro activo, así que el número de arriba no
+// correspondía a lo que se veía abajo.
+export async function GET(request) {
   const sesion = await obtenerSesion();
   if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
-  const facturas = await prisma.factura.findMany({
-    where: { usuarioId: sesion.id },
-    orderBy: { createdAt: "desc" },
+  const sp = new URL(request.url).searchParams;
+  const { where, filtros, avisos } = construirWhere(sesion.id, sp);
+
+  const size = Math.min(200, Math.max(1, Number(sp.get("size")) || 50));
+  const page = Math.max(1, Number(sp.get("page")) || 1);
+
+  // Las anuladas se excluyen de los totales, pero se CUENTAN aparte: ocultarlas sin decirlo
+  // hace creer que se está viendo todo.
+  const whereAnuladas = { ...where };
+  delete whereAnuladas.OR;
+  delete whereAnuladas.fechaAnulacion;
+
+  const [facturas, total, agregados, anuladas, notas] = await Promise.all([
+    prisma.factura.findMany({
+      where,
+      // Orden por fecha fiscal, no por createdAt (que es UTC y cambia de periodo de noche).
+      orderBy: [{ fecha: "desc" }, { numero: "desc" }],
+      skip: (page - 1) * size,
+      take: size,
+    }),
+    prisma.factura.count({ where }),
+    prisma.factura.aggregate({
+      where,
+      _sum: {
+        subtotal: true,
+        baseGravada: true,
+        baseExenta: true,
+        baseExcluida: true,
+        baseNoResponsable: true,
+        baseSinClasificar: true,
+        totalDescuentos: true,
+        iva: true,
+        retenciones: true,
+        reteIva: true,
+        reteIca: true,
+        total: true,
+        totalACobrar: true,
+      },
+    }),
+    prisma.factura.count({ where: { ...whereAnuladas, estado: "anulada" } }),
+    // Informativo: las notas se declaran en el periodo de SU fecha, no en el de la factura,
+    // así que NO se restan de los totales de arriba.
+    prisma.factura.aggregate({
+      where,
+      _sum: { saldoAplicadoNC: true, saldoAplicadoND: true },
+    }),
+  ]);
+
+  const n = (v) => Number(v || 0);
+  const s = agregados._sum;
+
+  return NextResponse.json({
+    facturas,
+    paginacion: { page, size, total, paginas: Math.ceil(total / size) || 1 },
+    filtros,
+    avisos,
+    agregados: {
+      documentos: total,
+      anuladasExcluidas: filtros.estado === "emitida" ? anuladas : 0,
+      baseGravada: n(s.baseGravada),
+      baseExenta: n(s.baseExenta),
+      baseExcluida: n(s.baseExcluida),
+      baseNoResponsable: n(s.baseNoResponsable),
+      baseSinClasificar: n(s.baseSinClasificar),
+      subtotal: n(s.subtotal),
+      totalDescuentos: n(s.totalDescuentos),
+      iva: n(s.iva),
+      // `total` = valor del documento (base + IVA). Es el que va a la declaración.
+      total: n(s.total),
+      reteFuente: n(s.retenciones),
+      reteIva: n(s.reteIva),
+      reteIca: n(s.reteIca),
+      // `totalACobrar` = caja esperada tras retenciones. NO es ingreso ni base de ningún
+      // impuesto: no corresponde a ninguna casilla de ninguna declaración.
+      totalACobrar: n(s.totalACobrar),
+      notaCredito: n(notas._sum.saldoAplicadoNC),
+      notaDebito: n(notas._sum.saldoAplicadoND),
+    },
   });
-  return NextResponse.json({ facturas });
 }
 
 // POST /api/facturas → emite una factura (numeración secuencial + cálculo autoritativo)
@@ -177,9 +256,17 @@ export async function POST(request) {
           clienteEsAutorretenedor: cliente.esAutorretenedor,
           // Totales
           subtotal: calc.subtotal,
+          // Desglose por tratamiento de IVA (renglones de la declaración)
+          baseGravada: calc.baseGravada,
+          baseExenta: calc.baseExenta,
+          baseExcluida: calc.baseExcluida,
+          baseNoResponsable: calc.baseNoResponsable,
+          baseSinClasificar: calc.baseSinClasificar,
           totalDescuentos: calc.totalDescuentos,
           iva: calc.totalIva,
           retenciones: calc.totalRetenciones,
+          reteIva: calc.reteIva,
+          reteIca: calc.reteIca,
           total: calc.total,
           totalACobrar: calc.totalACobrar,
           retencionesPorConcepto: calc.retencionesPorConcepto,

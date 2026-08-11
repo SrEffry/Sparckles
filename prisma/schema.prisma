@@ -216,8 +216,13 @@ model Factura {
   instrumentos     Json?
   observaciones    String?
 
-  // Estado fiscal: 'emitida' | 'anulada' (nunca se borra)
-  estado String @default("emitida")
+  // Estado fiscal: 'emitida' | 'anulada' (nunca se borra).
+  // La anulación se fecha: sin `fechaAnulacion` un periodo ya declarado deja de ser
+  // reproducible. Si en julio se anula una factura de marzo, el filtro del bimestre
+  // marzo-abril dejaría de devolver lo que se declaró en mayo.
+  estado          String  @default("emitida")
+  fechaAnulacion  String? // YYYY-MM-DD, hora Bogotá
+  motivoAnulacion String?
 
   // Snapshot del cliente (inmutable al momento de emitir)
   clienteId                String?
@@ -236,9 +241,32 @@ model Factura {
   subtotal        Decimal @db.Decimal(18, 2)
   totalDescuentos Decimal @default(0) @db.Decimal(18, 2)
   iva             Decimal @default(0) @db.Decimal(18, 2)
+  // `retenciones` es SOLO ReteFuente. ReteIVA y ReteICA son impuestos distintos, con
+  // certificado distinto y cuenta contable distinta: se guardan aparte para poder sumarlos
+  // por separado en SQL. Un único "total retenciones" impide cuadrar cada uno con su
+  // certificado. El detalle por concepto sigue en `retencionesFiscales`.
   retenciones     Decimal @default(0) @db.Decimal(18, 2)
+  reteIva         Decimal @default(0) @db.Decimal(18, 2)
+  reteIca         Decimal @default(0) @db.Decimal(18, 2)
   total           Decimal @db.Decimal(18, 2)
   totalACobrar    Decimal @db.Decimal(18, 2)
+
+  // Desglose de la base por tratamiento de IVA. Denormalizado desde los ítems para poder
+  // agregarlo en SQL sin recorrerlos: son los renglones que separa la declaración de IVA.
+  // Exento (Art. 477 E.T.) y excluido (Art. 476) NO son lo mismo — el exento da derecho a
+  // IVA descontable y a devolución, el excluido no y su IVA se lleva al costo. Meterlos en
+  // una sola bolsa de "IVA 0" rompe el prorrateo del Art. 490.
+  // La suma de los cuatro debe ser igual a `subtotal`.
+  // El desglose POR TARIFA no se guarda aquí a propósito: se obtiene agrupando
+  // `FacturaItem.tarifaIva`, y así no hay que migrar columnas cuando cambie una tarifa.
+  baseGravada       Decimal @default(0) @db.Decimal(18, 2)
+  baseExenta        Decimal @default(0) @db.Decimal(18, 2)
+  baseExcluida      Decimal @default(0) @db.Decimal(18, 2)
+  baseNoResponsable Decimal @default(0) @db.Decimal(18, 2)
+  // Productos con la tarifa heredada "0%", que no es una categoría del régimen. Se aísla
+  // en vez de repartirla a ojo: si esta base es > 0, hay productos por clasificar y el
+  // pie del historial debe decirlo antes de que alguien use la cifra para declarar.
+  baseSinClasificar Decimal @default(0) @db.Decimal(18, 2)
 
   retencionesFiscales    Json?
   retencionesPorConcepto Json?
@@ -258,6 +286,14 @@ model Factura {
 
   @@unique([usuarioId, numeroCompleto])
   @@index([usuarioId])
+  // Los filtros del historial son siempre "de este usuario, en este periodo": todo índice
+  // útil arranca por usuarioId y termina en fecha. `fecha` (no `createdAt`) es la fecha
+  // fiscal: createdAt es UTC y una factura del 30-abr registrada a las 00:30 Bogotá caería
+  // en el bimestre siguiente.
+  @@index([usuarioId, fecha])
+  @@index([usuarioId, estado, fecha])
+  @@index([usuarioId, clienteId, fecha])
+  @@index([usuarioId, numero])
   @@map("facturas")
 }
 
@@ -543,6 +579,15 @@ model FacturaItem {
   subtotal       Decimal @db.Decimal(18, 2)
   extra          Json?
 
+  // Tratamiento de IVA del renglón. La tarifa numérica NO alcanza: exento, excluido y
+  // "emisor no responsable" liquidan los tres a 0 y tienen consecuencias fiscales distintas.
+  // 'gravado' | 'exento' | 'excluido' | 'no_responsable' | 'sin_clasificar'
+  // 'sin_clasificar' es para los productos con la vieja tarifa "0%", que no es una categoría
+  // real: hay que decidir si son exentos o excluidos. Se marcan para poder encontrarlos en
+  // vez de adivinar por ellos.
+  tipoIva String @default("gravado")
+
   @@index([facturaId])
+  @@index([facturaId, tipoIva])
   @@map("factura_items")
 }

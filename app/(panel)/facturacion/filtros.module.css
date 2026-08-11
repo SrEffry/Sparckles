@@ -1,0 +1,326 @@
+/* Filtros del historial de facturación + pie de totales fiscales. */
+
+.wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.busqueda {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fafafa;
+}
+.busqueda:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+
+.select,
+.campo select,
+.campo input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fafafa;
+  color: var(--text);
+}
+.campo input:focus,
+.campo select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+
+/* Segmentado de estado. Siempre visible: el default "emitidas" es un filtro activo y
+   ocultarlo haría creer que se ve todo el histórico. */
+.segmento {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.seg {
+  padding: 10px 14px;
+  border: none;
+  background: #fafafa;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  font-family: inherit;
+}
+.seg + .seg {
+  border-left: 1px solid var(--border);
+}
+.seg:hover {
+  background: #f0f0f2;
+}
+.segActivo {
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+
+.masFiltros {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  font-family: inherit;
+}
+.masFiltros:hover {
+  background: var(--primary-tint);
+}
+
+.panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.campoLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.ayuda {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--info-tint);
+  color: var(--info);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.rango {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-width: 0;
+}
+.rango input {
+  min-width: 0;
+}
+
+/* Chips de filtros activos */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 999px;
+  background: var(--primary-tint);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chipK {
+  opacity: 0.7;
+  font-weight: 500;
+}
+.chip button {
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px;
+  opacity: 0.7;
+}
+.chip button:hover {
+  opacity: 1;
+}
+.limpiar {
+  border: none;
+  background: none;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+/* ---------- Pie de totales fiscales ---------- */
+.pie {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-top: 16px;
+}
+.pieHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.pieTitulo {
+  font-size: 15px;
+  font-weight: 700;
+}
+.pieDocs {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.pieGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+.bloque h3 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}
+.linea {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed #efefef;
+}
+.linea strong {
+  font-variant-numeric: tabular-nums;
+}
+.lineaFuerte {
+  border-bottom: none;
+  border-top: 2px solid var(--primary);
+  margin-top: 6px;
+  padding-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.lineaSuave {
+  color: var(--text-soft);
+}
+
+/* Avisos: los totales sin sus salvedades inducen a error, así que van pegados a la cifra. */
+.avisos {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aviso {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-soft);
+}
+.avisoIcono {
+  flex-shrink: 0;
+  color: var(--warning, #ff8f00);
+  font-weight: 700;
+}
+.alerta {
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #8a5b00;
+}
+.legal {
+  margin-top: 10px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+/* ---------- Paginación ---------- */
+.paginacion {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+}
+.paginacion button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.paginacion button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pagInfo {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+@media (max-width: 640px) {
+  .barra {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .segmento {
+    justify-content: stretch;
+  }
+  .seg {
+    flex: 1;
+  }
+}

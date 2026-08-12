@@ -8,6 +8,7 @@ import {
   anularAsiento,
   buscarCuentas,
 } from "@/lib/asientosApi";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./asientos.module.css";
 
 const fmt = (v) =>
@@ -157,7 +158,7 @@ const movVacio = () => ({ cuenta: "", nombreCuenta: "", texto: "", debito: "", c
 
 function AsientoModal({ onClose, onGuardar }) {
   const [sector, setSector] = useState("comercial");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyBogota());
   const [descripcion, setDescripcion] = useState("");
   const [movs, setMovs] = useState([movVacio(), movVacio()]);
   const [error, setError] = useState("");

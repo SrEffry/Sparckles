@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarAsiento, validarCuentasPUC } from "@/lib/asientoValidation";
+import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -41,12 +42,19 @@ export async function POST(request) {
       // (que se numeran CI-/CE-), así que la serie AS- saltaba números: con 2 asientos
       // manuales y 2 comprobantes, el siguiente manual salía AS-0005. La numeración
       // consecutiva del libro diario es exigencia del art. 123 del D. 2649.
-      const contador = await tx.consecutivoDocumento.upsert({
-        where: { usuarioId_tipo_anio: { usuarioId: sesion.id, tipo: "asiento", anio } },
-        update: { actual: { increment: 1 } },
-        create: { usuarioId: sesion.id, tipo: "asiento", anio, actual: 1 },
+      const consecutivo = await siguienteConsecutivo(tx, {
+        usuarioId: sesion.id,
+        tipo: "asiento",
+        anio,
+        semilla: async () => {
+          const previos = await tx.asiento.findMany({
+            where: { usuarioId: sesion.id, numero: { startsWith: "AS-" } },
+            select: { numero: true },
+          });
+          return previos.reduce((max, x) => Math.max(max, numeroFinal(x.numero)), 0);
+        },
       });
-      const numero = `AS-${anio}-${String(contador.actual).padStart(4, "0")}`;
+      const numero = `AS-${anio}-${String(consecutivo).padStart(4, "0")}`;
       return tx.asiento.create({
         data: {
           ...data,

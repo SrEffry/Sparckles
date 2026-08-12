@@ -5,6 +5,7 @@ import { listarNotas, obtenerNota, crearNota, eliminarNota } from "@/lib/notasAp
 import { listarFacturas } from "@/lib/facturasApi";
 import { motivosDe } from "@/lib/motivosNota";
 import { generarNotaPDF } from "@/lib/pdf/notaPdf";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./notas.module.css";
 
 const fmt = (v) =>
@@ -170,7 +171,7 @@ function NotaModal({ facturas, onClose, onGuardar }) {
   const [tipo, setTipo] = useState("credito");
   const [facturaId, setFacturaId] = useState("");
   const [motivoCodigo, setMotivoCodigo] = useState("");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(hoyBogota());
   const [items, setItems] = useState([itemVacio()]);
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState("");

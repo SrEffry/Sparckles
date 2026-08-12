@@ -5,6 +5,7 @@ import { validarSaldos, normalizarComprobante } from "@/lib/comprobanteValidatio
 import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/comprobanteCalc";
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { hoyBogota } from "@/lib/fechas";
+import { siguienteConsecutivo } from "@/lib/consecutivos";
 
 async function delUsuario(id, usuarioId) {
   const c = await prisma.comprobanteTesoreria.findUnique({
@@ -275,12 +276,18 @@ async function emitir(comprobante, sesion, body) {
 
       // Consecutivo por (usuario, tipo, año), leído e incrementado atómicamente.
       // `count(*)` no sirve: si se filtra o borra algo, repite números.
-      const contador = await tx.consecutivoDocumento.upsert({
-        where: { usuarioId_tipo_anio: { usuarioId: sesion.id, tipo: comprobante.tipo, anio } },
-        update: { actual: { increment: 1 } },
-        create: { usuarioId: sesion.id, tipo: comprobante.tipo, anio, actual: 1 },
+      const consecutivo = await siguienteConsecutivo(tx, {
+        usuarioId: sesion.id,
+        tipo: comprobante.tipo,
+        anio,
+        semilla: async () => {
+          const agg = await tx.comprobanteTesoreria.aggregate({
+            where: { usuarioId: sesion.id, tipo: comprobante.tipo, anio },
+            _max: { consecutivo: true },
+          });
+          return Number(agg._max.consecutivo || 0);
+        },
       });
-      const consecutivo = contador.actual;
       const numero = `${prefijo}-${anio}-${String(consecutivo).padStart(5, "0")}`;
 
       // Asiento contable. Queda ligado al comprobante para impedir el doble registro.
@@ -436,12 +443,18 @@ async function reversar(comprobante, sesion, body) {
   const prefijo = comprobante.tipo === "ingreso" ? "CI" : "CE";
 
   const resultado = await prisma.$transaction(async (tx) => {
-    const contador = await tx.consecutivoDocumento.upsert({
-      where: { usuarioId_tipo_anio: { usuarioId: sesion.id, tipo: comprobante.tipo, anio } },
-      update: { actual: { increment: 1 } },
-      create: { usuarioId: sesion.id, tipo: comprobante.tipo, anio, actual: 1 },
+    const consecutivo = await siguienteConsecutivo(tx, {
+      usuarioId: sesion.id,
+      tipo: comprobante.tipo,
+      anio,
+      semilla: async () => {
+        const agg = await tx.comprobanteTesoreria.aggregate({
+          where: { usuarioId: sesion.id, tipo: comprobante.tipo, anio },
+          _max: { consecutivo: true },
+        });
+        return Number(agg._max.consecutivo || 0);
+      },
     });
-    const consecutivo = contador.actual;
     const numero = `${prefijo}-${anio}-${String(consecutivo).padStart(5, "0")}`;
 
     // Asiento que invierte los movimientos del original.

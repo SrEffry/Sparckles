@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarNota } from "@/lib/notaValidation";
+import { hoyBogota } from "@/lib/fechas";
+import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
 
 // GET /api/notas → historial de notas del usuario
 export async function GET() {
@@ -48,12 +50,27 @@ export async function POST(request) {
   }
 
   try {
+    const anio = Number((n.fecha || "").slice(0, 4)) || Number(hoyBogota().slice(0, 4));
+
     const nota = await prisma.$transaction(async (tx) => {
-      const count = await tx.nota.count({
-        where: { usuarioId: sesion.id, tipo: n.tipo },
-      });
+      // Contador propio por tipo y año, no `count(*)`. Las notas SÍ se pueden eliminar, así
+      // que contar repetía el consecutivo de la borrada y chocaba contra el @@unique: el
+      // usuario quedaba con un 409 "Conflicto de numeración" permanente y sin salida.
       const prefijo = n.tipo === "credito" ? "NC" : "ND";
-      const numero = `${prefijo}-${String(count + 1).padStart(4, "0")}`;
+      const consecutivo = await siguienteConsecutivo(tx, {
+        usuarioId: sesion.id,
+        tipo: `nota_${n.tipo}`,
+        anio,
+        // Las notas ya numeradas con el método viejo no llevan año en el número.
+        semilla: async () => {
+          const previas = await tx.nota.findMany({
+            where: { usuarioId: sesion.id, tipo: n.tipo },
+            select: { numero: true },
+          });
+          return previas.reduce((max, x) => Math.max(max, numeroFinal(x.numero)), 0);
+        },
+      });
+      const numero = `${prefijo}-${String(consecutivo).padStart(4, "0")}`;
 
       const nota = await tx.nota.create({
         data: {

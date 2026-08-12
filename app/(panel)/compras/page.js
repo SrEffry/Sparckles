@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { listarCompras, crearCompra, actualizarCompra, eliminarCompra, obtenerCompra } from "@/lib/comprasApi";
 import ImportExport from "@/components/ImportExport";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./compras.module.css";
 
 const fmt = (v) =>
@@ -176,7 +177,7 @@ const itemVacio = () => ({ descripcion: "", cantidad: 1, precioUnitario: 0, desc
 function estadoInicial(c) {
   return {
     numFactura: c?.numFactura || "",
-    fecha: c?.fecha || new Date().toISOString().slice(0, 10),
+    fecha: c?.fecha || hoyBogota(),
     fechaVencimiento: c?.fechaVencimiento || "",
     tipoDoc: c?.tipoDoc || "Factura",
     condicionPago: c?.condicionPago || "Contado",

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { listarSoportes, crearSoporte, anularSoporte } from "@/lib/soportesApi";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./soportes.module.css";
 
 const fmt = (v) =>
@@ -134,7 +135,7 @@ function StatCard({ label, valor, chico }) {
 
 function SoporteModal({ onClose, onGuardar }) {
   const [form, setForm] = useState({
-    fecha: new Date().toISOString().slice(0, 10),
+    fecha: hoyBogota(),
     proveedorNombre: "",
     proveedorDocumento: "",
     concepto: "",

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarSoporte } from "@/lib/soporteValidation";
+import { hoyBogota } from "@/lib/fechas";
+import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -28,10 +30,25 @@ export async function POST(request) {
   const { data, errors } = normalizarSoporte(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
+  const anio = Number((data.fecha || "").slice(0, 4)) || Number(hoyBogota().slice(0, 4));
+
   try {
     const soporte = await prisma.$transaction(async (tx) => {
-      const count = await tx.documentoSoporte.count({ where: { usuarioId: sesion.id } });
-      const numero = `DS-${String(count + 1).padStart(4, "0")}`;
+      // Contador propio por año, no `count(*)`: el documento soporte lleva numeración
+      // consecutiva y contar registros repite números en cuanto alguno se filtre o se borre.
+      const consecutivo = await siguienteConsecutivo(tx, {
+        usuarioId: sesion.id,
+        tipo: "documento_soporte",
+        anio,
+        semilla: async () => {
+          const previos = await tx.documentoSoporte.findMany({
+            where: { usuarioId: sesion.id },
+            select: { numero: true },
+          });
+          return previos.reduce((max, x) => Math.max(max, numeroFinal(x.numero)), 0);
+        },
+      });
+      const numero = `DS-${anio}-${String(consecutivo).padStart(4, "0")}`;
       return tx.documentoSoporte.create({
         data: { ...data, numero, usuarioId: sesion.id },
       });

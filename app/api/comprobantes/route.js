@@ -67,6 +67,9 @@ export async function POST(request) {
   const { data, aplicaciones, retenciones, errors } = normalizarComprobante(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
+  // La política de retenciones decide si el bruto del comprobante difiere de lo movido.
+  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+
   // La cuenta de tesorería debe ser del usuario y estar activa.
   let cuenta = null;
   if (data.cuentaTesoreriaId) {
@@ -86,9 +89,17 @@ export async function POST(request) {
         throw e;
       }
 
-      const bruto = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
+      // Lo aplicado ES el dinero que se movió: `totalACobrar` y `totalAPagar` ya vienen
+      // netos de retenciones, y son los saldos contra los que se valida. Restarlas otra vez
+      // descontaba dos veces — en una factura de 1.190.000 con 60.500 de retención el
+      // comprobante decía haber recibido 1.069.000 cuando entraron 1.129.500.
+      const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
       const totalRet = retenciones.reduce((a, x) => a + x.valor, 0);
-      const neto = bruto - totalRet - (data.otrosDescuentos || 0);
+      const causadas = mapa?.retencionesEnCausacion !== false;
+      // El bruto solo difiere de lo movido cuando las retenciones se registran en el pago:
+      // ahí el documento aún estaba por el valor sin retener.
+      const bruto = causadas ? movido : movido + totalRet;
+      const neto = movido;
 
       // Padre y luego hijos, en vez de escrituras anidadas: mezclar claves foráneas
       // escalares (usuarioId, facturaId) con `create` anidado hace que Prisma resuelva al

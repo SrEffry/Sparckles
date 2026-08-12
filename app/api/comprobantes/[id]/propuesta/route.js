@@ -67,9 +67,16 @@ export async function GET(_request, { params }) {
 function advertencias(comprobante, mapa, propuesta) {
   const avisos = [];
 
-  if (mapa.retencionesEnCausacion !== false && comprobante.retenciones.length > 0) {
+  // El aviso describe lo que la propuesta REALMENTE hace, no lo que se esperaría. Antes decía
+  // "no las vuelve a mover" mientras el asiento sí las movía: un contador que se fiara del
+  // texto y no leyera línea por línea firmaba un doble registro.
+  if (propuesta.retencionesInformativas) {
     avisos.push(
-      "Tu política dice que las retenciones se registran al causar el documento, así que este comprobante no las vuelve a mover. Si en realidad se registran al pagar, cámbialo en el mapa de cuentas: repetirlas duplica el saldo de retenciones."
+      "Tu política dice que las retenciones se registran al causar el documento, así que quedan registradas aquí solo como información para el certificado: el asiento NO las vuelve a mover. Si en realidad se registran al pagar, cámbialo en el mapa de cuentas."
+    );
+  } else if (comprobante.retenciones.length > 0) {
+    avisos.push(
+      "Tu política dice que las retenciones se registran al pagar, así que este asiento SÍ las reconoce y cancela el documento por el valor sin retener. Si ya se habían registrado al causar, estarías duplicándolas."
     );
   }
   if (comprobante.tipo === "ingreso" && comprobante.retenciones.length > 0) {

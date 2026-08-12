@@ -177,6 +177,21 @@ export default function NuevoComprobantePage() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
 
+          {/* Límite real del módulo, dicho de frente. Hoy solo se puede mover dinero contra un
+              documento registrado, y eso deja fuera buena parte de los movimientos de caja. */}
+          <div className={styles.avisoAlcance}>
+            Solo se puede {esIngreso ? "recaudar" : "pagar"} contra{" "}
+            {esIngreso ? "facturas de venta" : "compras"} ya registradas. Para{" "}
+            {esIngreso
+              ? "anticipos de clientes, préstamos recibidos o aportes de socios"
+              : "nómina, impuestos, servicios públicos, caja menor o anticipos a proveedores"}
+            , usa{" "}
+            <button type="button" className={styles.enlace} onClick={() => router.push("/asientos-contables")}>
+              Asientos contables
+            </button>
+            .
+          </div>
+
           {pendientes === null ? (
             <p className={styles.vacioChico}>Cargando…</p>
           ) : pendientes.length === 0 ? (

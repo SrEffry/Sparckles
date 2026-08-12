@@ -80,6 +80,19 @@ async function emitir(comprobante, sesion, body) {
     );
   }
 
+  // Emisor: se congela al contabilizar. Sin esto el impreso salía sin razón social ni NIT, y
+  // un comprobante de egreso que soporta una retención no identificaba al agente retenedor.
+  const cfg = await prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+  if (!cfg?.razonSocial || !cfg?.nit) {
+    return NextResponse.json(
+      {
+        error:
+          "Completa la razón social y el NIT en Configuración → Config. Facturación: el comprobante debe identificar a quien lo emite.",
+      },
+      { status: 400 }
+    );
+  }
+
   // Movimientos: los que el usuario editó, o la propuesta si los aceptó tal cual.
   let movimientos = Array.isArray(body.movimientos) && body.movimientos.length ? body.movimientos : null;
   if (!movimientos) {
@@ -195,6 +208,16 @@ async function emitir(comprobante, sesion, body) {
           consecutivo,
           numero,
           asientoId: asiento.id,
+          emisorRazonSocial: cfg.razonSocial,
+          emisorNit: cfg.nit,
+          emisorSnapshot: {
+            razonSocial: cfg.razonSocial,
+            nit: cfg.nit,
+            direccion: cfg.direccion,
+            ciudad: cfg.ciudad,
+            telefono: cfg.telefono,
+            email: cfg.email,
+          },
           autorizadoPor: sesion.nombreCompleto || sesion.email,
           autorizadoEn: new Date(),
         },
@@ -338,6 +361,25 @@ async function reversar(comprobante, sesion, body) {
         autorizadoEn: new Date(),
       },
     });
+
+    // Aplicaciones en NEGATIVO. Cumplen dos funciones: dejan que el impreso de la reversión
+    // diga a qué documentos revierte, y mantienen alineado el contador de aplicaciones con
+    // `totalRecaudado`. Sin ellas, el original reversado seguía sumando y la factura quedaba
+    // irrecaudable pese a mostrar saldo disponible.
+    if (comprobante.aplicaciones.length) {
+      await tx.comprobanteAplicacion.createMany({
+        data: comprobante.aplicaciones.map((a) => ({
+          comprobanteId: reversion.id,
+          facturaId: a.facturaId,
+          compraId: a.compraId,
+          docRef: a.docRef,
+          valorDocumento: a.valorDocumento,
+          saldoAnterior: a.saldoNuevo,
+          valorAplicado: Number(a.valorAplicado) * -1,
+          saldoNuevo: a.saldoAnterior,
+        })),
+      });
+    }
 
     await tx.comprobanteTesoreria.update({
       where: { id: comprobante.id },

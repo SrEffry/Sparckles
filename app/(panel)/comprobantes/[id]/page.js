@@ -97,7 +97,13 @@ export default function ComprobanteDetallePage() {
         </div>
         <div className={styles.headAcciones}>
           {!esBorrador && (
-            <button className="btn-secondary" onClick={() => generarComprobantePDF(c)}>
+            {/* Se pasa el asiento: sin él el impreso no lleva la imputación contable ni el
+                número de asiento, que es justo lo que reemplaza al bloque de firma
+                "Contabilizado" y da la trazabilidad que exige el art. 124. */}
+            <button
+              className="btn-secondary"
+              onClick={() => generarComprobantePDF(c, { asiento: datos.asiento, duplicado: true })}
+            >
               Descargar PDF
             </button>
           )}

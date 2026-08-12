@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { listarComprobantes, reversarComprobante, anularComprobante } from "@/lib/comprobantesApi";
+import {
+  listarComprobantes,
+  reversarComprobante,
+  anularComprobante,
+  obtenerComprobante,
+} from "@/lib/comprobantesApi";
 import { generarComprobantePDF } from "@/lib/pdf/comprobantePdf";
 import styles from "./comprobantes.module.css";
 
@@ -54,6 +59,14 @@ export default function ComprobantesPage() {
     if (res.error) return avisar(res.error, "error");
     await recargar();
     avisar(`Reversado con ${res.comprobante.numero}`);
+  }
+
+  // Se pide el detalle antes de imprimir: la lista no trae el asiento, y sin él el PDF
+  // saldría sin la imputación contable ni el número de asiento del pie.
+  async function descargarPDF(c) {
+    const d = await obtenerComprobante(c.id);
+    if (!d) return avisar("No se pudo cargar el comprobante.", "error");
+    generarComprobantePDF(d.comprobante, { asiento: d.asiento, duplicado: true });
   }
 
   async function descartar(c) {
@@ -172,12 +185,12 @@ export default function ComprobantesPage() {
                         )}
                         {c.estado === "emitido" && (
                           <>
-                            <button onClick={() => generarComprobantePDF(c)}>PDF</button>
+                            <button onClick={() => descargarPDF(c)}>PDF</button>
                             <button className={styles.del} onClick={() => reversar(c)}>Reversar</button>
                           </>
                         )}
                         {(c.estado === "reversado" || c.estado === "anulado") && (
-                          <button onClick={() => generarComprobantePDF(c)}>PDF</button>
+                          <button onClick={() => descargarPDF(c)}>PDF</button>
                         )}
                       </div>
                     </td>

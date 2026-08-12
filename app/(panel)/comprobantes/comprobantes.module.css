@@ -627,6 +627,21 @@
   line-height: 1.5;
   margin-top: 8px;
 }
+
+/* Límite del módulo: se dice antes de que el usuario busque en vano un documento que no existe. */
+.avisoAlcance {
+  background: var(--info-tint);
+  border: 1px solid #c5dff5;
+  border-radius: 9px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #10508a;
+}
+.avisoAlcance .enlace {
+  color: #10508a;
+}
 .accionesPie {
   display: flex;
   justify-content: flex-end;

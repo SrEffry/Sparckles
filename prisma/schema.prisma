@@ -561,6 +561,13 @@ model ComprobanteTesoreria {
   concepto      String  @db.Text
   observaciones String?
 
+  // Snapshot del emisor al contabilizar, igual que en Factura. Un comprobante de 2026 debe
+  // seguir mostrando la razón social de 2026 aunque la empresa cambie de nombre — y un
+  // egreso que soporta una retención tiene que identificar al agente retenedor.
+  emisorRazonSocial String?
+  emisorNit         String?
+  emisorSnapshot    Json?
+
   // Liquidación. El valor en letras y el "recibí" del beneficiario son sobre el NETO, no
   // sobre el bruto: es lo que efectivamente se entregó o se recibió.
   valorBruto       Decimal @db.Decimal(18, 2)

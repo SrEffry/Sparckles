@@ -294,6 +294,10 @@
 .tablaDocs td:nth-child(n + 3) {
   text-align: right;
 }
+/* La fecha ISO no debe partirse en dos líneas: "2026-08-" / "11" se lee fatal. */
+.tablaDocs td:nth-child(2) {
+  white-space: nowrap;
+}
 .filaActiva {
   background: var(--primary-tint);
 }
@@ -504,13 +508,18 @@
   padding-top: 8px;
 }
 .agregarLinea input {
+  /* `max-width: none` a propósito: la regla de `.tablaAsiento input` limita los campos de
+     importe a 120px, y ese tope estaba aplastando también este buscador, que llegaba a
+     mostrar solo "Agregar cuenta: b". */
   width: 100%;
+  max-width: none;
   padding: 8px 10px;
   border: 1px dashed var(--border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 12.5px;
   background: #fafafa;
+  text-align: left;
 }
 .opciones {
   position: absolute;

@@ -20,7 +20,10 @@ export default function FinanzasPage() {
     obtenerResumen().then(setR);
   }, []);
 
-  const balance = useMemo(() => (r ? r.totalFacturado - r.totalCompras : 0), [r]);
+  // El balance compara caja contra caja: lo que se espera cobrar menos lo que se debe pagar.
+  // Antes restaba el total facturado (con impuestos) contra el total a pagar de compras (ya
+  // neto de retenciones), que son magnitudes distintas.
+  const balance = useMemo(() => (r ? r.totalACobrar - r.totalCompras : 0), [r]);
 
   return (
     <div className={styles.page}>
@@ -37,17 +40,26 @@ export default function FinanzasPage() {
       {tab === "tesoreria" ? (
         <>
           <section className={styles.kpis}>
+            {/* Dos cifras distintas y rotuladas distinto: el total facturado es el valor de
+                los documentos; el total a cobrar es la caja esperada tras retenciones y no
+                corresponde a ninguna casilla de ninguna declaración. */}
             <div className={`${styles.kpi} ${styles.brand}`}>
               <span className={styles.kpiValor}>{fmt(r?.totalFacturado)}</span>
-              <span className={styles.kpiLabel}>Ingresos facturados</span>
+              <span className={styles.kpiLabel}>Total facturado (base + impuestos)</span>
             </div>
+            <Kpi valor={fmt(r?.totalACobrar)} label="Total a cobrar (caja, neto de retenciones)" />
             <Kpi valor={fmt(r?.totalCompras)} label="Egresos (compras)" />
-            <Kpi valor={fmt(balance)} label="Balance (ingresos − egresos)" />
-            <Kpi valor={r?.facturas ?? "—"} label="Facturas emitidas" />
+            <Kpi valor={fmt(balance)} label="Balance (a cobrar − a pagar)" />
           </section>
           <div className={styles.panel}>
             <h2 className={styles.panelTitle}>Flujo</h2>
-            <div className={styles.row}><span>Total facturado (ventas)</span><strong>{fmt(r?.totalFacturado)}</strong></div>
+            <div className={styles.row}><span>Total facturado (ventas, base + impuestos)</span><strong>{fmt(r?.totalFacturado)}</strong></div>
+            <div className={styles.row}>
+              <span title="Lo facturado menos las retenciones que los clientes practicaron. Es caja esperada, no ingreso.">
+                Total a cobrar (neto de retenciones)
+              </span>
+              <strong>{fmt(r?.totalACobrar)}</strong>
+            </div>
             <div className={styles.row}><span>Total compras (a pagar)</span><strong>{fmt(r?.totalCompras)}</strong></div>
             <div className={styles.row}><span>Documentos soporte (neto)</span><strong>{fmt(r?.totalSoportes)}</strong></div>
             <div className={`${styles.row} ${styles.rowHi} ${balance >= 0 ? styles.pos : styles.neg}`}>

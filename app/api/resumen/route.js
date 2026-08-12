@@ -29,7 +29,7 @@ export async function GET() {
       where: { usuarioId: uid, estado: "emitida" },
       // `iva` es solo IVA. El Impuesto al Consumo se suma aparte: no entra en la declaración
       // de IVA ni se compensa contra el IVA descontable de las compras.
-      _sum: { totalACobrar: true, iva: true, inc: true, retenciones: true, subtotal: true },
+      _sum: { total: true, totalACobrar: true, iva: true, inc: true, retenciones: true, subtotal: true },
     }),
     prisma.factura.count({ where: { usuarioId: uid } }),
     prisma.factura.count({ where: { usuarioId: uid, estado: "anulada" } }),
@@ -76,7 +76,11 @@ export async function GET() {
       totalSoportes: n(soportesAgg._sum.neto),
       retencionesSoportes: n(soportesAgg._sum.reteFuente) + n(soportesAgg._sum.reteIca),
       // dinero
-      totalFacturado: n(facturasAgg._sum.totalACobrar),
+      // `totalFacturado` es el VALOR DEL DOCUMENTO (base + impuestos). Antes devolvía
+      // `totalACobrar`, que es caja neta de retenciones: la etiqueta decía "facturado" y el
+      // número era otra cosa, y no corresponde a ninguna casilla de ninguna declaración.
+      totalFacturado: n(facturasAgg._sum.total),
+      totalACobrar: n(facturasAgg._sum.totalACobrar),
       totalVentas: n(facturasAgg._sum.subtotal),
       totalCompras: n(comprasAgg._sum.totalAPagar),
       ivaGenerado,

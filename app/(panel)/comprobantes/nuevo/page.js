@@ -386,10 +386,23 @@ export default function NuevoComprobantePage() {
           {error && <div className="mensaje-error">{error}</div>}
 
           <div className={styles.accionesPie}>
-            <button className="btn-primary" onClick={guardar} disabled={guardando || faltaMapa}>
+            {/* Deshabilitado hasta que haya algo que registrar: pulsarlo sin documentos ni
+                concepto solo devolvía un error que el usuario ya podía anticipar. */}
+            <button
+              className="btn-primary"
+              onClick={guardar}
+              disabled={guardando || faltaMapa || neto <= 0 || !form.concepto.trim() || !form.cuentaTesoreriaId}
+            >
               {guardando ? "Guardando…" : "Continuar y revisar el asiento →"}
             </button>
           </div>
+          {neto > 0 && (!form.concepto.trim() || !form.cuentaTesoreriaId) && (
+            <p className={styles.errorChico}>
+              Falta {!form.cuentaTesoreriaId ? "elegir la caja o banco" : ""}
+              {!form.cuentaTesoreriaId && !form.concepto.trim() ? " y " : ""}
+              {!form.concepto.trim() ? "escribir el concepto" : ""}.
+            </p>
+          )}
           <p className={styles.pista}>
             El comprobante se crea como <strong>borrador</strong>. No afecta los libros hasta que
             confirmes el asiento en el siguiente paso.

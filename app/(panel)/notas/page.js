@@ -26,7 +26,11 @@ export default function NotasPage() {
   }
   useEffect(() => {
     recargar();
-    listarFacturas().then((f) => setFacturas(f.filter((x) => x.estado === "emitida")));
+    // `listarFacturas` devuelve { facturas, paginacion, agregados }, no un array: el
+    // historial pasó a filtrar y paginar en el servidor. Se pide directamente el estado
+    // emitida en vez de traer todo y filtrarlo aquí — una nota solo se hace sobre una
+    // factura vigente.
+    listarFacturas({ estado: "emitida", size: 200 }).then((r) => setFacturas(r.facturas));
   }, []);
 
   const stats = useMemo(() => {

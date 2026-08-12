@@ -583,6 +583,10 @@ model ComprobanteTesoreria {
   //               movimientos, no editando el original.
   estado          String  @default("borrador")
   motivoAnulacion String?
+  // Quién y cuándo anuló. `Factura.fechaAnulacion` existe por la misma razón: sin fecha, un
+  // periodo ya declarado deja de ser reproducible.
+  anuladoPor      String?
+  fechaAnulacion  String?
 
   // Asiento generado al contabilizar. Guardarlo evita el doble registro: si ya existe, el
   // comprobante no vuelve a contabilizar.

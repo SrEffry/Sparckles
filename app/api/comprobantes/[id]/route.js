@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
-import { validarSaldos } from "@/lib/comprobanteValidation";
+import { validarSaldos, normalizarComprobante } from "@/lib/comprobanteValidation";
 import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/comprobanteCalc";
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { hoyBogota } from "@/lib/fechas";
@@ -35,6 +35,101 @@ export async function GET(_request, { params }) {
 }
 
 /**
+ * PUT → edita un BORRADOR. Solo mientras no haya afectado los libros: un comprobante emitido
+ * no se edita, se reversa. Antes había que descartarlo y rehacerlo por corregir una fecha.
+ */
+export async function PUT(request, { params }) {
+  const sesion = await obtenerSesion();
+  if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
+
+  const { id } = await params;
+  const existente = await delUsuario(id, sesion.id);
+  if (!existente) return NextResponse.json({ error: "Comprobante no encontrado." }, { status: 404 });
+  if (existente.estado !== "borrador") {
+    return NextResponse.json(
+      {
+        error: `Un comprobante ${existente.estado} no se edita. Si ya afectó los libros, corrígelo reversándolo.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
+  }
+
+  const { data, aplicaciones, retenciones, errors } = normalizarComprobante({
+    ...body,
+    tipo: existente.tipo, // el tipo no se cambia: cambiaría toda la lógica del asiento
+  });
+  if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
+
+  let cuenta = null;
+  if (data.cuentaTesoreriaId) {
+    cuenta = await prisma.cuentaTesoreria.findUnique({ where: { id: data.cuentaTesoreriaId } });
+    if (!cuenta || cuenta.usuarioId !== sesion.id || !cuenta.activa) {
+      return NextResponse.json({ error: "La caja o banco seleccionado no es válido." }, { status: 400 });
+    }
+  }
+
+  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+
+  try {
+    const actualizado = await prisma.$transaction(async (tx) => {
+      const val = await validarSaldos(tx, sesion.id, existente.tipo, aplicaciones, existente.id);
+      if (val.errors.length) {
+        const e = new Error(val.errors[0]);
+        e.code = "SALDO";
+        throw e;
+      }
+
+      const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
+      const totalRet = retenciones.reduce((a, x) => a + x.valor, 0);
+      const causadas = mapa?.retencionesEnCausacion !== false;
+
+      await tx.comprobanteAplicacion.deleteMany({ where: { comprobanteId: existente.id } });
+      await tx.comprobanteRetencion.deleteMany({ where: { comprobanteId: existente.id } });
+
+      await tx.comprobanteTesoreria.update({
+        where: { id: existente.id },
+        data: {
+          ...data,
+          cuentaTesoreriaPuc: cuenta?.cuentaPuc || null,
+          cuentaTesoreriaNombre: cuenta?.nombre || null,
+          valorBruto: causadas ? movido : movido + totalRet,
+          totalRetenciones: totalRet,
+          neto: movido,
+        },
+      });
+
+      if (val.aplicaciones.length) {
+        await tx.comprobanteAplicacion.createMany({
+          data: val.aplicaciones.map((a) => ({ ...a, comprobanteId: existente.id })),
+        });
+      }
+      if (retenciones.length) {
+        await tx.comprobanteRetencion.createMany({
+          data: retenciones.map((r) => ({ ...r, comprobanteId: existente.id })),
+        });
+      }
+
+      return tx.comprobanteTesoreria.findUnique({
+        where: { id: existente.id },
+        include: { aplicaciones: true, retenciones: true },
+      });
+    });
+
+    return NextResponse.json({ comprobante: actualizado });
+  } catch (e) {
+    if (e.code === "SALDO") return NextResponse.json({ error: e.message }, { status: 400 });
+    throw e;
+  }
+}
+
+/**
  * PATCH → acciones sobre el ciclo de vida.
  *
  *   emitir   : asigna consecutivo, crea el asiento y actualiza los saldos. Solo desde borrador.
@@ -58,7 +153,7 @@ export async function PATCH(request, { params }) {
   }
 
   if (body.accion === "emitir") return emitir(comprobante, sesion, body);
-  if (body.accion === "anular") return anular(comprobante, body);
+  if (body.accion === "anular") return anular(comprobante, sesion, body);
   if (body.accion === "reversar") return reversar(comprobante, sesion, body);
 
   return NextResponse.json({ error: "Acción no soportada." }, { status: 400 });
@@ -116,6 +211,37 @@ async function emitir(comprobante, sesion, body) {
       { error: `El asiento no está balanceado. Débitos ${saldo.debitos}, créditos ${saldo.creditos}.` },
       { status: 400 }
     );
+  }
+
+  // Que el asiento CUADRE no basta: tiene que corresponder al comprobante. Sin esto, un
+  // comprobante por 10.000.000 podía contabilizarse con un asiento de $1 —balanceado— y
+  // quedar "Contabilizado" con el papel diciendo otra cosa que los libros.
+  const cuentaPuc = comprobante.cuentaTesoreriaPuc;
+  if (cuentaPuc) {
+    const movTesoreria = movimientos.filter((m) => m.cuenta === cuentaPuc);
+    const neto = Number(comprobante.neto);
+    // En el ingreso la tesorería se debita; en el egreso se acredita (más el GMF, que sale
+    // de la misma cuenta y por eso se suma al comparar).
+    const movido =
+      comprobante.tipo === "ingreso"
+        ? movTesoreria.reduce((a, m) => a + (Number(m.debito) || 0), 0)
+        : movTesoreria.reduce((a, m) => a + (Number(m.credito) || 0), 0);
+    if (movTesoreria.length === 0) {
+      return NextResponse.json(
+        {
+          error: `El asiento no mueve la cuenta de tesorería ${cuentaPuc}. Un comprobante de ${comprobante.tipo} tiene que registrar el dinero que ${comprobante.tipo === "ingreso" ? "entró" : "salió"}.`,
+        },
+        { status: 400 }
+      );
+    }
+    if (movido + 0.01 < neto) {
+      return NextResponse.json(
+        {
+          error: `El asiento mueve ${movido.toFixed(2)} en la cuenta de tesorería, pero el comprobante declara ${neto.toFixed(2)}. Deben coincidir.`,
+        },
+        { status: 400 }
+      );
+    }
   }
 
   const puc = await validarCuentasPUC(prisma, mapa.sector, movimientos);
@@ -184,8 +310,18 @@ async function emitir(comprobante, sesion, body) {
         },
       });
 
-      // Saldos de los documentos aplicados.
+      // Saldos de los documentos aplicados, y se REFRESCAN los saldos impresos: se
+      // calcularon al crear el borrador, y si entre tanto se contabilizó otro comprobante el
+      // papel diría "saldo antes 1.000.000" cuando en libros ya era 500.000.
+      const refrescados = new Map(val.aplicaciones.map((a) => [a.facturaId || a.compraId, a]));
       for (const ap of comprobante.aplicaciones) {
+        const actual = refrescados.get(ap.facturaId || ap.compraId);
+        if (actual) {
+          await tx.comprobanteAplicacion.update({
+            where: { id: ap.id },
+            data: { saldoAnterior: actual.saldoAnterior, saldoNuevo: actual.saldoNuevo },
+          });
+        }
         if (ap.facturaId) {
           await tx.factura.update({
             where: { id: ap.facturaId },
@@ -234,7 +370,7 @@ async function emitir(comprobante, sesion, body) {
   }
 }
 
-async function anular(comprobante, body) {
+async function anular(comprobante, sesion, body) {
   // Un comprobante que ya afectó libros NO se anula: se reversa. Anularlo dejaría el asiento
   // vivo sin documento que lo respalde, rompiendo la correspondencia que exige el art. 124.
   if (comprobante.estado === "emitido") {
@@ -253,7 +389,12 @@ async function anular(comprobante, body) {
 
   const actualizado = await prisma.comprobanteTesoreria.update({
     where: { id: comprobante.id },
-    data: { estado: "anulado", motivoAnulacion: (body.motivo || "").trim() || null },
+    data: {
+      estado: "anulado",
+      motivoAnulacion: (body.motivo || "").trim() || null,
+      anuladoPor: sesion.nombreCompleto || sesion.email,
+      fechaAnulacion: hoyBogota(),
+    },
   });
   return NextResponse.json({ comprobante: actualizado });
 }
@@ -262,6 +403,18 @@ async function reversar(comprobante, sesion, body) {
   if (comprobante.estado !== "emitido") {
     return NextResponse.json(
       { error: "Solo se reversa un comprobante emitido. Un borrador se anula o se descarta." },
+      { status: 400 }
+    );
+  }
+  // Reversar una reversión encadena asientos sin mover saldos (el reversor no aplica a
+  // documentos) y enreda la trazabilidad. Si hay que volver a registrar el movimiento, se
+  // emite uno nuevo.
+  if (comprobante.reversaAId) {
+    return NextResponse.json(
+      {
+        error:
+          "Este comprobante ya es la reversión de otro y no se reversa. Si el movimiento debe registrarse de nuevo, emite un comprobante nuevo.",
+      },
       { status: 400 }
     );
   }

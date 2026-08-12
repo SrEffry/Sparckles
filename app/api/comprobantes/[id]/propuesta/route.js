@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/comprobanteCalc";
+import { TABLA_RETEFUENTE_2026 } from "@/lib/data/tablaRetefuente";
 
 // GET /api/comprobantes/:id/propuesta
 //
@@ -66,6 +67,30 @@ export async function GET(_request, { params }) {
 
 function advertencias(comprobante, mapa, propuesta) {
   const avisos = [];
+
+  // Bases mínimas: practicar retención por debajo del mínimo del concepto, o no practicarla
+  // estando obligado, son ambos sancionables. El sistema no decide por el usuario, pero sí
+  // avisa contra la tabla vigente.
+  for (const ret of comprobante.retenciones) {
+    if (ret.tipo !== "retefuente" || !ret.concepto) continue;
+    const c = TABLA_RETEFUENTE_2026.conceptos.find((x) => x.id === ret.concepto);
+    if (!c) {
+      avisos.push(
+        `El concepto de retención "${ret.concepto}" no está en la tabla ${TABLA_RETEFUENTE_2026.año}. Verifícalo antes de contabilizar.`
+      );
+      continue;
+    }
+    if (Number(ret.base) < Number(c.baseMinimaP)) {
+      avisos.push(
+        `La base de ${c.nombre} (${Number(ret.base).toLocaleString("es-CO")}) no supera la base mínima de ${Number(c.baseMinimaP).toLocaleString("es-CO")} (${c.baseMinima} UVT). Revisa si corresponde practicar la retención.`
+      );
+    }
+    if (Number(ret.tarifa) !== Number(c.tarifa)) {
+      avisos.push(
+        `La tarifa de ${c.nombre} es ${c.tarifa}% según la tabla, y aquí figura ${Number(ret.tarifa)}%.`
+      );
+    }
+  }
 
   // El aviso describe lo que la propuesta REALMENTE hace, no lo que se esperaría. Antes decía
   // "no las vuelve a mover" mientras el asiento sí las movía: un contador que se fiara del

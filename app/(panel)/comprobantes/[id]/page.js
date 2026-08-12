@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { obtenerComprobante, obtenerPropuesta, emitirComprobante } from "@/lib/comprobantesApi";
 import { generarComprobantePDF } from "@/lib/pdf/comprobantePdf";
 import { buscarCuentas } from "@/lib/asientosApi";
+import { obtenerMapaCuentas } from "@/lib/mapaCuentasApi";
 import { numeroALetras } from "@/lib/numeroALetras";
 import styles from "../comprobantes.module.css";
 
@@ -21,6 +22,7 @@ export default function ComprobanteDetallePage() {
   const { id } = useParams();
 
   const [datos, setDatos] = useState(null);
+  const [sector, setSector] = useState("comercial");
   const [movimientos, setMovimientos] = useState([]);
   const [advertencias, setAdvertencias] = useState([]);
   const [errorPropuesta, setErrorPropuesta] = useState("");
@@ -28,9 +30,10 @@ export default function ComprobanteDetallePage() {
   const [emitiendo, setEmitiendo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const d = await obtenerComprobante(id);
+    const [d, m] = await Promise.all([obtenerComprobante(id), obtenerMapaCuentas()]);
     if (!d) return;
     setDatos(d);
+    setSector(m?.mapa?.sector || "comercial");
 
     if (d.comprobante.estado === "borrador") {
       const p = await obtenerPropuesta(id);
@@ -102,7 +105,7 @@ export default function ComprobanteDetallePage() {
           {!esBorrador && (
             <button
               className="btn-secondary"
-              onClick={() => generarComprobantePDF(c, { asiento: datos.asiento, duplicado: true })}
+              onClick={() => generarComprobantePDF(c, { asiento: datos.asiento })}
             >
               Descargar PDF
             </button>
@@ -230,10 +233,13 @@ export default function ComprobanteDetallePage() {
                 </div>
               ))}
 
+              {/* El sector sale del mapa de cuentas: un borrador no tiene asiento todavía, y
+                  cablear "comercial" hacía que un usuario ESAL buscara en el catálogo
+                  equivocado y la emisión le rechazara las cuentas. */}
               <TablaMovimientos
                 movimientos={movimientos}
                 editable={esBorrador}
-                sector={datos.asiento?.sector || "comercial"}
+                sector={sector}
                 onCambio={setMovimientos}
               />
 

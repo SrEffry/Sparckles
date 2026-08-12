@@ -34,9 +34,19 @@ export async function POST(request) {
     return NextResponse.json({ error: puc.errors[0], errores: puc.errors }, { status: 400 });
 
   try {
+    const anio = Number((data.fecha || "").slice(0, 4)) || new Date().getFullYear();
+
     const asiento = await prisma.$transaction(async (tx) => {
-      const count = await tx.asiento.count({ where: { usuarioId: sesion.id } });
-      const numero = `AS-${String(count + 1).padStart(4, "0")}`;
+      // Contador propio, no `count(*)`. Contar incluía los asientos creados por comprobantes
+      // (que se numeran CI-/CE-), así que la serie AS- saltaba números: con 2 asientos
+      // manuales y 2 comprobantes, el siguiente manual salía AS-0005. La numeración
+      // consecutiva del libro diario es exigencia del art. 123 del D. 2649.
+      const contador = await tx.consecutivoDocumento.upsert({
+        where: { usuarioId_tipo_anio: { usuarioId: sesion.id, tipo: "asiento", anio } },
+        update: { actual: { increment: 1 } },
+        create: { usuarioId: sesion.id, tipo: "asiento", anio, actual: 1 },
+      });
+      const numero = `AS-${anio}-${String(contador.actual).padStart(4, "0")}`;
       return tx.asiento.create({
         data: {
           ...data,

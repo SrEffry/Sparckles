@@ -66,7 +66,7 @@ export default function ComprobantesPage() {
   async function descargarPDF(c) {
     const d = await obtenerComprobante(c.id);
     if (!d) return avisar("No se pudo cargar el comprobante.", "error");
-    generarComprobantePDF(d.comprobante, { asiento: d.asiento, duplicado: true });
+    generarComprobantePDF(d.comprobante, { asiento: d.asiento });
   }
 
   async function descartar(c) {

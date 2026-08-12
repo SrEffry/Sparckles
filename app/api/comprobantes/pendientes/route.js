@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+// Mismo cálculo que usa la validación al emitir: si cada lado calculara el suyo, el selector
+// volvería a ofrecer saldos que la emisión rechaza.
+import { saldoCobrable, cobradoAlEmitir } from "@/lib/comprobanteValidation";
 
 const n = (v) => Number(v || 0);
 const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
@@ -43,10 +46,14 @@ export async function GET(request) {
         numeroCompleto: true,
         fecha: true,
         fechaVencimiento: true,
+        formaPago: true,
+        instrumentos: true,
         clienteNombre: true,
         clienteNumeroDocumento: true,
         totalACobrar: true,
         totalRecaudado: true,
+        saldoAplicadoNC: true,
+        saldoAplicadoND: true,
         retenciones: true,
         reteIva: true,
         reteIca: true,
@@ -56,12 +63,23 @@ export async function GET(request) {
     });
 
     const pendientes = facturas
-      .map((f) => ({
-        ...f,
-        totalACobrar: n(f.totalACobrar),
-        totalRecaudado: n(f.totalRecaudado),
-        saldo: r2(n(f.totalACobrar) - n(f.totalRecaudado)),
-      }))
+      .map((f) => {
+        // Valor ajustado por notas: una NC posterior reduce lo que el cliente debe, y sin
+        // restarla el sistema ofrecía cancelar una cartera que ya no existía.
+        const cobrable = saldoCobrable(f);
+        // Las de contado ya se cobraron al emitirse: sus instrumentos de pago registran el
+        // recaudo. Ofrecerlas como cartera metía el ingreso al banco por segunda vez.
+        const enElActo = cobradoAlEmitir(f);
+        const recaudado = r2(n(f.totalRecaudado) + enElActo);
+        return {
+          ...f,
+          totalACobrar: cobrable,
+          totalRecaudado: recaudado,
+          cobradaAlEmitir: enElActo,
+          notaCredito: n(f.saldoAplicadoNC),
+          saldo: r2(cobrable - recaudado),
+        };
+      })
       .filter((f) => f.saldo > 0.005);
 
     return NextResponse.json({ tipo, documentos: pendientes });

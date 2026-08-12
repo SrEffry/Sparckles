@@ -3,6 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarAsiento, validarCuentasPUC } from "@/lib/asientoValidation";
 
+/**
+ * Un asiento generado por un comprobante de tesorería no se edita ni se anula por su cuenta.
+ *
+ * Si se pudiera, quedaría un comprobante "Contabilizado" cuyo asiento dice otra cosa o ya no
+ * existe, y el papel que tiene el tercero dejaría de corresponder con los libros — que es
+ * justo lo que exige el art. 124 del D. 2649. La corrección va por el comprobante: se reversa.
+ */
+async function bloqueadoPorComprobante(asientoId) {
+  const comprobante = await prisma.comprobanteTesoreria.findFirst({
+    where: { asientoId },
+    select: { numero: true, tipo: true },
+  });
+  if (!comprobante) return null;
+  return NextResponse.json(
+    {
+      error: `Este asiento pertenece al comprobante ${comprobante.numero} y no se modifica por separado. Para corregirlo, reversa el comprobante desde Finanzas → Comprobantes de ${comprobante.tipo}.`,
+    },
+    { status: 400 }
+  );
+}
+
 async function asientoDelUsuario(id, usuarioId) {
   const a = await prisma.asiento.findUnique({ where: { id } });
   if (!a || a.usuarioId !== usuarioId) return null;
@@ -28,6 +49,9 @@ export async function PUT(request, { params }) {
   if (!existente) return NextResponse.json({ error: "Asiento no encontrado." }, { status: 404 });
   if (existente.anulado)
     return NextResponse.json({ error: "No se puede editar un asiento anulado." }, { status: 400 });
+
+  const bloqueo = await bloqueadoPorComprobante(id);
+  if (bloqueo) return bloqueo;
 
   let body;
   try {
@@ -70,6 +94,9 @@ export async function PATCH(request, { params }) {
   if (body.accion === "anular") {
     if (existente.anulado)
       return NextResponse.json({ error: "El asiento ya está anulado." }, { status: 400 });
+
+    const bloqueo = await bloqueadoPorComprobante(id);
+    if (bloqueo) return bloqueo;
     const asiento = await prisma.asiento.update({
       where: { id },
       data: { anulado: true, motivoAnulacion: (body.motivo || "").trim() || null },

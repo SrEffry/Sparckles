@@ -42,7 +42,7 @@ export async function POST() {
           resultado.limpiados += await borrarRetencionesDe(tx, { documentoSoporteId: soporte.id });
           continue;
         }
-        const n = await registrarRetencionesDeSoporte(tx, sesion.id, soporte, causadas);
+        const n = await registrarRetencionesDeSoporte(tx, sesion.id, soporte);
         if (n) resultado.soportes++;
         resultado.lineas += n;
       }

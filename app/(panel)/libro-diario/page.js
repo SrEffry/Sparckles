@@ -83,7 +83,7 @@ export default function LibroDiarioPage() {
           nota de contabilidad
         </button>
         . Para corregir un asiento, reversa el documento que lo originó — así queda el contraasiento
-        y no un hueco en la numeración (art. 123 del Decreto 2649).
+        y no un hueco en la numeración (art. 125 del Decreto 2649).
       </div>
 
       <section className={styles.stats}>

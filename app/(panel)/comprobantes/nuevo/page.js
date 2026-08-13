@@ -6,7 +6,12 @@ import { listarPendientes, crearComprobante } from "@/lib/comprobantesApi";
 import { listarTesoreria, obtenerMapaCuentas } from "@/lib/mapaCuentasApi";
 import { numeroALetras } from "@/lib/numeroALetras";
 import { hoyBogota } from "@/lib/fechas";
+import { conceptosPorCategoria, tarifaOficial, tarifaVariable } from "@/lib/conceptosRetencion";
 import styles from "../comprobantes.module.css";
+
+// Sin los laborales: esos van por el Formulario 220 (Arts. 378-379), no por el Art. 381, y un
+// pago de nómina no se registra con un comprobante de egreso contra compras.
+const CONCEPTOS_AGRUPADOS = conceptosPorCategoria({ incluirLaborales: false });
 
 const fmt = (v) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
@@ -112,6 +117,19 @@ export default function NuevoComprobantePage() {
           nuevo.valor = r2((Number(nuevo.base) || 0) * ((Number(nuevo.tarifa) || 0) / divisor));
         }
         return nuevo;
+      })
+    );
+  }
+
+  // Al elegir concepto se fija la tarifa OFICIAL y se recalcula: la tarifa es un atributo de
+  // la norma, no un dato del usuario.
+  function setConceptoRet(i, codigo) {
+    setRetenciones((rs) =>
+      rs.map((r, idx) => {
+        if (idx !== i) return r;
+        const oficial = tarifaOficial(codigo);
+        const tarifa = oficial ?? r.tarifa;
+        return { ...r, concepto: codigo, tarifa, valor: r2((Number(r.base) || 0) * (Number(tarifa) / 100)) };
       })
     );
   }
@@ -332,11 +350,31 @@ export default function NuevoComprobantePage() {
                   <option value="reteiva">ReteIVA</option>
                   <option value="reteica">ReteICA</option>
                 </select>
-                <input
-                  placeholder="Concepto"
-                  value={r.concepto}
-                  onChange={(e) => setRet(i, "concepto", e.target.value)}
-                />
+                {/* El concepto es un CÓDIGO de la tabla, no texto libre: el certificado del
+                    Art. 381 agrupa por concepto, y "honorarios" y "Honorarios" salían como
+                    dos. Para ReteIVA y ReteICA no hay tabla de conceptos. */}
+                {r.tipo === "retefuente" ? (
+                  <select value={r.concepto} onChange={(e) => setConceptoRet(i, e.target.value)}>
+                    <option value="">Concepto…</option>
+                    {CONCEPTOS_AGRUPADOS.map((g) => (
+                      <optgroup key={g.categoria} label={g.categoria}>
+                        {g.conceptos.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                ) : r.tipo === "reteica" ? (
+                  <input
+                    placeholder="Municipio"
+                    value={r.municipio}
+                    onChange={(e) => setRet(i, "municipio", e.target.value)}
+                  />
+                ) : (
+                  <span className={styles.retNota}>Sobre el IVA</span>
+                )}
                 <input
                   type="number"
                   placeholder="Base"
@@ -349,6 +387,12 @@ export default function NuevoComprobantePage() {
                     step="0.01"
                     placeholder="Tarifa"
                     value={r.tarifa}
+                    readOnly={r.tipo === "retefuente" && !!r.concepto && !tarifaVariable(r.concepto)}
+                    title={
+                      r.tipo === "retefuente" && r.concepto && !tarifaVariable(r.concepto)
+                        ? "La tarifa la fija la norma para el concepto elegido."
+                        : undefined
+                    }
                     onChange={(e) => setRet(i, "tarifa", e.target.value)}
                   />
                   <span>{r.unidad}</span>

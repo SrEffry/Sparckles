@@ -12,7 +12,7 @@ const fmt = (v) =>
   );
 
 // La tabla es estática: se recorre una vez y no en cada render.
-const CONCEPTOS_AGRUPADOS = conceptosPorCategoria();
+const CONCEPTOS_AGRUPADOS = conceptosPorCategoria({ incluirLaborales: false });
 
 export default function SoportesPage() {
   const [soportes, setSoportes] = useState(null);

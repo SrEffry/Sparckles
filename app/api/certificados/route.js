@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { retencionesParaCertificado, normalizarDocumento } from "@/lib/retencionesPracticadas";
+import { esConceptoLaboral } from "@/lib/conceptosRetencion";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
 import {
   periodosDisponibles,
@@ -76,7 +77,13 @@ export async function GET(request) {
   });
 }
 
-/** Terceros con retención en el año, y cuánto queda sin certificar de cada uno. */
+/**
+ * Terceros con retención en el año, y cuánto queda sin certificar de cada uno.
+ *
+ * Lo pendiente se calcula por (tercero, tipo, PERIODO, MUNICIPIO), no solo por tipo: con la
+ * clave corta, expedir el bimestre 1 de ReteIVA hacía desaparecer los bimestres 2 a 6, y
+ * certificar Montería escondía el de Bogotá — justo lo que este panel existe para evitar.
+ */
 async function listadoTerceros(usuarioId, anio) {
   const [lineas, certificados] = await Promise.all([
     prisma.retencionPracticada.findMany({
@@ -86,17 +93,47 @@ async function listadoTerceros(usuarioId, anio) {
         terceroNumeroDocumento: true,
         terceroTipoDocumento: true,
         tipo: true,
+        conceptoCodigo: true,
+        fecha: true,
+        municipio: true,
         base: true,
+        baseOperacion: true,
         valor: true,
       },
     }),
     prisma.certificadoRetencion.findMany({
       where: { usuarioId, anio, anulado: false },
-      select: { terceroNumeroDocumento: true, tipo: true },
+      select: {
+        terceroNumeroDocumento: true,
+        tipo: true,
+        periodoDesde: true,
+        periodoHasta: true,
+        municipio: true,
+      },
     }),
   ]);
 
-  const yaCertificado = new Set(certificados.map((c) => `${c.terceroNumeroDocumento}|${c.tipo}`));
+  // Una retención está cubierta si existe un certificado del mismo tercero, tipo y municipio
+  // cuyo RANGO DE FECHAS la contiene. Se compara por rango y no por la clave del periodo
+  // porque ReteIVA se puede certificar por bimestre o por cuatrimestre, y con la clave literal
+  // un certificado cuatrimestral dejaría sus bimestres marcados como pendientes para siempre.
+  const cobertura = certificados.map((c) => ({
+    doc: c.terceroNumeroDocumento,
+    tipo: c.tipo,
+    municipio: c.municipio || null,
+    desde: c.periodoDesde || `${anio}-01-01`,
+    hasta: c.periodoHasta || `${anio}-12-31`,
+  }));
+  const estaCubierta = (doc, tipo, municipio, fecha) =>
+    cobertura.some(
+      (c) =>
+        c.doc === doc &&
+        c.tipo === tipo &&
+        // Un certificado sin municipio cubre todo; uno con municipio, solo el suyo.
+        (c.municipio === null || c.municipio === municipio) &&
+        fecha >= c.desde &&
+        fecha <= c.hasta
+    );
 
   const porTercero = new Map();
   for (const l of lineas) {
@@ -113,31 +150,48 @@ async function listadoTerceros(usuarioId, anio) {
         reteica: 0,
         total: 0,
         pagos: 0,
+        laboral: 0,
         pendientes: [],
+        _porCertificar: new Set(),
       });
     }
     const t = porTercero.get(clave);
     t[l.tipo] += Number(l.valor);
     t.total += Number(l.valor);
-    t.pagos += Number(l.base);
-  }
 
-  for (const [clave, t] of porTercero) {
+    // Los laborales van por el Formulario 220, no por el Art. 381: se cuentan aparte para no
+    // listar como "pendiente" un certificado que este módulo nunca va a poder expedir.
+    if (esConceptoLaboral(l.conceptoCodigo)) {
+      t.laboral += Number(l.valor);
+      continue;
+    }
+
+    // El Art. 667 sanciona sobre los PAGOS. En ReteIVA la base ES el IVA, no el pago: sumarla
+    // como si lo fuera infla la estimación. Ahí el pago es la operación gravada.
+    t.pagos += Number(l.tipo === "reteiva" ? l.baseOperacion || 0 : l.base);
+
     if (!t.documento) continue;
-    t.pendientes = TIPOS.filter((tipo) => t[tipo] > 0 && !yaCertificado.has(`${clave}|${tipo}`));
+    if (!estaCubierta(t.documento, l.tipo, l.municipio || null, l.fecha)) {
+      t._porCertificar.add(l.tipo);
+    }
   }
 
-  const terceros = [...porTercero.values()].sort((a, b) => b.total - a.total);
+  const terceros = [...porTercero.values()].map(({ _porCertificar, ...t }) => ({
+    ...t,
+    pendientes: TIPOS.filter((tipo) => _porCertificar.has(tipo)),
+  }));
+  terceros.sort((a, b) => b.total - a.total);
+
   const conPendiente = terceros.filter((t) => t.pendientes.length > 0);
+  const pagos = Math.round(conPendiente.reduce((a, t) => a + t.pagos, 0));
 
   return {
     anio,
     terceros,
-    // El Art. 667 sanciona con el 5% de los PAGOS, no de lo retenido: es lo que está en juego.
     pendientes: {
       terceros: conPendiente.length,
-      pagosExpuestos: Math.round(conPendiente.reduce((a, t) => a + t.pagos, 0)),
-      sancionEstimada: Math.round(conPendiente.reduce((a, t) => a + t.pagos, 0) * SANCION_NO_EXPEDIR),
+      pagosExpuestos: pagos,
+      sancionEstimada: Math.round(pagos * SANCION_NO_EXPEDIR),
     },
   };
 }
@@ -184,6 +238,17 @@ function faltantesParaExpedir(cfg, datos, tipo, periodo, municipio) {
     const m = MODULO_ORIGEN[d.origen] || MODULO_ORIGEN.compra;
     faltan.push({
       texto: `Falta el concepto de retención en ${d.docRef} (Art. 381 lit. f)`,
+      arreglarEn: m.ruta,
+      arreglarTexto: m.texto,
+    });
+  }
+
+  // El art. 1.6.1.12.13 del Dcto 1625 exige el monto de la operación gravada aparte del IVA
+  // generado. Sin él, esa columna del certificado saldría en cero: imposible de cuadrar.
+  for (const d of datos.sinOperacion || []) {
+    const m = MODULO_ORIGEN[d.origen] || MODULO_ORIGEN.compra;
+    faltan.push({
+      texto: `Falta el valor de la operación gravada sin IVA en ${d.docRef} (art. 1.6.1.12.13 del Decreto 1625)`,
       arreglarEn: m.ruta,
       arreglarTexto: m.texto,
     });

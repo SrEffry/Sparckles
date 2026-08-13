@@ -7,7 +7,7 @@ import { obtenerSesion } from "@/lib/session";
 // otra cosa, y el papel que tiene el tercero dejaría de corresponder con los libros — justo lo
 // que exige el art. 124 del Decreto 2649.
 //
-// Y el art. 123 no admite huecos: un error se corrige con un CONTRAASIENTO que también queda
+// Y el art. 125 exige numeración sucesiva y continua en los libros: un error se corrige
 // registrado, no borrando la línea. Ese contraasiento lo emite la reversión del documento.
 
 /** A dónde mandar al usuario para corregir, según el documento que generó el asiento. */
@@ -62,7 +62,7 @@ async function cerrado(params) {
   const origen = await origenDelAsiento(id);
   const error = origen
     ? `Este asiento lo generó ${origen.texto} y no se modifica por separado. ${origen.comoCorregir}`
-    : "El libro diario es de solo lectura. Un error se corrige con el contraasiento que emite la reversión del documento que lo originó (art. 123 del Decreto 2649).";
+    : "El libro diario es de solo lectura. Un error se corrige con el contraasiento que emite la reversión del documento que lo originó (art. 125 del Decreto 2649).";
 
   return NextResponse.json({ error }, { status: 410 });
 }

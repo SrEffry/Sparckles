@@ -679,3 +679,10 @@
   background: var(--danger-tint);
   color: var(--danger);
 }
+
+/* Ocupa la celda del concepto cuando el tipo de retención no tiene tabla de conceptos. */
+.retNota {
+  font-size: 11px;
+  color: var(--text-soft);
+  align-self: center;
+}

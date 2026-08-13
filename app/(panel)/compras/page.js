@@ -18,7 +18,7 @@ const MEDIOS = ["Efectivo", "Transferencia", "Tarjeta", "Cheque"];
 const TIPOS_DOCUMENTO_TERCERO = ["NIT", "CC", "CE", "PA", "TI"];
 
 // Se calcula una vez: la tabla es estática y recorrerla en cada render de la fila no aporta.
-const CONCEPTOS_AGRUPADOS = conceptosPorCategoria();
+const CONCEPTOS_AGRUPADOS = conceptosPorCategoria({ incluirLaborales: false });
 
 // Unidad de cada retención. El ICA se expresa POR MIL (‰), no en porcentaje: es la tarifa
 // municipal. Debe coincidir con `RETENCIONES` de lib/compraValidation.js, que es la autoridad.

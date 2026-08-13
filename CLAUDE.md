@@ -190,7 +190,7 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   (factura, compra, comprobante de tesorería, nota de contabilidad), nunca el documento en sí:
   sin soporte le falta el origen y la justificación que exige el art. 124 del D. 2649.
   `POST /api/asientos` y `PUT/PATCH /api/asientos/[id]` responden **410**. Un error se corrige
-  reversando el documento que lo originó, que emite el contraasiento — el art. 123 no admite
+  reversando el documento que lo originó, que emite el contraasiento — el art. 125 no admite
   huecos en la numeración.
 - **Nota de contabilidad** (`CC-`, no `NC-`, que ya lo usa la nota crédito): el comprobante de
   los *ajustes* sin documento propio. Lleva **periodo contable afectado** y **tipo de ajuste**;

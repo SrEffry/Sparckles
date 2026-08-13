@@ -9,6 +9,7 @@ import {
 } from "@/lib/notaContabilidadValidation";
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
+import { hoyBogota } from "@/lib/fechas";
 
 async function cargar(id, usuarioId) {
   return prisma.notaContabilidad.findFirst({
@@ -133,7 +134,7 @@ export async function PATCH(request, { params }) {
  * Emite la nota: le da número, genera el asiento y la deja en el libro diario.
  *
  * A partir de aquí la nota ya no se edita ni se borra — es un comprobante de contabilidad y el
- * art. 123 del Decreto 2649 exige numeración consecutiva sin huecos.
+ * art. 124 del Decreto 2649 exige numeración consecutiva de los comprobantes.
  */
 async function emitir(nota, sesion, body) {
   if (nota.estado !== "borrador") {
@@ -158,6 +159,17 @@ async function emitir(nota, sesion, body) {
     prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } }),
   ]);
 
+  // Un comprobante de contabilidad sin el ente que lo emite no es un documento: el impreso
+  // saldría con "—" donde va la razón social. Es el mismo bloqueo que ya tiene el comprobante
+  // de tesorería.
+  if (!cfg?.razonSocial || !cfg?.nit) {
+    const e = new Error(
+      "Configura la razón social y el NIT del emisor antes de emitir: van impresos en el comprobante."
+    );
+    e.code = "NOTA";
+    throw e;
+  }
+
   // Cartera, proveedores y tesorería tienen saldos que mantienen otros módulos. Moverlos aquí
   // descuadra el libro contra los pendientes por cobrar y por pagar sin que nada avise.
   const blindadas = blindarTesoreria(cuentasBlindadas(mapa), tesoreria);
@@ -175,9 +187,11 @@ async function emitir(nota, sesion, body) {
       usuarioId: sesion.id,
       tipo: "nota_contabilidad",
       anio,
+      // La semilla filtra POR AÑO: escaneando todos los `CC-`, la primera nota de 2027 salía
+      // con el número siguiente al último de 2026 y la serie dejaba de contar el ejercicio.
       semilla: async () => {
         const previos = await tx.notaContabilidad.findMany({
-          where: { usuarioId: sesion.id, numero: { startsWith: "CC-" } },
+          where: { usuarioId: sesion.id, numero: { startsWith: `CC-${anio}-` } },
           select: { numero: true },
         });
         return previos.reduce((max, n) => Math.max(max, numeroFinal(n.numero)), 0);
@@ -218,17 +232,15 @@ async function emitir(nota, sesion, body) {
         asientoId: asiento.id,
         autorizadoPor: (body.autorizadoPor || "").trim() || sesion.nombreCompleto || sesion.email,
         // Se congela el emisor: una nota de 2026 debe seguir mostrando la razón social de 2026.
-        emisorSnapshot: cfg
-          ? {
-              razonSocial: cfg.razonSocial,
-              nit: cfg.nit,
-              direccion: cfg.direccion,
-              ciudad: cfg.ciudad,
-              telefono: cfg.telefono,
-              email: cfg.email,
-            }
-          : null,
-        ciudad: nota.ciudad || cfg?.ciudad || null,
+        emisorSnapshot: {
+          razonSocial: cfg.razonSocial,
+          nit: cfg.nit,
+          direccion: cfg.direccion,
+          ciudad: cfg.ciudad,
+          telefono: cfg.telefono,
+          email: cfg.email,
+        },
+        ciudad: nota.ciudad || cfg.ciudad || null,
       },
       include: { movimientos: { orderBy: { orden: "asc" } } },
     });
@@ -240,7 +252,7 @@ async function emitir(nota, sesion, body) {
 /**
  * Reversa: crea OTRA nota emitida que invierte los movimientos.
  *
- * No se borra ni se anula el asiento original. El art. 123 del Decreto 2649 no admite huecos en
+ * No se borra ni se anula el asiento original. El art. 125 del Decreto 2649 no admite huecos en
  * la numeración ni borrados en el libro: un error se corrige con un contraasiento que también
  * queda registrado.
  */
@@ -257,17 +269,24 @@ async function reversar(nota, sesion, body) {
     throw e;
   }
 
-  const anio = Number((nota.fecha || "").slice(0, 4)) || new Date().getFullYear();
-  const hoy = body.fecha || nota.fecha;
+  // La reversión se fecha HOY, no el día de la nota original. Antedatarla modificaría en
+  // silencio un periodo que puede estar ya declarado, y borraría el rastro de cuándo se
+  // decidió corregir. `body.fecha` queda como override explícito.
+  const hoy = body.fecha || hoyBogota();
+  // Y el año sale de la fecha EFECTIVA: derivarlo de la nota original producía
+  // "CC-2025-0012 fechado 2026-02-10", que rompe la correspondencia entre serie y ejercicio.
+  const anio = Number(hoy.slice(0, 4)) || new Date().getFullYear();
 
   const resultado = await prisma.$transaction(async (tx) => {
     const consecutivo = await siguienteConsecutivo(tx, {
       usuarioId: sesion.id,
       tipo: "nota_contabilidad",
       anio,
+      // La semilla filtra POR AÑO: escaneando todos los `CC-`, la primera nota de 2027 salía
+      // con el número siguiente al último de 2026 y la serie dejaba de contar el ejercicio.
       semilla: async () => {
         const previos = await tx.notaContabilidad.findMany({
-          where: { usuarioId: sesion.id, numero: { startsWith: "CC-" } },
+          where: { usuarioId: sesion.id, numero: { startsWith: `CC-${anio}-` } },
           select: { numero: true },
         });
         return previos.reduce((max, n) => Math.max(max, numeroFinal(n.numero)), 0);

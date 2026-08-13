@@ -55,8 +55,12 @@ export async function GET(request) {
     prisma.asiento.count({ where }),
     // Los totales son del FILTRO COMPLETO, no de la página: un libro que suma solo lo que se
     // ve en pantalla no sirve para cuadrar nada.
+    //
+    // Y suman TODO, incluidos los asientos reversados: el contraasiento no borra al original,
+    // lo neutraliza, y los dos pertenecen al libro. Filtrar por `anulado` dejaba fuera al
+    // original y dentro al contraasiento, que es peor que no filtrar.
     prisma.asiento.aggregate({
-      where: { ...where, anulado: false },
+      where,
       _sum: { totalDebitos: true, totalCreditos: true },
     }),
   ]);

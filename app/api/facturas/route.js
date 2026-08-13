@@ -7,6 +7,23 @@ import { construirWhere } from "@/lib/facturaFiltros";
 import { hoyBogota } from "@/lib/fechas";
 import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
+/**
+ * Contabiliza un documento ya confirmado sin que un fallo suyo tumbe la operación.
+ *
+ * Va en su propia transacción y a prueba de excepciones: si algo sale mal, el documento se
+ * queda con `asientoId: null` y aparece en Contabilidad como pendiente por contabilizar.
+ */
+async function contabilizarSinRomper(usuarioId, factura) {
+  try {
+    const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId } });
+    return await prisma.$transaction((tx) =>
+      contabilizarYEnlazar(tx, { usuarioId, tipo: "factura", documento: factura, mapa })
+    );
+  } catch (e) {
+    return { faltantes: [`No se pudo contabilizar automáticamente: ${e.message}`] };
+  }
+}
+
 // GET /api/facturas → historial filtrado, paginado y con agregados fiscales.
 //
 // Los agregados se calculan sobre EL MISMO `where` que la tabla. Antes los KPI se calculaban
@@ -317,20 +334,21 @@ export async function POST(request) {
         include: { items: { include: { impuestos: true } } },
       });
 
-      // La venta entra al libro diario. Si al mapa de cuentas le falta alguna, la factura se
-      // emite igual y queda pendiente por contabilizar: bloquear la emisión por una tarea de
-      // configuración pararía el negocio, y el hueco queda visible en Contabilidad.
-      const contab = await contabilizarYEnlazar(tx, {
-        usuarioId: sesion.id,
-        tipo: "factura",
-        documento: creada,
-        mapa: await tx.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } }),
-      });
-
-      return { ...creada, asientoId: contab.asiento?.id || null, contabilizacion: contab };
+      return creada;
     });
 
-    return NextResponse.json({ factura }, { status: 201 });
+    // La venta entra al libro diario DESPUÉS de confirmar la factura, en su propia
+    // transacción. No dentro: un fallo al contabilizar reventaría la transacción que ya
+    // consumió el consecutivo DIAN —Postgres aborta la transacción entera ante el primer
+    // error, así que un try/catch dentro no la salvaría— y el usuario perdería una factura
+    // válida por una cuenta mal configurada. Contabilizar es consecuencia de emitir; no puede
+    // impedir la emisión. Si falla, la factura queda pendiente por contabilizar y visible.
+    const contabilizacion = await contabilizarSinRomper(sesion.id, factura);
+
+    return NextResponse.json(
+      { factura: { ...factura, asientoId: contabilizacion.asiento?.id || null }, contabilizacion },
+      { status: 201 }
+    );
   } catch (e) {
     if (e.code === "SIN_CONFIG")
       return NextResponse.json(

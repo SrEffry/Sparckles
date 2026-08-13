@@ -1052,6 +1052,13 @@ model Asiento {
   anulado         Boolean @default(false)
   motivoAnulacion String?
 
+  // Contraasiento: qué asiento reversa este. Se enlaza por ID y no por el texto de la
+  // descripción — comparar por prefijo hacía que "REV-CP-450" pareciera la reversión de
+  // "CP-45", y el segundo asiento se quedaba sin contraasiento y sin documento que lo
+  // soportara (art. 124 del Decreto 2649).
+  reversaAId     String?
+  reversadoPorId String?
+
   movimientos AsientoMovimiento[]
 
   @@unique([usuarioId, numero])

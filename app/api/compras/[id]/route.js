@@ -56,18 +56,39 @@ export async function PUT(request, { params }) {
     // El libro no se reescribe: se reversa el asiento anterior y se registra el nuevo. Así
     // quedan las tres líneas (original, contraasiento y versión vigente) y el art. 125 se
     // cumple — corregir el libro borrando sería justo lo que prohíbe.
+    //
+    // LAS TRES VAN EN LA FECHA DEL DOCUMENTO, no una en cada lado. Con el contraasiento
+    // fechado hoy y la versión vigente en la fecha original, el periodo original quedaba con
+    // el gasto y el IVA descontable DUPLICADOS (el original más el nuevo, sin la reversión
+    // que los resta), y con eso se liquidaba mal la declaración de ese bimestre.
+    const fechaAsiento = existente.fecha;
     await reversarAsientoDe(tx, {
       usuarioId: sesion.id,
       asientoId: existente.asientoId,
-      fecha: hoyBogota(),
+      fecha: fechaAsiento,
       motivo: "Compra editada",
     });
+
+    // El enlace se suelta EN LA BASE, no solo en el objeto que se pasa: `contabilizarYEnlazar`
+    // reserva el documento con un `updateMany` condicionado a `asientoId: null`, y con el
+    // valor viejo todavía en la fila esa reserva no encontraba nada y daba la compra por
+    // contabilizada — quedaba reversada y sin versión vigente, con efecto neto cero.
+    await tx.compra.update({ where: { id }, data: { asientoId: null } });
+
     const contab = await contabilizarYEnlazar(tx, {
       usuarioId: sesion.id,
       tipo: "compra",
       documento: { ...actualizada, asientoId: null },
       mapa,
     });
+
+    // Si la nueva versión no se pudo contabilizar (p. ej. la edición activó una retención
+    // cuya cuenta está en blanco), la compra NO puede quedar apuntando al asiento ya
+    // reversado: con `asientoId` no nulo desaparecería de los pendientes y no volvería a
+    // contabilizarse nunca, dejando su efecto en libros en cero y sin avisar.
+    if (!contab.asiento) {
+      await tx.compra.update({ where: { id }, data: { asientoId: null } });
+    }
     return { ...actualizada, asientoId: contab.asiento?.id || null };
   });
   return NextResponse.json({ compra });

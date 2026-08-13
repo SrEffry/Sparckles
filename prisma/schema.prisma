@@ -790,10 +790,14 @@ model ComprobanteAplicacion {
   comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
   comprobanteId String
 
-  factura   Factura? @relation(fields: [facturaId], references: [id])
-  facturaId String?
-  compra    Compra?  @relation(fields: [compraId], references: [id])
-  compraId  String?
+  factura            Factura?          @relation(fields: [facturaId], references: [id])
+  facturaId          String?
+  compra             Compra?           @relation(fields: [compraId], references: [id])
+  compraId           String?
+  // El documento soporte también crea un pasivo con el proveedor. Sin esta aplicación, ese
+  // saldo crecía y NINGÚN módulo podía cancelarlo: el egreso solo se aplicaba a compras.
+  documentoSoporte   DocumentoSoporte? @relation("PagosDeSoporte", fields: [documentoSoporteId], references: [id])
+  documentoSoporteId String?
 
   docRef         String // "FE-00001", para que el impreso lo muestre aunque se borre el vínculo
   valorDocumento Decimal @db.Decimal(18, 2)
@@ -804,6 +808,7 @@ model ComprobanteAplicacion {
   @@index([comprobanteId])
   @@index([facturaId])
   @@index([compraId])
+  @@index([documentoSoporteId])
   @@map("comprobante_aplicaciones")
 }
 
@@ -903,6 +908,12 @@ model MapaCuentas {
   ivaGenerado    String?
   ivaDescontable String?
   incPorPagar    String?
+
+  // Pagos que salieron antes de tener el documento que los soporta. Es un ACTIVO (1330):
+  // entregamos plata y todavía no tenemos el bien, el servicio ni el documento. Llevarlos a
+  // proveedores dejaría esa cuenta con saldo débito —un activo disfrazado de pasivo— entre el
+  // pago y su legalización, y el gasto sin reconocer en ese intervalo.
+  anticiposPorLegalizar String?
 
   // Otros conceptos que aparecen al pagar o recaudar
   gmf                 String? // gravamen a los movimientos financieros
@@ -1090,6 +1101,9 @@ model DocumentoSoporte {
   updatedAt DateTime @updatedAt
 
   numero String
+  // FECHA DE LA OPERACIÓN, no la del pago. El art. 1.6.1.4.12 del DUT 1625/2016 (adicionado
+  // por el Decreto 358 de 2020) exige la fecha en que ocurrió la operación; el pago es un
+  // hecho posterior y no la sustituye. De aquí sale la fecha del asiento (devengo).
   fecha  String
 
   proveedorNombre    String
@@ -1120,7 +1134,29 @@ model DocumentoSoporte {
   // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
   asientoId String?
 
+  // Comprobante de egreso desde el que se generó, cuando se usó el atajo.
+  //
+  // Además de la trazabilidad, es el DISCRIMINADOR DE MODELO y de ahí cuelgan tres reglas:
+  //   · null  → modelo clásico: primero se causa el soporte, después se paga. La contrapartida
+  //             es PROVEEDORES y la retención del soporte es la que se certifica.
+  //   · lleno → el pago ocurrió primero y el soporte lo legaliza. La contrapartida es
+  //             ANTICIPOS POR LEGALIZAR (1330) —usar proveedores dejaría un saldo débito
+  //             fantasma entre el pago y la legalización— y la retención ya la certificó el
+  //             comprobante, así que la del soporte va informativa.
+  generadoDesdeComprobanteId String?
+
+  // Lo pagado por comprobantes de egreso. Espejo de `Compra.totalPagado`: se materializa para
+  // poder validar el saldo dentro de la transacción y para impedir que se anule un soporte
+  // que ya tiene un pago aplicado.
+  totalPagado Decimal @default(0) @db.Decimal(18, 2)
+
+  // Adquirente (nosotros) tal como estaba al emitir. La Res. 167/2021 exige identificar al
+  // adquirente en el documento soporte, y el impreso no puede depender de la configuración
+  // de hoy para un documento de hace dos años.
+  emisorSnapshot Json?
+
   retencionesPracticadas RetencionPracticada[]
+  pagos                  ComprobanteAplicacion[] @relation("PagosDeSoporte")
 
   @@unique([usuarioId, numero])
   @@index([usuarioId])

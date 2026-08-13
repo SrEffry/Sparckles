@@ -7,6 +7,7 @@ import { generarComprobantePDF } from "@/lib/pdf/comprobantePdf";
 import { buscarCuentas } from "@/lib/asientosApi";
 import { obtenerMapaCuentas } from "@/lib/mapaCuentasApi";
 import { numeroALetras } from "@/lib/numeroALetras";
+import { previsualizarSoporte, generarSoporte } from "@/lib/soporteDesdeComprobanteApi";
 import styles from "../comprobantes.module.css";
 
 const fmt = (v) =>
@@ -28,6 +29,10 @@ export default function ComprobanteDetallePage() {
   const [errorPropuesta, setErrorPropuesta] = useState("");
   const [error, setError] = useState("");
   const [emitiendo, setEmitiendo] = useState(false);
+  // Legalización del pago con un documento soporte (solo egresos emitidos).
+  const [legalizacion, setLegalizacion] = useState(null);
+  const [formSoporte, setFormSoporte] = useState(null);
+  const [generando, setGenerando] = useState(false);
 
   const cargar = useCallback(async () => {
     const [d, m] = await Promise.all([obtenerComprobante(id), obtenerMapaCuentas()]);
@@ -42,6 +47,7 @@ export default function ComprobanteDetallePage() {
         setMovimientos(p.movimientos);
         setAdvertencias(p.advertencias || []);
       }
+      // No se consulta la legalización de un borrador: todavía no hay pago que legalizar.
     } else if (d.asiento) {
       setMovimientos(
         d.asiento.movimientos.map((m) => ({
@@ -52,7 +58,23 @@ export default function ComprobanteDetallePage() {
         }))
       );
     }
+
+    // Solo un EGRESO emitido puede legalizarse con un documento soporte. En el ingreso no
+    // aplica: el espejo sería emitir una factura de venta, y esa se emite por la operación,
+    // no por el cobro (Art. 616-1 E.T.), así que fecharla en el recaudo sería incorrecto.
+    if (d.comprobante.tipo === "egreso" && d.comprobante.estado === "emitido") {
+      setLegalizacion(await previsualizarSoporte(id));
+    }
   }, [id]);
+
+  async function crearSoporte() {
+    setGenerando(true);
+    const res = await generarSoporte(id, formSoporte);
+    setGenerando(false);
+    if (res.error) return setError(res.error);
+    setFormSoporte(null);
+    await cargar();
+  }
 
   useEffect(() => {
     cargar();
@@ -102,6 +124,28 @@ export default function ComprobanteDetallePage() {
           {/* Se pasa el asiento: sin él el impreso no lleva la imputación contable ni el
               número de asiento, que es justo lo que reemplaza al bloque de firma
               "Contabilizado" y da la trazabilidad que exige el art. 124. */}
+          {!esBorrador && !esIngreso && legalizacion?.soporteExistente && (
+            <button
+              className="btn-secondary"
+              onClick={() => router.push("/documentos-soportes")}
+            >
+              Ver {legalizacion.soporteExistente.numero}
+            </button>
+          )}
+          {!esBorrador && !esIngreso && !legalizacion?.soporteExistente && legalizacion?.propuesta && (
+            <button
+              className="btn-primary"
+              onClick={() =>
+                setFormSoporte({
+                  fechaOperacion: legalizacion.propuesta.fecha,
+                  concepto: legalizacion.propuesta.concepto,
+                  proveedorTipoDocumento: "CC",
+                })
+              }
+            >
+              Generar documento soporte
+            </button>
+          )}
           {!esBorrador && (
             <button
               className="btn-secondary"
@@ -282,6 +326,115 @@ export default function ComprobanteDetallePage() {
           )}
         </section>
       </div>
+
+      {/* Legalizar el pago: no convierte el comprobante, CREA un documento soporte con la
+          información de la operación. El comprobante sigue siendo la prueba del pago. */}
+      {formSoporte && (
+        <div className="modal-overlay" onClick={() => setFormSoporte(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="modal-header">
+              <h2>Generar documento soporte</h2>
+              <button className="modal-close" onClick={() => setFormSoporte(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className={styles.avisoAlcance}>
+                El comprobante <strong>{c.numero}</strong> no se transforma: sigue siendo la prueba
+                del pago. Se crea un documento soporte con la información de la operación, y los dos
+                quedan enlazados.
+              </div>
+
+              {(legalizacion?.avisos || []).map((a) => (
+                <div key={a} className={styles.advertencia}>
+                  <span>!</span>
+                  <span>{a}</span>
+                </div>
+              ))}
+
+              <div className={styles.campo}>
+                <label className={styles.campoLabel}>
+                  Fecha de la operación *
+                  <span className={styles.ayuda} title="No es la fecha del pago: es cuándo se recibió el bien o el servicio. El art. 1.6.1.4.12 del DUT la exige, y de ella sale la fecha del asiento.">
+                    ?
+                  </span>
+                </label>
+                <input
+                  type="date"
+                  value={formSoporte.fechaOperacion}
+                  max={c.fecha}
+                  onChange={(e) => setFormSoporte((f) => ({ ...f, fechaOperacion: e.target.value }))}
+                />
+              </div>
+
+              <div className={styles.campo}>
+                <label className={styles.campoLabel}>Tipo de documento del proveedor</label>
+                <select
+                  value={formSoporte.proveedorTipoDocumento}
+                  onChange={(e) => setFormSoporte((f) => ({ ...f, proveedorTipoDocumento: e.target.value }))}
+                >
+                  {["CC", "NIT", "CE", "PA", "TI"].map((x) => (
+                    <option key={x}>{x}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.campo}>
+                <label className={styles.campoLabel}>
+                  Descripción del bien o servicio *
+                  <span className={styles.ayuda} title="El concepto del pago explica el movimiento de dinero; el documento soporte necesita saber QUÉ se adquirió.">
+                    ?
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={formSoporte.concepto}
+                  onChange={(e) => setFormSoporte((f) => ({ ...f, concepto: e.target.value }))}
+                  placeholder="Transporte de mercancía Montería–Cereté, 12 de marzo"
+                />
+              </div>
+
+              <div className={styles.resumen}>
+                <div className={styles.resumenFila}>
+                  <span>Valor de la operación</span>
+                  <strong>{fmt(legalizacion?.propuesta?.bruto)}</strong>
+                </div>
+                {Number(legalizacion?.propuesta?.reteFuente) > 0 && (
+                  <div className={styles.resumenFila}>
+                    <span>(−) ReteFuente ya practicada</span>
+                    <strong>{fmt(legalizacion.propuesta.reteFuente)}</strong>
+                  </div>
+                )}
+                {Number(legalizacion?.propuesta?.reteIca) > 0 && (
+                  <div className={styles.resumenFila}>
+                    <span>(−) ReteICA ya practicada</span>
+                    <strong>{fmt(legalizacion.propuesta.reteIca)}</strong>
+                  </div>
+                )}
+                <div className={`${styles.resumenFila} ${styles.resumenTotal}`}>
+                  <span>Neto pagado</span>
+                  <strong>{fmt(legalizacion?.propuesta?.neto)}</strong>
+                </div>
+                <p className={styles.pista}>
+                  Las retenciones se copian del comprobante, no se vuelven a liquidar. Ya se
+                  certificaron con el pago, así que en el soporte quedan informativas: certificarlas
+                  dos veces le daría al proveedor el doble de lo que se le retuvo.
+                </p>
+              </div>
+
+              {error && <div className="mensaje-error">{error}</div>}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setFormSoporte(null)}>
+                Cancelar
+              </button>
+              <button className="btn-primary" onClick={crearSoporte} disabled={generando}>
+                {generando ? "Generando…" : "Generar documento soporte"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

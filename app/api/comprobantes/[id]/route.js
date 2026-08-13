@@ -437,6 +437,27 @@ async function reversar(comprobante, sesion, body) {
     );
   }
 
+  // ORDEN DE DESHACER: en sentido inverso a la creación. Si este pago ya se legalizó con un
+  // documento soporte, ese soporte se apoya en él —nació de su información y cancela su
+  // anticipo—, así que hay que anularlo primero. Reversar el pago dejándolo vivo produciría un
+  // documento fiscal que soporta un pago que ya no existe.
+  const soporteVivo = await prisma.documentoSoporte.findFirst({
+    where: {
+      usuarioId: sesion.id,
+      generadoDesdeComprobanteId: comprobante.id,
+      estado: { not: "Anulado" },
+    },
+    select: { numero: true },
+  });
+  if (soporteVivo) {
+    return NextResponse.json(
+      {
+        error: `Este pago ya se legalizó con el documento soporte ${soporteVivo.numero}. Anula primero el documento soporte.`,
+      },
+      { status: 409 }
+    );
+  }
+
   const motivo = (body.motivo || "").trim();
   if (!motivo) {
     return NextResponse.json({ error: "Indica el motivo de la reversión: queda en el documento." }, { status: 400 });

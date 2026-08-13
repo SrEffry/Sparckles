@@ -229,6 +229,60 @@
   text-align: right;
 }
 
+/* Concepto y municipio: sin ellos la retención no se puede certificar, así que se piden aquí
+   y no en un paso posterior donde ya no hay contexto de la compra. */
+.retBloque {
+  margin-bottom: 10px;
+}
+.retBloque .retRow {
+  margin-bottom: 0;
+}
+.retExtra {
+  margin: 6px 0 0 26px;
+  padding: 9px 12px;
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.retExtra label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.retExtra select,
+.retExtra input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fff;
+  color: var(--text);
+  width: 100%;
+}
+.retExtra select:focus,
+.retExtra input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.retAviso {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #8a5b00;
+}
+
+/* Tipo + número de documento del tercero, en una sola fila. */
+.docTercero {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+}
+
 .totales {
   margin-top: 16px;
   border-top: 1px solid var(--border);

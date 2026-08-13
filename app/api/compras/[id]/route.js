@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarCompra } from "@/lib/compraValidation";
+import { registrarRetencionesDeCompra } from "@/lib/retencionesDeDocumentos";
 
 async function compraDelUsuario(id, usuarioId) {
   const c = await prisma.compra.findUnique({ where: { id } });
@@ -37,10 +38,19 @@ export async function PUT(request, { params }) {
   const { data, items, errors } = normalizarCompra(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
-  const compra = await prisma.compra.update({
-    where: { id },
-    data: { ...data, items: { deleteMany: {}, create: items } },
-    include: { items: true },
+  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+  const causadas = mapa?.retencionesEnCausacion !== false;
+
+  const compra = await prisma.$transaction(async (tx) => {
+    const actualizada = await tx.compra.update({
+      where: { id },
+      data: { ...data, items: { deleteMany: {}, create: items } },
+      include: { items: true },
+    });
+    // Se reescriben: editar una compra puede cambiar sus retenciones, y el certificado debe
+    // reflejar la versión vigente, no la anterior.
+    await registrarRetencionesDeCompra(tx, sesion.id, actualizada, causadas);
+    return actualizada;
   });
   return NextResponse.json({ compra });
 }

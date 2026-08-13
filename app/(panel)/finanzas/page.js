@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { obtenerResumen } from "@/lib/resumenApi";
-import { SoporteIcon, ComprasIcon, FacturaIcon, ChevronIcon } from "../moduleIcons";
+import { SoporteIcon, ComprasIcon, FacturaIcon, BilleteIcon, ChevronIcon } from "../moduleIcons";
 import styles from "../hubs.module.css";
 
 const fmt = (v) =>
@@ -107,6 +107,9 @@ export default function FinanzasPage() {
           { icon: <FacturaIcon />, color: styles.cSuccess, t: "Comprobante de ingreso", d: "Recaudos aplicados a facturas de venta", href: "/comprobantes?tipo=ingreso" },
           { icon: <ComprasIcon />, color: styles.cWarning, t: "Comprobante de egreso", d: "Pagos aplicados a compras de proveedores", href: "/comprobantes?tipo=egreso" },
           { icon: <SoporteIcon />, color: styles.cTeal, t: "Documentos soporte", d: "Adquisiciones a no obligados a facturar", count: r?.soportes, href: "/documentos-soportes" },
+          // Obligación anual del agente retenedor (Art. 381 E.T.): el tercero necesita el
+          // certificado para descontarse lo que le retuvimos.
+          { icon: <BilleteIcon />, color: styles.cInfo, t: "Certificados de retención", d: "Lo retenido a cada tercero, listo para certificar", href: "/certificados-retencion" },
         ].map((x) => (
           <button key={x.t} className={`${styles.linkCard} ${x.color}`} onClick={() => router.push(x.href)}>
             <span className={styles.linkIcon}>{x.icon}</span>

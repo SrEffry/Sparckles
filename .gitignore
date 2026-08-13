@@ -29,6 +29,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+# logs del servidor de desarrollo y PDFs generados al probar
+dev*.log
+/*.pdf
 
 # env files — el .env real NUNCA se sube (contiene DATABASE_URL y JWT_SECRET).
 # Solo se versiona la plantilla .env.example.

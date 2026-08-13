@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarCompra } from "@/lib/compraValidation";
+import { registrarRetencionesDeCompra } from "@/lib/retencionesDeDocumentos";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -28,9 +29,20 @@ export async function POST(request) {
   const { data, items, errors } = normalizarCompra(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
-  const compra = await prisma.compra.create({
-    data: { ...data, usuarioId: sesion.id, items: { create: items } },
-    include: { items: true },
+  // La política decide si la retención cuenta al causar (aquí) o al pagar (el comprobante).
+  // Las dos ramas se cablean: con `true` fijo, la política "no causar" contaba las dos veces.
+  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+  const causadas = mapa?.retencionesEnCausacion !== false;
+
+  const compra = await prisma.$transaction(async (tx) => {
+    const creada = await tx.compra.create({
+      data: { ...data, usuarioId: sesion.id, items: { create: items } },
+      include: { items: true },
+    });
+    // Las retenciones practicadas al proveedor van también a la tabla unificada: es lo que
+    // alimenta el certificado anual.
+    await registrarRetencionesDeCompra(tx, sesion.id, creada, causadas);
+    return creada;
   });
   return NextResponse.json({ compra }, { status: 201 });
 }

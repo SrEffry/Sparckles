@@ -1,0 +1,515 @@
+/* Notas de contabilidad: lista, edición del borrador y revisión antes de emitir. */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.head h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+.head p {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-top: 4px;
+  max-width: 680px;
+  line-height: 1.5;
+}
+.headAcciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.numeroGrande {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Límite del módulo, dicho antes de que alguien registre aquí una venta. */
+.avisoAlcance {
+  background: var(--info-tint);
+  border: 1px solid #c5dff5;
+  border-radius: 9px;
+  padding: 10px 13px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #10508a;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.filtros select,
+.filtros input {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: #fafafa;
+}
+.filtros input {
+  flex: 1;
+  min-width: 200px;
+}
+.filtros input:focus,
+.filtros select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.statValor {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.statLabel {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.tablaWrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 860px;
+}
+.tabla th {
+  text-align: left;
+  padding: 11px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tabla td {
+  padding: 12px;
+  border-bottom: 1px solid #f2f2f4;
+  vertical-align: top;
+}
+.inactivo {
+  opacity: 0.55;
+}
+.concepto {
+  max-width: 320px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.monto {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sub {
+  font-size: 11.5px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.borrador {
+  background: #f0f0f2;
+  color: #55555a;
+}
+.emitido {
+  background: var(--success-tint);
+  color: var(--success);
+}
+.reversado {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.acciones {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.acciones button {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.acciones button:hover {
+  background: #fafafa;
+}
+.del {
+  color: var(--danger) !important;
+  border: none !important;
+  background: none !important;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.del:hover {
+  text-decoration: underline;
+}
+
+.vacio {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.vacio button {
+  margin-top: 14px;
+}
+
+/* ---------- Editor ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  margin-bottom: 18px;
+}
+.panelTitulo {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.campoAncho {
+  grid-column: 1 / -1;
+}
+.campoLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  background: #fafafa;
+  color: var(--text);
+  width: 100%;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+.campo textarea {
+  resize: vertical;
+  line-height: 1.5;
+  min-height: 76px;
+}
+.ayudaTipo {
+  font-size: 11.5px;
+  color: var(--text-soft);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+/* ---------- Movimientos ---------- */
+.movHead,
+.movFila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px 118px 130px 28px;
+  gap: 8px;
+  align-items: start;
+}
+.movHead {
+  margin: 6px 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+}
+/* El padding iguala el de los inputs: sin él, "CRÉDITO" terminaba pegado a "TERCERO" y los
+   tres rótulos se leían como uno solo. */
+.movHead span {
+  padding: 0 10px;
+}
+.movHead span:nth-child(2),
+.movHead span:nth-child(3) {
+  text-align: right;
+}
+.movFila {
+  margin-bottom: 8px;
+}
+.movFila input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  background: #fafafa;
+  width: 100%;
+  min-width: 0;
+}
+.movFila input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+.movFila input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rm {
+  padding: 8px 0;
+  border: none;
+  background: none;
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 13px;
+}
+.rm:hover:not(:disabled) {
+  color: var(--danger);
+}
+.rm:disabled {
+  opacity: 0.3;
+}
+.agregar {
+  margin-top: 4px;
+  padding: 8px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+  background: #fafafa;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.agregar:hover {
+  background: var(--primary-tint);
+}
+
+/* Cuenta bloqueada: se dice en el sitio, no al intentar emitir. */
+.cuentaBloqueada input {
+  border-color: var(--danger) !important;
+  background: var(--danger-tint) !important;
+}
+.motivoBloqueo {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: var(--danger);
+  line-height: 1.45;
+  margin: -4px 0 6px;
+}
+
+.picker {
+  position: relative;
+  min-width: 0;
+}
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  margin-top: 3px;
+}
+.opt {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+.opt:hover {
+  background: var(--primary-tint);
+}
+.opt strong {
+  color: var(--primary);
+  margin-right: 5px;
+}
+
+.balance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px 118px 158px;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 0 0;
+  border-top: 2px solid var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.balance span:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.balanceMal {
+  color: var(--danger);
+  border-top-color: var(--danger);
+}
+.letras {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.accionesPie {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dato dt {
+  font-size: 11.5px;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.dato dd {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.conceptoBox {
+  background: #fafafa;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.alerta,
+.advertencia {
+  border-radius: 9px;
+  padding: 10px 13px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.alerta {
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  color: #8a5b00;
+}
+.advertencia {
+  background: var(--danger-tint);
+  border: 1px solid #f3c2c2;
+  color: var(--danger);
+}
+.enlace {
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2000;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  max-width: 460px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
+}
+.success {
+  background: var(--success-tint);
+  color: var(--success);
+}
+.error {
+  background: var(--danger-tint);
+  color: var(--danger);
+}

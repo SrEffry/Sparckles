@@ -78,7 +78,7 @@ export default function DashboardPage() {
     { icon: <ClientesIcon />, c: styles.cInfo, titulo: "Clientes", desc: "Gestiona tus clientes", count: r?.clientes, to: "/clientes" },
     { icon: <ComprasIcon />, c: styles.cWarning, titulo: "Compras", desc: "Facturas de proveedores", count: r?.compras, to: "/compras" },
     { icon: <NominaIcon />, c: styles.cSuccess, titulo: "Nómina", desc: "Empleados y liquidación", count: r?.empleadosActivos, to: "/nomina" },
-    { icon: <AsientosIcon />, c: styles.cViolet, titulo: "Asientos", desc: "Contabilidad de partida doble", count: r?.asientos, to: "/asientos-contables" },
+    { icon: <AsientosIcon />, c: styles.cViolet, titulo: "Libro diario", desc: "Todos los asientos, en orden", count: r?.asientos, to: "/libro-diario" },
     { icon: <NotasIcon />, c: styles.cTeal, titulo: "Notas D/C", desc: "Ajustes a facturas", count: r?.notas, to: "/notas" },
   ];
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { listarCompras, crearCompra, actualizarCompra, eliminarCompra, obtenerCompra } from "@/lib/comprasApi";
 import ImportExport from "@/components/ImportExport";
 import { hoyBogota } from "@/lib/fechas";
+import { conceptosPorCategoria, tarifaOficial, tarifaVariable } from "@/lib/conceptosRetencion";
 import styles from "./compras.module.css";
 
 const fmt = (v) =>
@@ -14,6 +15,10 @@ const fmt = (v) =>
 const TIPOS_DOC = ["Factura", "Documento equivalente", "Cuenta de cobro"];
 const CONDICIONES = ["Contado", "Crédito"];
 const MEDIOS = ["Efectivo", "Transferencia", "Tarjeta", "Cheque"];
+const TIPOS_DOCUMENTO_TERCERO = ["NIT", "CC", "CE", "PA", "TI"];
+
+// Se calcula una vez: la tabla es estática y recorrerla en cada render de la fila no aporta.
+const CONCEPTOS_AGRUPADOS = conceptosPorCategoria();
 
 // Unidad de cada retención. El ICA se expresa POR MIL (‰), no en porcentaje: es la tarifa
 // municipal. Debe coincidir con `RETENCIONES` de lib/compraValidation.js, que es la autoridad.
@@ -184,15 +189,26 @@ function estadoInicial(c) {
     medioPago: c?.medioPago || "Transferencia",
     proveedorNombre: c?.proveedorNombre || "",
     proveedorNit: c?.proveedorNit || "",
+    proveedorTipoDocumento: c?.proveedorTipoDocumento || "NIT",
     proveedorTel: c?.proveedorTel || "",
     observaciones: c?.observaciones || "",
     items: c?.items?.length
       ? c.items.map((i) => ({ descripcion: i.descripcion, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), descuento: Number(i.descuento), iva: Number(i.iva) }))
       : [itemVacio()],
+    // `concepto` y `municipio` no son adorno: sin ellos la retención no se puede certificar
+    // (Art. 381 lit. f, y el ICA se declara en el municipio donde se practicó).
     retenciones: {
-      retefuente: { activa: c?.retenciones?.retefuente?.activa || false, tarifa: c?.retenciones?.retefuente?.tarifa || 0 },
+      retefuente: {
+        activa: c?.retenciones?.retefuente?.activa || false,
+        tarifa: c?.retenciones?.retefuente?.tarifa || 0,
+        concepto: c?.retenciones?.retefuente?.concepto || "",
+      },
       reteiva: { activa: c?.retenciones?.reteiva?.activa || false, tarifa: c?.retenciones?.reteiva?.tarifa || 0 },
-      reteica: { activa: c?.retenciones?.reteica?.activa || false, tarifa: c?.retenciones?.reteica?.tarifa || 0 },
+      reteica: {
+        activa: c?.retenciones?.reteica?.activa || false,
+        tarifa: c?.retenciones?.reteica?.tarifa || 0,
+        municipio: c?.retenciones?.reteica?.municipio || "",
+      },
     },
   };
 }
@@ -236,28 +252,99 @@ function CompraModal({ inicial, onClose, onGuardar }) {
     }
   }
 
-  const RetRow = ({ k, label, base }) => (
-    <div className={styles.retRow}>
-      <label>
-        <input type="checkbox" checked={form.retenciones[k].activa} onChange={(e) => setRet(k, "activa", e.target.checked)} /> {label}
-      </label>
-      {form.retenciones[k].activa && (
-        <>
-          <input
-            type="number"
-            min="0"
-            step={UNIDAD_RETENCION[k] === "‰" ? "0.01" : "0.1"}
-            className={styles.retTarifa}
-            value={form.retenciones[k].tarifa}
-            onChange={(e) => setRet(k, "tarifa", e.target.value)}
-            placeholder={UNIDAD_RETENCION[k]}
-            aria-label={`Tarifa de ${label} en ${UNIDAD_RETENCION[k] === "‰" ? "por mil" : "porcentaje"}`}
-          />
-          <span className={styles.retVal}>−{fmt(valorRetencion(form.retenciones[k], base, k))}</span>
-        </>
-      )}
-    </div>
-  );
+  // Al elegir concepto se fija la tarifa OFICIAL: la tarifa es un atributo de la norma, no un
+  // dato del usuario. Solo se deja escribir cuando la norma no fija una sola (tabla del 383).
+  function setConcepto(codigo) {
+    const oficial = tarifaOficial(codigo);
+    setForm((f) => ({
+      ...f,
+      retenciones: {
+        ...f.retenciones,
+        retefuente: {
+          ...f.retenciones.retefuente,
+          concepto: codigo,
+          tarifa: oficial ?? f.retenciones.retefuente.tarifa,
+        },
+      },
+    }));
+  }
+
+  const RetRow = ({ k, label, base }) => {
+    const r = form.retenciones[k];
+    const tarifaBloqueada = k === "retefuente" && !!r.concepto && !tarifaVariable(r.concepto);
+    return (
+      <div className={styles.retBloque}>
+        <div className={styles.retRow}>
+          <label>
+            <input type="checkbox" checked={r.activa} onChange={(e) => setRet(k, "activa", e.target.checked)} /> {label}
+          </label>
+          {r.activa && (
+            <>
+              <input
+                type="number"
+                min="0"
+                step={UNIDAD_RETENCION[k] === "‰" ? "0.01" : "0.1"}
+                className={styles.retTarifa}
+                value={r.tarifa}
+                readOnly={tarifaBloqueada}
+                title={tarifaBloqueada ? "La tarifa la fija la norma para el concepto elegido." : undefined}
+                onChange={(e) => setRet(k, "tarifa", e.target.value)}
+                placeholder={UNIDAD_RETENCION[k]}
+                aria-label={`Tarifa de ${label} en ${UNIDAD_RETENCION[k] === "‰" ? "por mil" : "porcentaje"}`}
+              />
+              <span className={styles.retVal}>−{fmt(valorRetencion(r, base, k))}</span>
+            </>
+          )}
+        </div>
+
+        {/* El Art. 381 lit. f exige el concepto: sin él el certificado del proveedor no se puede
+            expedir, y no expedirlo cuesta el 5% de los pagos (Art. 667 E.T.). */}
+        {r.activa && k === "retefuente" && (
+          <div className={styles.retExtra}>
+            <label>
+              Concepto de retención *
+              <select value={r.concepto} onChange={(e) => setConcepto(e.target.value)}>
+                <option value="">Selecciona el concepto…</option>
+                {CONCEPTOS_AGRUPADOS.map((g) => (
+                  <optgroup key={g.categoria} label={g.categoria}>
+                    {g.conceptos.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre} {Number.isFinite(Number(c.tarifa)) ? `(${c.tarifa}%)` : "(tarifa variable)"}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            {!r.concepto && (
+              <span className={styles.retAviso}>
+                Sin concepto no podrás expedirle el certificado de retención al proveedor.
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* El ICA se declara en el municipio donde se practicó. */}
+        {r.activa && k === "reteica" && (
+          <div className={styles.retExtra}>
+            <label>
+              Municipio donde se practicó *
+              <input
+                value={r.municipio}
+                onChange={(e) => setRet(k, "municipio", e.target.value)}
+                placeholder="Montería, Bogotá D.C., …"
+              />
+            </label>
+            {!r.municipio && (
+              <span className={styles.retAviso}>
+                Sin municipio, esta retención no se puede certificar ni declarar.
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -270,11 +357,25 @@ function CompraModal({ inicial, onClose, onGuardar }) {
           <h3 className={styles.grupo}>Proveedor</h3>
           <div className="form-row">
             <div className="form-group"><label>Nombre / Razón social *</label><input value={form.proveedorNombre} onChange={(e) => set("proveedorNombre", e.target.value)} /></div>
-            <div className="form-group"><label>NIT</label><input value={form.proveedorNit} onChange={(e) => set("proveedorNit", e.target.value)} /></div>
+            <div className="form-group">
+              <label>Documento</label>
+              <div className={styles.docTercero}>
+                {/* El certificado de retención imprime el tipo. Dar por hecho "NIT" convertía a
+                    una persona natural con cédula en una sociedad. */}
+                <select
+                  value={form.proveedorTipoDocumento}
+                  onChange={(e) => set("proveedorTipoDocumento", e.target.value)}
+                  aria-label="Tipo de documento del proveedor"
+                >
+                  {TIPOS_DOCUMENTO_TERCERO.map((t) => <option key={t}>{t}</option>)}
+                </select>
+                <input value={form.proveedorNit} onChange={(e) => set("proveedorNit", e.target.value)} placeholder="Número" />
+              </div>
+            </div>
           </div>
           <div className="form-row">
             <div className="form-group"><label>Teléfono</label><input value={form.proveedorTel} onChange={(e) => set("proveedorTel", e.target.value)} /></div>
-            <div className="form-group"><label>Tipo de documento</label>
+            <div className="form-group"><label>Tipo de comprobante</label>
               <select value={form.tipoDoc} onChange={(e) => set("tipoDoc", e.target.value)}>{TIPOS_DOC.map((t) => <option key={t}>{t}</option>)}</select>
             </div>
           </div>

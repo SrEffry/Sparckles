@@ -187,3 +187,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Tipo + número de documento del tercero, en una sola fila. El certificado de retención lo
+   imprime, y dar por hecho "NIT" convertía a una persona natural en una sociedad. */
+.docTercero {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+}

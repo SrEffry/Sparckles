@@ -1,33 +1,35 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
-import { normalizarAsiento, validarCuentasPUC } from "@/lib/asientoValidation";
 
-/**
- * Un asiento generado por un comprobante de tesorería no se edita ni se anula por su cuenta.
- *
- * Si se pudiera, quedaría un comprobante "Contabilizado" cuyo asiento dice otra cosa o ya no
- * existe, y el papel que tiene el tercero dejaría de corresponder con los libros — que es
- * justo lo que exige el art. 124 del D. 2649. La corrección va por el comprobante: se reversa.
- */
-async function bloqueadoPorComprobante(asientoId) {
-  const comprobante = await prisma.comprobanteTesoreria.findFirst({
-    where: { asientoId },
-    select: { numero: true, tipo: true },
-  });
-  if (!comprobante) return null;
-  return NextResponse.json(
-    {
-      error: `Este asiento pertenece al comprobante ${comprobante.numero} y no se modifica por separado. Para corregirlo, reversa el comprobante desde Finanzas → Comprobantes de ${comprobante.tipo}.`,
-    },
-    { status: 400 }
-  );
-}
+// El asiento es la CONSECUENCIA de un documento, nunca el documento en sí. Ni se edita ni se
+// anula por su cuenta: si se pudiera, quedaría un comprobante "Contabilizado" cuyo asiento dice
+// otra cosa, y el papel que tiene el tercero dejaría de corresponder con los libros — justo lo
+// que exige el art. 124 del Decreto 2649.
+//
+// Y el art. 123 no admite huecos: un error se corrige con un CONTRAASIENTO que también queda
+// registrado, no borrando la línea. Ese contraasiento lo emite la reversión del documento.
 
-async function asientoDelUsuario(id, usuarioId) {
-  const a = await prisma.asiento.findUnique({ where: { id } });
-  if (!a || a.usuarioId !== usuarioId) return null;
-  return a;
+/** A dónde mandar al usuario para corregir, según el documento que generó el asiento. */
+async function origenDelAsiento(asientoId) {
+  const [comprobante, nota] = await Promise.all([
+    prisma.comprobanteTesoreria.findFirst({ where: { asientoId }, select: { numero: true, tipo: true } }),
+    prisma.notaContabilidad.findFirst({ where: { asientoId }, select: { numero: true, id: true } }),
+  ]);
+
+  if (comprobante) {
+    return {
+      texto: `el comprobante ${comprobante.numero}`,
+      comoCorregir: `Revérsalo desde Finanzas → Comprobantes de ${comprobante.tipo}.`,
+    };
+  }
+  if (nota) {
+    return {
+      texto: `la nota de contabilidad ${nota.numero}`,
+      comoCorregir: "Revérsala desde Contabilidad → Notas de contabilidad.",
+    };
+  }
+  return null;
 }
 
 export async function GET(_request, { params }) {
@@ -40,69 +42,27 @@ export async function GET(_request, { params }) {
   return NextResponse.json({ asiento });
 }
 
-export async function PUT(request, { params }) {
-  const sesion = await obtenerSesion();
-  if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
-
-  const { id } = await params;
-  const existente = await asientoDelUsuario(id, sesion.id);
-  if (!existente) return NextResponse.json({ error: "Asiento no encontrado." }, { status: 404 });
-  if (existente.anulado)
-    return NextResponse.json({ error: "No se puede editar un asiento anulado." }, { status: 400 });
-
-  const bloqueo = await bloqueadoPorComprobante(id);
-  if (bloqueo) return bloqueo;
-
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
-  }
-
-  const { data, movimientos, errors } = normalizarAsiento(body);
-  if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
-
-  const puc = await validarCuentasPUC(prisma, data.sector, movimientos);
-  if (puc.errors.length)
-    return NextResponse.json({ error: puc.errors[0], errores: puc.errors }, { status: 400 });
-
-  const asiento = await prisma.asiento.update({
-    where: { id },
-    data: { ...data, movimientos: { deleteMany: {}, create: puc.movimientos } },
-    include: { movimientos: true },
-  });
-  return NextResponse.json({ asiento });
+export async function PUT(_request, { params }) {
+  return cerrado(params);
 }
 
-// PATCH → anular (documento contable: no se borra)
-export async function PATCH(request, { params }) {
+export async function PATCH(_request, { params }) {
+  return cerrado(params);
+}
+
+async function cerrado(params) {
   const sesion = await obtenerSesion();
   if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
 
   const { id } = await params;
-  const existente = await asientoDelUsuario(id, sesion.id);
-  if (!existente) return NextResponse.json({ error: "Asiento no encontrado." }, { status: 404 });
+  const asiento = await prisma.asiento.findUnique({ where: { id } });
+  if (!asiento || asiento.usuarioId !== sesion.id)
+    return NextResponse.json({ error: "Asiento no encontrado." }, { status: 404 });
 
-  let body = {};
-  try {
-    body = await request.json();
-  } catch {
-    /* opcional */
-  }
+  const origen = await origenDelAsiento(id);
+  const error = origen
+    ? `Este asiento lo generó ${origen.texto} y no se modifica por separado. ${origen.comoCorregir}`
+    : "El libro diario es de solo lectura. Un error se corrige con el contraasiento que emite la reversión del documento que lo originó (art. 123 del Decreto 2649).";
 
-  if (body.accion === "anular") {
-    if (existente.anulado)
-      return NextResponse.json({ error: "El asiento ya está anulado." }, { status: 400 });
-
-    const bloqueo = await bloqueadoPorComprobante(id);
-    if (bloqueo) return bloqueo;
-    const asiento = await prisma.asiento.update({
-      where: { id },
-      data: { anulado: true, motivoAnulacion: (body.motivo || "").trim() || null },
-    });
-    return NextResponse.json({ asiento });
-  }
-
-  return NextResponse.json({ error: "Acción no soportada." }, { status: 400 });
+  return NextResponse.json({ error }, { status: 410 });
 }

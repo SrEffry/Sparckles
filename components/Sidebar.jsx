@@ -15,13 +15,20 @@ const NAV = [
     label: "Operaciones",
     href: "/operaciones",
     ready: true,
-    rutas: ["/operaciones", "/facturacion", "/notas", "/compras", "/asientos-contables"],
+    rutas: ["/operaciones", "/facturacion", "/notas", "/compras"],
   },
   {
     label: "Finanzas",
     href: "/finanzas",
     ready: true,
-    rutas: ["/finanzas", "/documentos-soportes", "/comprobantes"],
+    rutas: ["/finanzas", "/documentos-soportes", "/comprobantes", "/certificados-retencion"],
+  },
+  {
+    // Separado de Operaciones: aquí no se opera, se sostienen los libros.
+    label: "Contabilidad",
+    href: "/contabilidad",
+    ready: true,
+    rutas: ["/contabilidad", "/notas-contabilidad", "/libro-diario"],
   },
   { label: "Recursos", href: "/recursos", ready: true, rutas: ["/recursos", "/nomina"] },
   {

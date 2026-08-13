@@ -4,6 +4,7 @@ import { obtenerSesion } from "@/lib/session";
 import { normalizarSoporte } from "@/lib/soporteValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
+import { registrarRetencionesDeSoporte } from "@/lib/retencionesDeDocumentos";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -32,6 +33,9 @@ export async function POST(request) {
 
   const anio = Number((data.fecha || "").slice(0, 4)) || Number(hoyBogota().slice(0, 4));
 
+  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+  const causadas = mapa?.retencionesEnCausacion !== false;
+
   try {
     const soporte = await prisma.$transaction(async (tx) => {
       // Contador propio por año, no `count(*)`: el documento soporte lleva numeración
@@ -49,9 +53,13 @@ export async function POST(request) {
         },
       });
       const numero = `DS-${anio}-${String(consecutivo).padStart(4, "0")}`;
-      return tx.documentoSoporte.create({
+      const creado = await tx.documentoSoporte.create({
         data: { ...data, numero, usuarioId: sesion.id },
       });
+      // El documento soporte es causación, así que sigue la misma política que la compra:
+      // vinculante si el usuario causa las retenciones, informativo si las registra al pagar.
+      await registrarRetencionesDeSoporte(tx, sesion.id, creado, causadas);
+      return creado;
     });
     return NextResponse.json({ soporte }, { status: 201 });
   } catch (e) {

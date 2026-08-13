@@ -186,8 +186,8 @@ export default function NuevoComprobantePage() {
               ? "anticipos de clientes, préstamos recibidos o aportes de socios"
               : "nómina, impuestos, servicios públicos, caja menor o anticipos a proveedores"}
             , usa{" "}
-            <button type="button" className={styles.enlace} onClick={() => router.push("/asientos-contables")}>
-              Asientos contables
+            <button type="button" className={styles.enlace} onClick={() => router.push("/notas-contabilidad")}>
+              una nota de contabilidad
             </button>
             .
           </div>

@@ -27,20 +27,23 @@ model Usuario {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  empresas   Empresa[]
-  clientes   Cliente[]
-  productos  Producto[]
-  facturas   Factura[]
-  notas      Nota[]
-  empleados  Empleado[]
-  nominas    Nomina[]
-  compras    Compra[]
-  asientos   Asiento[]
+  empresas     Empresa[]
+  clientes     Cliente[]
+  productos    Producto[]
+  facturas     Factura[]
+  notas        Nota[]
+  empleados    Empleado[]
+  nominas      Nomina[]
+  compras      Compra[]
+  asientos     Asiento[]
   soportes     DocumentoSoporte[]
   impuestos    Impuesto[]
   tesoreria    CuentaTesoreria[]
   comprobantes ComprobanteTesoreria[]
   consecutivos ConsecutivoDocumento[]
+  retenciones  RetencionPracticada[]
+  certificados CertificadoRetencion[]
+  notasContab  NotaContabilidad[]
   configFact   ConfigFacturacion?
   mapaCuentas  MapaCuentas?
 
@@ -460,10 +463,13 @@ model Compra {
   condicionPago    String?
   medioPago        String?
 
-  // Proveedor
-  proveedorNombre String
-  proveedorNit    String?
-  proveedorTel    String?
+  // Proveedor.
+  // El tipo de documento importa: el certificado de retención lo imprime, y dar por hecho
+  // "NIT" convertía a una persona natural con cédula en una sociedad.
+  proveedorNombre        String
+  proveedorNit           String?
+  proveedorTipoDocumento String?
+  proveedorTel           String?
 
   // Totales
   subtotal         Decimal @db.Decimal(18, 2)
@@ -480,8 +486,9 @@ model Compra {
   // Pagado mediante comprobantes de egreso. Ver la nota de `Factura.totalRecaudado`.
   totalPagado Decimal @default(0) @db.Decimal(18, 2)
 
-  items        CompraItem[]
-  aplicaciones ComprobanteAplicacion[]
+  items                  CompraItem[]
+  aplicaciones           ComprobanteAplicacion[]
+  retencionesPracticadas RetencionPracticada[]
 
   @@index([usuarioId])
   @@map("compras")
@@ -502,6 +509,144 @@ model CompraItem {
 
   @@index([compraId])
   @@map("compra_items")
+}
+
+// ============================ Retenciones practicadas ============================
+// Tabla ÚNICA de las retenciones que NOSOTROS practicamos a terceros.
+//
+// Antes vivían en tres sitios que no se podían cruzar: `Compra.retenciones` (un Json, y sin
+// concepto), las columnas sueltas de `DocumentoSoporte` (sin concepto ni municipio) y
+// `ComprobanteRetencion`. Con eso era imposible responder "¿cuánto le retuve a este tercero
+// en 2025 por servicios?", que es exactamente lo que pide el certificado del Art. 381 E.T.
+//
+// El certificado NO es un dato que se captura: es una consulta acumulada por tercero,
+// concepto y año sobre esta tabla.
+//
+// OJO con el doble conteo: la retención se practica en el pago o abono en cuenta, lo que
+// ocurra primero — normalmente en la CAUSACIÓN. Cuando la política del usuario dice que se
+// causan, la fila del comprobante de pago es informativa y NO debe sumar al certificado. Eso
+// lo marca `vinculante`.
+model RetencionPracticada {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+
+  // Documento que la originó. Exactamente uno de los tres.
+  origen             String // 'compra' | 'documento_soporte' | 'comprobante'
+  compra             Compra?               @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  compraId           String?
+  documentoSoporte   DocumentoSoporte?     @relation(fields: [documentoSoporteId], references: [id], onDelete: Cascade)
+  documentoSoporteId String?
+  comprobante        ComprobanteTesoreria? @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  comprobanteId      String?
+
+  docRef String // "FP-450", "DS-2026-0001", "CE-2026-00003"
+  fecha  String // fecha del documento origen, en hora Bogotá
+  anio   Int // se materializa para agrupar el certificado sin parsear texto
+
+  // Tercero al que se le practicó. El certificado y la exógena lo identifican por DOCUMENTO,
+  // no por nombre: el mismo tercero se escribe de diez formas distintas.
+  //
+  // `terceroNumeroDocumento` va NORMALIZADO (sin puntos, guiones ni DV). Sin eso "900.123.456",
+  // "900123456" y "900123456-7" son tres terceros distintos y el mismo proveedor recibe tres
+  // certificados parciales — que para el Art. 667 cuenta igual que no expedirlos.
+  terceroNombre          String
+  terceroTipoDocumento   String? // 'NIT' | 'CC' | 'CE' | 'PA' | 'TI'
+  terceroNumeroDocumento String?
+  terceroDv              String?
+
+  tipo           String // 'retefuente' | 'reteiva' | 'reteica'
+  conceptoCodigo String? // id de lib/data/tablaRetefuente.js, para agrupar sin ambigüedad
+  conceptoNombre String?
+  base           Decimal @db.Decimal(18, 2)
+  // Valor de la operación gravada SIN IVA. Solo lo usa la ReteIVA, cuya `base` es el IVA y no
+  // el valor de la operación: el art. 1.6.1.12.13 del Decreto 1625 exige los dos por separado
+  // en el certificado, y con una sola columna el documento sale incompleto.
+  baseOperacion  Decimal? @db.Decimal(18, 2)
+  tarifa         Decimal @db.Decimal(8, 4)
+  unidad         String  @default("%") // '%' o '‰' (el ICA va por mil)
+  valor          Decimal @db.Decimal(18, 2)
+  // El ICA se declara en el municipio donde se practicó: mezclarlos liquida mal esa declaración.
+  municipio      String?
+
+  // false = registro informativo que no debe sumar al certificado (ver nota de arriba).
+  vinculante Boolean @default(true)
+
+  @@index([usuarioId, anio, tipo])
+  @@index([usuarioId, terceroNumeroDocumento, anio])
+  @@index([comprobanteId])
+  @@index([compraId])
+  @@index([documentoSoporteId])
+  @@map("retenciones_practicadas")
+}
+
+// ============================ Certificados de retención ============================
+// El certificado NO es un dato que se captura: es una consulta acumulada por tercero, año y
+// concepto sobre `RetencionPracticada`. Lo que se persiste aquí es la EXPEDICIÓN.
+//
+// Por qué persistirla: si en 2027 se reexpide el certificado de 2025 y entretanto se corrigió
+// un comprobante, la consulta daría cifras distintas a las que el tercero ya recibió y usó en
+// su declaración. El snapshot conserva lo que efectivamente se certificó.
+//
+// Obligación y plazos: el de renta (Art. 381 E.T.) y el de rentas de trabajo (Art. 378) son
+// ANUALES; el de ReteIVA es por periodo. No expedirlos tiene sanción (Art. 667 E.T.).
+// El Art. 381 obliga además a expedir uno por operación cuando el beneficiario lo solicita.
+model CertificadoRetencion {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+
+  numero String
+  tipo   String // 'retefuente' | 'reteiva' | 'reteica'
+  anio   Int
+
+  // ReteIVA se certifica POR PERIODO GRAVABLE (art. 600 E.T.), no por año, y ReteICA POR
+  // MUNICIPIO: cada retención se descuenta en la declaración de su municipio, así que sumarlos
+  // da una cifra que no sirve para ninguna.
+  //
+  // `periodo` es la clave del periodo ('2026-B4'), no texto libre: antes se podía rotular
+  // "Bimestre 4" sobre las cifras del año completo. `periodoDesde/Hasta` es el rango con el que
+  // realmente se filtraron las líneas.
+  periodo      String?
+  periodoDesde String? // 'AAAA-MM-DD', inclusive
+  periodoHasta String? // 'AAAA-MM-DD', inclusive
+  municipio    String?
+
+  terceroNombre          String
+  terceroTipoDocumento   String?
+  terceroNumeroDocumento String
+  terceroDv              String?
+
+  totalBase  Decimal @db.Decimal(18, 2)
+  totalValor Decimal @db.Decimal(18, 2)
+  // Suma de las operaciones gravadas sin IVA. Solo aplica a ReteIVA (art. 1.6.1.12.13 Dcto 1625).
+  totalOperacion Decimal? @db.Decimal(18, 2)
+
+  // Snapshot de los conceptos y del emisor tal como se certificaron.
+  detalle        Json
+  emisorSnapshot Json
+
+  // El Art. 381 pide "ciudad donde se consignó la retención" — no es la del documento, es
+  // donde el agente declaró y pagó.
+  ciudadConsignacion String?
+
+  expedidoPor String?
+  expedidoEn  DateTime @default(now())
+
+  // Anulación con rastro. Sin quién, cuándo y por qué, "no se borra, se anula" es solo una
+  // palabra: el que recibe el reemplazo necesita saber cuál certificado rige.
+  anulado         Boolean   @default(false)
+  anuladoPor      String?
+  anuladoEn       DateTime?
+  motivoAnulacion String?
+  // Certificado que reemplaza a este (o al que este reemplaza).
+  reemplazaAId    String?
+
+  @@unique([usuarioId, numero])
+  @@index([usuarioId, anio, terceroNumeroDocumento])
+  @@map("certificados_retencion")
 }
 
 // ============================ Comprobantes de tesorería ============================
@@ -545,18 +690,21 @@ model ComprobanteTesoreria {
   // Tercero
   terceroNombre    String
   terceroDocumento String?
-  terceroDireccion String? // requerida para el certificado de retención
+  // Dirección del tercero. La usa la información exógena. OJO: la dirección que exigen el
+  // certificado de retención (Art. 381 lit. c E.T.) y el de rentas de trabajo (Art. 379) es
+  // la del AGENTE RETENEDOR, no la del retenido — esa viaja en `emisorSnapshot`.
+  terceroDireccion String?
 
   // Medio de pago y trazabilidad bancaria
-  medioPago          String?
-  cuentaTesoreria    CuentaTesoreria? @relation(fields: [cuentaTesoreriaId], references: [id], onDelete: SetNull)
-  cuentaTesoreriaId  String?
-  cuentaTesoreriaPuc String? // snapshot: el comprobante debe seguir mostrando de dónde salió
+  medioPago             String?
+  cuentaTesoreria       CuentaTesoreria? @relation(fields: [cuentaTesoreriaId], references: [id], onDelete: SetNull)
+  cuentaTesoreriaId     String?
+  cuentaTesoreriaPuc    String? // snapshot: el comprobante debe seguir mostrando de dónde salió
   cuentaTesoreriaNombre String?
-  bancoRef           String?
-  numTransaccion     String? // número de transacción, cheque o consignación
-  chequeBanco        String?
-  chequeFecha        String?
+  bancoRef              String?
+  numTransaccion        String? // número de transacción, cheque o consignación
+  chequeBanco           String?
+  chequeFecha           String?
 
   concepto      String  @db.Text
   observaciones String?
@@ -599,13 +747,14 @@ model ComprobanteTesoreria {
   // Art. 124 D. 2649 pide "las personas que lo elaboraron y autorizaron". Pide indicación de
   // las personas, NO rúbrica manuscrita: el usuario autenticado con fecha y hora cumple mejor
   // que una raya en blanco.
-  elaboradoPor String?
-  elaboradoEn  DateTime?
+  elaboradoPor  String?
+  elaboradoEn   DateTime?
   autorizadoPor String?
   autorizadoEn  DateTime?
 
-  aplicaciones ComprobanteAplicacion[]
-  retenciones  ComprobanteRetencion[]
+  aplicaciones           ComprobanteAplicacion[]
+  retenciones            ComprobanteRetencion[]
+  retencionesPracticadas RetencionPracticada[]
 
   @@unique([usuarioId, tipo, anio, consecutivo])
   @@index([usuarioId, tipo, fecha])
@@ -646,12 +795,12 @@ model ComprobanteRetencion {
   comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
   comprobanteId String
 
-  tipo     String // 'retefuente' | 'reteiva' | 'reteica'
-  concepto String?
-  base     Decimal @db.Decimal(18, 2)
-  tarifa   Decimal @db.Decimal(8, 4)
-  unidad   String  @default("%") // '%' o '‰' (el ICA va por mil)
-  valor    Decimal @db.Decimal(18, 2)
+  tipo      String // 'retefuente' | 'reteiva' | 'reteica'
+  concepto  String?
+  base      Decimal @db.Decimal(18, 2)
+  tarifa    Decimal @db.Decimal(8, 4)
+  unidad    String  @default("%") // '%' o '‰' (el ICA va por mil)
+  valor     Decimal @db.Decimal(18, 2)
   // El ICA se descuenta en la declaración del municipio donde se practicó: mezclarlos en una
   // sola cuenta liquida mal esa declaración.
   municipio String?
@@ -714,9 +863,9 @@ model MapaCuentas {
   incPorPagar    String?
 
   // Otros conceptos que aparecen al pagar o recaudar
-  gmf              String? // gravamen a los movimientos financieros
+  gmf                 String? // gravamen a los movimientos financieros
   descuentoProntoPago String?
-  ajusteAlPeso     String?
+  ajusteAlPeso        String?
 
   // Política contable: ¿las retenciones se registran al causar el documento (lo estándar) o
   // al pagarlo? De esto depende si el comprobante debe volver a moverlas. Si se registran en
@@ -846,13 +995,13 @@ model Asiento {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  numero      String
-  sector      String  @default("comercial") // PUC usado: comercial | esal
-  fecha       String
-  descripcion String
-  tipo        String  @default("manual")
+  numero       String
+  sector       String  @default("comercial") // PUC usado: comercial | esal
+  fecha        String
+  descripcion  String
+  tipo         String  @default("manual")
   documentoRef String?
-  estado      String  @default("registrado") // borrador | registrado
+  estado       String  @default("registrado") // borrador | registrado
 
   totalDebitos  Decimal @db.Decimal(18, 2)
   totalCreditos Decimal @db.Decimal(18, 2)
@@ -905,7 +1054,19 @@ model DocumentoSoporte {
   reteIca        Decimal @default(0) @db.Decimal(18, 2)
   neto           Decimal @db.Decimal(18, 2)
 
-  estado String @default("Emitido") // Emitido | Anulado
+  // Sin estos dos, la retención del soporte no se puede certificar: el certificado del
+  // Art. 381 agrupa POR CONCEPTO, y el ICA se declara en el municipio donde se practicó.
+  conceptoRetencion      String? // id de lib/data/tablaRetefuente.js
+  municipioIca           String?
+  // Tipo de documento del tercero: el certificado y la exógena identifican por documento.
+  proveedorTipoDocumento String?
+
+  estado          String  @default("Emitido") // Emitido | Anulado
+  // Como en Factura: sin fecha, un periodo ya declarado deja de ser reproducible.
+  fechaAnulacion  String?
+  motivoAnulacion String?
+
+  retencionesPracticadas RetencionPracticada[]
 
   @@unique([usuarioId, numero])
   @@index([usuarioId])
@@ -970,4 +1131,83 @@ model FacturaItemImpuesto {
   @@index([facturaItemId])
   @@index([tipo])
   @@map("factura_item_impuestos")
+}
+
+// ============================ Nota de contabilidad ============================
+// El comprobante de contabilidad del art. 124 del Decreto 2649/1993, para los AJUSTES que no
+// tienen documento propio: reclasificaciones, provisiones, depreciación y amortización,
+// causación de diferidos, cierres y corrección de errores.
+//
+// ABSORBE EL ASIENTO MANUAL. Antes se podían crear asientos sueltos desde /asientos-contables;
+// un asiento sin documento que lo soporte no cumple el art. 124 (falta el origen y la
+// justificación) y no deja rastro de qué periodo se estaba ajustando. Ahora el asiento es la
+// CONSECUENCIA de la nota: la nota se emite y genera el asiento, y el libro diario pasa a ser
+// de solo lectura.
+//
+// PREFIJO `CC-` (comprobante de contabilidad). `NC-` ya lo usa la nota crédito.
+model NotaContabilidad {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  numero String? // null mientras es borrador: el consecutivo se toma al emitir
+  sector String  @default("comercial") // PUC usado: comercial | esal
+  fecha  String
+  ciudad String?
+
+  // Lo que distingue un AJUSTE de un registro corriente: una nota fechada en enero puede estar
+  // ajustando diciembre, y esa diferencia decide en qué periodo pesa el ajuste.
+  periodoAfectado String // 'AAAA-MM'
+  tipoAjuste      String // ver TIPOS_AJUSTE en lib/notaContabilidadValidation.js
+
+  concepto     String  @db.Text
+  documentoRef String?
+  anexos       String? @db.Text
+
+  totalDebitos  Decimal @db.Decimal(18, 2)
+  totalCreditos Decimal @db.Decimal(18, 2)
+  diferencia    Decimal @default(0) @db.Decimal(18, 2)
+
+  // borrador → emitido → reversado. No hay borrado: un comprobante emitido se reversa con otro
+  // que invierte los movimientos, igual que los comprobantes de tesorería.
+  estado String @default("borrador")
+
+  // El asiento que generó al emitirse. Es la trazabilidad que exige el art. 124.
+  asientoId String?
+
+  // Reversión: dos punteros para poder navegar en ambos sentidos sin recorrer la tabla.
+  reversaAId      String?
+  reversadaPorId  String?
+  motivoReversion String?
+
+  elaboradoPor   String?
+  elaboradoEn    DateTime @default(now())
+  autorizadoPor  String?
+  emisorSnapshot Json? // razón social, NIT y dirección tal como estaban al emitir
+
+  movimientos NotaContabilidadMovimiento[]
+
+  @@unique([usuarioId, numero])
+  @@index([usuarioId, estado])
+  @@index([usuarioId, periodoAfectado])
+  @@map("notas_contabilidad")
+}
+
+model NotaContabilidadMovimiento {
+  id     String           @id @default(cuid())
+  nota   NotaContabilidad @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  notaId String
+
+  cuenta       String // código PUC
+  nombreCuenta String // lo fija el catálogo, no el cliente
+  debito       Decimal @default(0) @db.Decimal(18, 2)
+  credito      Decimal @default(0) @db.Decimal(18, 2)
+  tercero      String?
+  detalle      String?
+  orden        Int     @default(0)
+
+  @@index([notaId])
+  @@map("nota_contabilidad_movimientos")
 }

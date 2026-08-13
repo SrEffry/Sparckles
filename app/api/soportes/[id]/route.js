@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { borrarRetencionesDe } from "@/lib/retencionesDeDocumentos";
+import { hoyBogota } from "@/lib/fechas";
 
 export async function GET(_request, { params }) {
   const sesion = await obtenerSesion();
@@ -32,9 +34,20 @@ export async function PATCH(request, { params }) {
   if (body.accion === "anular") {
     if (soporte.estado === "Anulado")
       return NextResponse.json({ error: "El documento ya está anulado." }, { status: 400 });
-    const actualizado = await prisma.documentoSoporte.update({
-      where: { id },
-      data: { estado: "Anulado" },
+
+    const actualizado = await prisma.$transaction(async (tx) => {
+      // Un documento anulado NO practicó retención. Dejarla en la tabla la metía en el
+      // certificado del proveedor, que entonces contradecía la declaración mensual del
+      // agente: el tercero descontaría algo que nadie consignó.
+      await borrarRetencionesDe(tx, { documentoSoporteId: id });
+      return tx.documentoSoporte.update({
+        where: { id },
+        data: {
+          estado: "Anulado",
+          fechaAnulacion: hoyBogota(),
+          motivoAnulacion: (body.motivo || "").trim() || null,
+        },
+      });
     });
     return NextResponse.json({ soporte: actualizado });
   }

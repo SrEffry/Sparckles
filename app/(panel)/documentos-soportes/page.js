@@ -3,12 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { listarSoportes, crearSoporte, anularSoporte } from "@/lib/soportesApi";
 import { hoyBogota } from "@/lib/fechas";
+import { conceptosPorCategoria, tarifaOficial, tarifaVariable } from "@/lib/conceptosRetencion";
 import styles from "./soportes.module.css";
 
 const fmt = (v) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
     Number(v) || 0
   );
+
+// La tabla es estática: se recorre una vez y no en cada render.
+const CONCEPTOS_AGRUPADOS = conceptosPorCategoria();
 
 export default function SoportesPage() {
   const [soportes, setSoportes] = useState(null);
@@ -138,7 +142,12 @@ function SoporteModal({ onClose, onGuardar }) {
     fecha: hoyBogota(),
     proveedorNombre: "",
     proveedorDocumento: "",
+    // El documento soporte es para no obligados a facturar: casi siempre personas naturales,
+    // así que la cédula es el caso normal y no el NIT.
+    proveedorTipoDocumento: "CC",
     concepto: "",
+    conceptoRetencion: "",
+    municipioIca: "",
     bruto: "",
     porcReteFuente: 0,
     porcReteIca: 0,
@@ -146,6 +155,16 @@ function SoporteModal({ onClose, onGuardar }) {
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const set = (c, v) => setForm((f) => ({ ...f, [c]: v }));
+
+  // Al elegir concepto se fija la tarifa oficial: la tarifa es un atributo de la norma.
+  function setConceptoRetencion(codigo) {
+    const oficial = tarifaOficial(codigo);
+    setForm((f) => ({
+      ...f,
+      conceptoRetencion: codigo,
+      porcReteFuente: oficial ?? f.porcReteFuente,
+    }));
+  }
 
   const calc = useMemo(() => {
     const bruto = Number(form.bruto) || 0;
@@ -174,7 +193,25 @@ function SoporteModal({ onClose, onGuardar }) {
         <div className="modal-body">
           <div className="form-row">
             <div className="form-group"><label>Proveedor (no obligado a facturar) *</label><input value={form.proveedorNombre} onChange={(e) => set("proveedorNombre", e.target.value)} /></div>
-            <div className="form-group"><label>Documento (CC/NIT)</label><input value={form.proveedorDocumento} onChange={(e) => set("proveedorDocumento", e.target.value)} /></div>
+            <div className="form-group">
+              <label>Documento</label>
+              <div className={styles.docTercero}>
+                <select
+                  value={form.proveedorTipoDocumento}
+                  onChange={(e) => set("proveedorTipoDocumento", e.target.value)}
+                  aria-label="Tipo de documento del proveedor"
+                >
+                  {["CC", "NIT", "CE", "PA", "TI"].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+                <input
+                  value={form.proveedorDocumento}
+                  onChange={(e) => set("proveedorDocumento", e.target.value)}
+                  placeholder="Número"
+                />
+              </div>
+            </div>
           </div>
           <div className="form-group">
             <label>Concepto *</label>
@@ -184,10 +221,52 @@ function SoporteModal({ onClose, onGuardar }) {
             <div className="form-group"><label>Fecha</label><input type="date" value={form.fecha} onChange={(e) => set("fecha", e.target.value)} /></div>
             <div className="form-group"><label>Valor bruto *</label><input type="number" min="0" value={form.bruto} onChange={(e) => set("bruto", e.target.value)} placeholder="0" /></div>
           </div>
+          {/* Concepto y municipio: sin ellos la retención no se puede certificar (Art. 381
+              lit. f), y no expedir el certificado cuesta el 5% de los pagos (Art. 667 E.T.). */}
+          <div className="form-group">
+            <label>Concepto de retención {Number(form.porcReteFuente) > 0 ? "*" : ""}</label>
+            <select value={form.conceptoRetencion} onChange={(e) => setConceptoRetencion(e.target.value)}>
+              <option value="">Sin ReteFuente</option>
+              {CONCEPTOS_AGRUPADOS.map((g) => (
+                <optgroup key={g.categoria} label={g.categoria}>
+                  {g.conceptos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre} {Number.isFinite(Number(c.tarifa)) ? `(${c.tarifa}%)` : "(tarifa variable)"}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
           <div className="form-row">
-            <div className="form-group"><label>ReteFuente (%)</label><input type="number" min="0" step="0.1" value={form.porcReteFuente} onChange={(e) => set("porcReteFuente", e.target.value)} /></div>
+            <div className="form-group">
+              <label>ReteFuente (%)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={form.porcReteFuente}
+                readOnly={!!form.conceptoRetencion && !tarifaVariable(form.conceptoRetencion)}
+                title={
+                  form.conceptoRetencion && !tarifaVariable(form.conceptoRetencion)
+                    ? "La tarifa la fija la norma para el concepto elegido."
+                    : undefined
+                }
+                onChange={(e) => set("porcReteFuente", e.target.value)}
+              />
+            </div>
             <div className="form-group"><label>ReteICA (por mil ‰)</label><input type="number" min="0" step="0.1" value={form.porcReteIca} onChange={(e) => set("porcReteIca", e.target.value)} /></div>
           </div>
+          {Number(form.porcReteIca) > 0 && (
+            <div className="form-group">
+              <label>Municipio de la ReteICA *</label>
+              <input
+                value={form.municipioIca}
+                onChange={(e) => set("municipioIca", e.target.value)}
+                placeholder="Montería, Bogotá D.C., …"
+              />
+            </div>
+          )}
 
           <div className={styles.totales}>
             <div className={styles.totRow}><span>Valor bruto</span><span>{fmt(calc.bruto)}</span></div>

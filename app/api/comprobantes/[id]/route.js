@@ -6,6 +6,7 @@ import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo } from "@/lib/consecutivos";
+import { registrarRetencionesDeComprobante, borrarRetencionesDe } from "@/lib/retencionesDeDocumentos";
 
 async function delUsuario(id, usuarioId) {
   const c = await prisma.comprobanteTesoreria.findUnique({
@@ -342,6 +343,16 @@ async function emitir(comprobante, sesion, body) {
         }
       }
 
+      // Las retenciones del egreso van a la tabla unificada. Vinculantes solo si la política
+      // dice que se registran al pagar: si se causan, la compra ya las registró y sumarlas
+      // aquí certificaría el doble.
+      await registrarRetencionesDeComprobante(
+        tx,
+        sesion.id,
+        { ...comprobante, numero },
+        mapa.retencionesEnCausacion !== false
+      );
+
       return tx.comprobanteTesoreria.update({
         where: { id: comprobante.id },
         data: {
@@ -482,6 +493,11 @@ async function reversar(comprobante, sesion, body) {
         },
       },
     });
+
+    // Un comprobante reversado ya no practicó nada: sus retenciones salen de la tabla. Con la
+    // política estándar eran informativas y da igual, pero con la política de registrarlas al
+    // pagar eran las vinculantes y se seguirían certificando.
+    await borrarRetencionesDe(tx, { comprobanteId: comprobante.id });
 
     // Se devuelven los saldos a los documentos.
     for (const ap of comprobante.aplicaciones) {

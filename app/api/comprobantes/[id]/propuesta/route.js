@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
-import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/comprobanteCalc";
+import {
+  proponerAsientoIngreso,
+  proponerAsientoEgreso,
+  proponerAsientoImputacion,
+  balancear,
+} from "@/lib/comprobanteCalc";
 import { TABLA_RETEFUENTE_2026 } from "@/lib/data/tablaRetefuente";
 
 // GET /api/comprobantes/:id/propuesta
@@ -16,7 +21,7 @@ export async function GET(_request, { params }) {
   const { id } = await params;
   const comprobante = await prisma.comprobanteTesoreria.findUnique({
     where: { id },
-    include: { aplicaciones: true, retenciones: true, cuentaTesoreria: true },
+    include: { aplicaciones: true, imputaciones: true, retenciones: true, cuentaTesoreria: true },
   });
   if (!comprobante || comprobante.usuarioId !== sesion.id) {
     return NextResponse.json({ error: "Comprobante no encontrado." }, { status: 404 });
@@ -32,13 +37,23 @@ export async function GET(_request, { params }) {
 
   let propuesta;
   try {
-    const proponer = comprobante.tipo === "ingreso" ? proponerAsientoIngreso : proponerAsientoEgreso;
-    propuesta = proponer({
-      mapa,
-      cuentaTesoreria: comprobante.cuentaTesoreria,
-      aplicaciones: comprobante.aplicaciones,
-      retenciones: comprobante.retenciones,
-    });
+    if (comprobante.modo === "imputacion") {
+      propuesta = proponerAsientoImputacion({
+        mapa,
+        cuentaTesoreria: comprobante.cuentaTesoreria,
+        tipo: comprobante.tipo,
+        imputaciones: comprobante.imputaciones,
+        retenciones: comprobante.retenciones,
+      });
+    } else {
+      const proponer = comprobante.tipo === "ingreso" ? proponerAsientoIngreso : proponerAsientoEgreso;
+      propuesta = proponer({
+        mapa,
+        cuentaTesoreria: comprobante.cuentaTesoreria,
+        aplicaciones: comprobante.aplicaciones,
+        retenciones: comprobante.retenciones,
+      });
+    }
   } catch (e) {
     return NextResponse.json({ error: e.message, codigo: e.code }, { status: 400 });
   }

@@ -726,6 +726,15 @@ model ComprobanteTesoreria {
   chequeBanco           String?
   chequeFecha           String?
 
+  // MODO del comprobante:
+  //   'aplicacion' → cancela el saldo de un documento previo (factura o compra). La
+  //                  contrapartida la pone el sistema; el usuario no la elige.
+  //   'imputacion' → no hay documento previo (nómina, impuestos, anticipos, caja menor). El
+  //                  usuario elige un CONCEPTO de una lista cerrada y el concepto trae su
+  //                  cuenta del mapa. Nunca se teclea un código PUC: eso sería un asiento
+  //                  manual disfrazado, y el asiento manual se cerró a propósito.
+  modo String @default("aplicacion")
+
   concepto      String  @db.Text
   observaciones String?
 
@@ -773,6 +782,7 @@ model ComprobanteTesoreria {
   autorizadoEn  DateTime?
 
   aplicaciones           ComprobanteAplicacion[]
+  imputaciones           ComprobanteImputacion[]
   retenciones            ComprobanteRetencion[]
   retencionesPracticadas RetencionPracticada[]
 
@@ -815,6 +825,28 @@ model ComprobanteAplicacion {
 // Retenciones del comprobante, con concepto, base y tarifa. No es adorno: es la información
 // con la que después se expide el certificado de retención al proveedor y se llenan las
 // declaraciones mensuales.
+// Líneas del comprobante en modo imputación. Tabla propia y no un JSON: se consulta, se
+// audita y se puede agregar por concepto para conciliar contra los saldos que cancela.
+model ComprobanteImputacion {
+  id            String               @id @default(cuid())
+  comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
+  comprobanteId String
+
+  concepto            String // clave de lib/conceptosComprobante.js
+  etiqueta            String // texto del concepto al momento de emitir
+  // Cuenta resuelta desde el mapa AL EMITIR. Se congela: si el usuario cambia su mapa después,
+  // el comprobante debe seguir diciendo contra qué cuenta se registró.
+  cuentaPuc           String
+  valor               Decimal @db.Decimal(18, 2)
+  detalle             String?
+  // Referencia del documento que soporta el gasto (Art. 771-2 E.T.). Obligatoria cuando el
+  // concepto es de naturaleza costo o gasto.
+  documentoSoporteRef String?
+
+  @@index([comprobanteId])
+  @@map("comprobante_imputaciones")
+}
+
 model ComprobanteRetencion {
   id            String               @id @default(cuid())
   comprobante   ComprobanteTesoreria @relation(fields: [comprobanteId], references: [id], onDelete: Cascade)
@@ -908,6 +940,11 @@ model MapaCuentas {
   ivaGenerado    String?
   ivaDescontable String?
   incPorPagar    String?
+
+  // Entradas de dinero que NO son ingreso: un préstamo crea una obligación y un aporte va al
+  // patrimonio. Registrarlos como ingreso infla el resultado y la base del IVA.
+  obligacionesFinancieras String?
+  aportesSociales         String?
 
   // Pagos que salieron antes de tener el documento que los soporta. Es un ACTIVO (1330):
   // entregamos plata y todavía no tenemos el bien, el servicio ni el documento. Llevarlos a

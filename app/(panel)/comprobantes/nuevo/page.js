@@ -7,6 +7,7 @@ import { listarTesoreria, obtenerMapaCuentas } from "@/lib/mapaCuentasApi";
 import { numeroALetras } from "@/lib/numeroALetras";
 import { hoyBogota } from "@/lib/fechas";
 import { conceptosPorCategoria, tarifaOficial, tarifaVariable } from "@/lib/conceptosRetencion";
+import { conceptosDisponibles } from "@/lib/conceptosComprobante";
 import styles from "../comprobantes.module.css";
 
 // Sin los laborales: esos van por el Formulario 220 (Arts. 378-379), no por el Art. 381, y un
@@ -51,6 +52,10 @@ export default function NuevoComprobantePage() {
   // { [docId]: valorAplicado }
   const [aplicado, setAplicado] = useState({});
   const [retenciones, setRetenciones] = useState([]);
+  // MODO. 'aplicacion' cancela un documento previo; 'imputacion' registra un movimiento que no
+  // tiene documento (nómina, impuestos, anticipos, caja menor).
+  const [modo, setModo] = useState("aplicacion");
+  const [imputaciones, setImputaciones] = useState([]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -80,8 +85,11 @@ export default function NuevoComprobantePage() {
   );
 
   const bruto = useMemo(
-    () => r2(seleccionados.reduce((a, d) => a + Number(aplicado[d.id] || 0), 0)),
-    [seleccionados, aplicado]
+    () =>
+      modo === "imputacion"
+        ? r2(imputaciones.reduce((a, i) => a + Number(i.valor || 0), 0))
+        : r2(seleccionados.reduce((a, d) => a + Number(aplicado[d.id] || 0), 0)),
+    [modo, imputaciones, seleccionados, aplicado]
   );
   const totalRet = useMemo(() => r2(retenciones.reduce((a, r) => a + Number(r.valor || 0), 0)), [retenciones]);
   const neto = r2(bruto - totalRet);
@@ -134,19 +142,36 @@ export default function NuevoComprobantePage() {
     );
   }
 
+  function agregarImputacion() {
+    setImputaciones((xs) => [...xs, { concepto: "", valor: "", detalle: "", documentoSoporteRef: "" }]);
+  }
+  function setImp(i, campo, valor) {
+    setImputaciones((xs) => xs.map((x, idx) => (idx === i ? { ...x, [campo]: valor } : x)));
+  }
+
   async function guardar() {
     setError("");
-    if (seleccionados.length === 0) return setError("Selecciona al menos un documento y el valor a aplicar.");
+    const esImputacion = modo === "imputacion";
+    if (!esImputacion && seleccionados.length === 0) {
+      return setError("Selecciona al menos un documento y el valor a aplicar.");
+    }
+    if (esImputacion && imputaciones.filter((i) => Number(i.valor) > 0).length === 0) {
+      return setError("Agrega al menos un concepto con valor.");
+    }
     if (!form.concepto.trim()) return setError("El concepto es obligatorio: explica el movimiento en los libros.");
 
     setGuardando(true);
     const res = await crearComprobante({
       tipo,
+      modo,
       ...form,
-      aplicaciones: seleccionados.map((d) => ({
-        [esIngreso ? "facturaId" : "compraId"]: d.id,
-        valorAplicado: Number(aplicado[d.id]),
-      })),
+      aplicaciones: esImputacion
+        ? []
+        : seleccionados.map((d) => ({
+            [esIngreso ? "facturaId" : "compraId"]: d.id,
+            valorAplicado: Number(aplicado[d.id]),
+          })),
+      imputaciones: esImputacion ? imputaciones.filter((i) => Number(i.valor) > 0) : [],
       retenciones: retenciones.filter((r) => Number(r.valor) > 0),
     });
     setGuardando(false);
@@ -186,29 +211,96 @@ export default function NuevoComprobantePage() {
       <div className={styles.columnas}>
         <section className={styles.panel}>
           <h2 className={styles.panelTitulo}>
-            1. {esIngreso ? "Facturas por cobrar" : "Compras por pagar"}
+            1. ¿Contra qué {esIngreso ? "entra" : "sale"} el dinero?
           </h2>
+
+          {/* Dos modos, porque son dos cosas distintas: cancelar el saldo de un documento que
+              ya existe, o registrar un movimiento que no tiene documento. Antes solo existía
+              el primero, y el segundo no tenía por dónde entrar en ningún módulo. */}
+          <div className={styles.tabsModo}>
+            <button
+              type="button"
+              className={`${styles.tabModo} ${modo === "aplicacion" ? styles.tabModoActivo : ""}`}
+              onClick={() => setModo("aplicacion")}
+            >
+              {esIngreso ? "Cobrar facturas" : "Pagar compras"}
+            </button>
+            <button
+              type="button"
+              className={`${styles.tabModo} ${modo === "imputacion" ? styles.tabModoActivo : ""}`}
+              onClick={() => {
+                setModo("imputacion");
+                if (imputaciones.length === 0) agregarImputacion();
+              }}
+            >
+              Otro concepto
+            </button>
+          </div>
+
+          {modo === "imputacion" ? (
+            <>
+              <div className={styles.avisoAlcance}>
+                {esIngreso
+                  ? "Anticipos de clientes, préstamos recibidos, aportes de socios: entra dinero que NO es ingreso de una venta."
+                  : "Nómina, impuestos, servicios públicos, caja menor, anticipos a proveedores."}{" "}
+                Eliges el concepto y el sistema decide la cuenta contable desde tu mapa.
+              </div>
+
+              {imputaciones.map((imp, i) => {
+                const def = conceptosDisponibles(tipo, mapa?.mapa).find((c) => c.clave === imp.concepto);
+                return (
+                  <div key={i} className={styles.impBloque}>
+                    <div className={styles.impFila}>
+                      <select value={imp.concepto} onChange={(e) => setImp(i, "concepto", e.target.value)}>
+                        <option value="">Elige el concepto…</option>
+                        {conceptosDisponibles(tipo, mapa?.mapa).map((c) => (
+                          <option key={c.clave} value={c.clave} disabled={!c.disponible}>
+                            {c.etiqueta}
+                            {c.disponible ? "" : " — falta su cuenta en el mapa"}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Valor"
+                        value={imp.valor}
+                        onChange={(e) => setImp(i, "valor", e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className={styles.del}
+                        onClick={() => setImputaciones((xs) => xs.filter((_, x) => x !== i))}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {def && <p className={styles.impAyuda}>{def.ayuda}</p>}
+                    {def?.requiereSoporte && (
+                      <input
+                        className={styles.impSoporte}
+                        placeholder="N.º de la factura o del documento soporte *"
+                        value={imp.documentoSoporteRef}
+                        onChange={(e) => setImp(i, "documentoSoporteRef", e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              <button type="button" className={styles.agregarConcepto} onClick={agregarImputacion}>
+                + Agregar concepto
+              </button>
+            </>
+          ) : (
+            <>
           <input
             className={styles.buscar}
             placeholder={esIngreso ? "Buscar por número o cliente…" : "Buscar por número o proveedor…"}
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
           />
-
-          {/* Límite real del módulo, dicho de frente. Hoy solo se puede mover dinero contra un
-              documento registrado, y eso deja fuera buena parte de los movimientos de caja. */}
-          <div className={styles.avisoAlcance}>
-            Solo se puede {esIngreso ? "recaudar" : "pagar"} contra{" "}
-            {esIngreso ? "facturas de venta" : "compras"} ya registradas. Para{" "}
-            {esIngreso
-              ? "anticipos de clientes, préstamos recibidos o aportes de socios"
-              : "nómina, impuestos, servicios públicos, caja menor o anticipos a proveedores"}
-            , usa{" "}
-            <button type="button" className={styles.enlace} onClick={() => router.push("/notas-contabilidad")}>
-              una nota de contabilidad
-            </button>
-            .
-          </div>
 
           {pendientes === null ? (
             <p className={styles.vacioChico}>Cargando…</p>
@@ -262,6 +354,8 @@ export default function NuevoComprobantePage() {
                 })}
               </tbody>
             </table>
+          )}
+            </>
           )}
         </section>
 

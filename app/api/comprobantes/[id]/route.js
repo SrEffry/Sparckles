@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { validarSaldos, normalizarComprobante } from "@/lib/comprobanteValidation";
-import { proponerAsientoIngreso, proponerAsientoEgreso, balancear } from "@/lib/comprobanteCalc";
+import {
+  proponerAsientoIngreso,
+  proponerAsientoEgreso,
+  proponerAsientoImputacion,
+  balancear,
+} from "@/lib/comprobanteCalc";
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo } from "@/lib/consecutivos";
@@ -11,7 +16,7 @@ import { registrarRetencionesDeComprobante, borrarRetencionesDe } from "@/lib/re
 async function delUsuario(id, usuarioId) {
   const c = await prisma.comprobanteTesoreria.findUnique({
     where: { id },
-    include: { aplicaciones: true, retenciones: true, cuentaTesoreria: true },
+    include: { aplicaciones: true, imputaciones: true, retenciones: true, cuentaTesoreria: true },
   });
   if (!c || c.usuarioId !== usuarioId) return null;
   return c;
@@ -63,10 +68,14 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
 
-  const { data, aplicaciones, retenciones, errors } = normalizarComprobante({
-    ...body,
-    tipo: existente.tipo, // el tipo no se cambia: cambiaría toda la lógica del asiento
-  });
+  const mapaPrevio = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+  const { data, aplicaciones, imputaciones, retenciones, errors } = normalizarComprobante(
+    {
+      ...body,
+      tipo: existente.tipo, // el tipo no se cambia: cambiaría toda la lógica del asiento
+    },
+    mapaPrevio
+  );
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
   let cuenta = null;
@@ -77,7 +86,7 @@ export async function PUT(request, { params }) {
     }
   }
 
-  const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+  const mapa = mapaPrevio;
 
   try {
     const actualizado = await prisma.$transaction(async (tx) => {
@@ -88,11 +97,23 @@ export async function PUT(request, { params }) {
         throw e;
       }
 
-      const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
       const totalRet = retenciones.reduce((a, x) => a + x.valor, 0);
       const causadas = mapa?.retencionesEnCausacion !== false;
+      const rr2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+      let bruto;
+      let neto;
+      if (data.modo === "imputacion") {
+        bruto = rr2(imputaciones.reduce((a, i) => a + i.valor, 0));
+        neto = data.tipo === "ingreso" ? bruto : rr2(bruto - totalRet);
+      } else {
+        const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
+        bruto = causadas ? movido : movido + totalRet;
+        neto = movido;
+      }
 
       await tx.comprobanteAplicacion.deleteMany({ where: { comprobanteId: existente.id } });
+      await tx.comprobanteImputacion.deleteMany({ where: { comprobanteId: existente.id } });
       await tx.comprobanteRetencion.deleteMany({ where: { comprobanteId: existente.id } });
 
       await tx.comprobanteTesoreria.update({
@@ -101,15 +122,20 @@ export async function PUT(request, { params }) {
           ...data,
           cuentaTesoreriaPuc: cuenta?.cuentaPuc || null,
           cuentaTesoreriaNombre: cuenta?.nombre || null,
-          valorBruto: causadas ? movido : movido + totalRet,
+          valorBruto: bruto,
           totalRetenciones: totalRet,
-          neto: movido,
+          neto,
         },
       });
 
       if (val.aplicaciones.length) {
         await tx.comprobanteAplicacion.createMany({
           data: val.aplicaciones.map((a) => ({ ...a, comprobanteId: existente.id })),
+        });
+      }
+      if (imputaciones.length) {
+        await tx.comprobanteImputacion.createMany({
+          data: imputaciones.map((i) => ({ ...i, comprobanteId: existente.id })),
         });
       }
       if (retenciones.length) {
@@ -120,7 +146,7 @@ export async function PUT(request, { params }) {
 
       return tx.comprobanteTesoreria.findUnique({
         where: { id: existente.id },
-        include: { aplicaciones: true, retenciones: true },
+        include: { aplicaciones: true, imputaciones: true, retenciones: true },
       });
     });
 
@@ -194,13 +220,23 @@ async function emitir(comprobante, sesion, body) {
   let movimientos = Array.isArray(body.movimientos) && body.movimientos.length ? body.movimientos : null;
   if (!movimientos) {
     try {
-      const proponer = comprobante.tipo === "ingreso" ? proponerAsientoIngreso : proponerAsientoEgreso;
-      movimientos = proponer({
-        mapa,
-        cuentaTesoreria: comprobante.cuentaTesoreria,
-        aplicaciones: comprobante.aplicaciones,
-        retenciones: comprobante.retenciones,
-      }).movimientos;
+      if (comprobante.modo === "imputacion") {
+        movimientos = proponerAsientoImputacion({
+          mapa,
+          cuentaTesoreria: comprobante.cuentaTesoreria,
+          tipo: comprobante.tipo,
+          imputaciones: comprobante.imputaciones,
+          retenciones: comprobante.retenciones,
+        }).movimientos;
+      } else {
+        const proponer = comprobante.tipo === "ingreso" ? proponerAsientoIngreso : proponerAsientoEgreso;
+        movimientos = proponer({
+          mapa,
+          cuentaTesoreria: comprobante.cuentaTesoreria,
+          aplicaciones: comprobante.aplicaciones,
+          retenciones: comprobante.retenciones,
+        }).movimientos;
+      }
     } catch (e) {
       return NextResponse.json({ error: e.message }, { status: 400 });
     }
@@ -346,12 +382,13 @@ async function emitir(comprobante, sesion, body) {
       // Las retenciones del egreso van a la tabla unificada. Vinculantes solo si la política
       // dice que se registran al pagar: si se causan, la compra ya las registró y sumarlas
       // aquí certificaría el doble.
-      await registrarRetencionesDeComprobante(
-        tx,
-        sesion.id,
-        { ...comprobante, numero },
-        mapa.retencionesEnCausacion !== false
-      );
+      //
+      // En MODO IMPUTACIÓN no hay documento previo, así que este pago es el primer hecho y su
+      // retención es siempre la que se certifica, sin mirar la política. Se logra pasando
+      // `causadas: false`, que es lo que hace `vinculante: !causadas` dar true.
+      const causadasParaRetencion =
+        comprobante.modo === "imputacion" ? false : mapa.retencionesEnCausacion !== false;
+      await registrarRetencionesDeComprobante(tx, sesion.id, { ...comprobante, numero }, causadasParaRetencion);
 
       return tx.comprobanteTesoreria.update({
         where: { id: comprobante.id },

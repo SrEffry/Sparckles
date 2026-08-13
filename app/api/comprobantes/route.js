@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarComprobante, validarSaldos } from "@/lib/comprobanteValidation";
+
+const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 import { esFechaISOValida } from "@/lib/fechas";
 
 // GET /api/comprobantes?tipo=&estado=&desde=&hasta=
@@ -64,11 +66,12 @@ export async function POST(request) {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
 
-  const { data, aplicaciones, retenciones, errors } = normalizarComprobante(body);
-  if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
-
-  // La política de retenciones decide si el bruto del comprobante difiere de lo movido.
+  // El mapa se lee ANTES de validar: en modo imputación la validación necesita resolver la
+  // cuenta de cada concepto contra él.
   const mapa = await prisma.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } });
+
+  const { data, aplicaciones, imputaciones, retenciones, errors } = normalizarComprobante(body, mapa);
+  if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
   // La cuenta de tesorería debe ser del usuario y estar activa.
   let cuenta = null;
@@ -93,13 +96,23 @@ export async function POST(request) {
       // netos de retenciones, y son los saldos contra los que se valida. Restarlas otra vez
       // descontaba dos veces — en una factura de 1.190.000 con 60.500 de retención el
       // comprobante decía haber recibido 1.069.000 cuando entraron 1.129.500.
-      const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
       const totalRet = retenciones.reduce((a, x) => a + x.valor, 0);
       const causadas = mapa?.retencionesEnCausacion !== false;
-      // El bruto solo difiere de lo movido cuando las retenciones se registran en el pago:
-      // ahí el documento aún estaba por el valor sin retener.
-      const bruto = causadas ? movido : movido + totalRet;
-      const neto = movido;
+
+      let bruto;
+      let neto;
+      if (data.modo === "imputacion") {
+        // Sin documento previo, el bruto es la suma de los conceptos y lo que se mueve es eso
+        // menos las retenciones practicadas: son un pasivo que se consigna aparte.
+        bruto = r2(imputaciones.reduce((a, i) => a + i.valor, 0));
+        neto = data.tipo === "ingreso" ? bruto : r2(bruto - totalRet);
+      } else {
+        const movido = val.aplicaciones.reduce((a, x) => a + x.valorAplicado, 0);
+        // El bruto solo difiere de lo movido cuando las retenciones se registran en el pago:
+        // ahí el documento aún estaba por el valor sin retener.
+        bruto = causadas ? movido : movido + totalRet;
+        neto = movido;
+      }
 
       // Padre y luego hijos, en vez de escrituras anidadas: mezclar claves foráneas
       // escalares (usuarioId, facturaId) con `create` anidado hace que Prisma resuelva al
@@ -124,6 +137,11 @@ export async function POST(request) {
       if (val.aplicaciones.length) {
         await tx.comprobanteAplicacion.createMany({
           data: val.aplicaciones.map((a) => ({ ...a, comprobanteId: creado.id })),
+        });
+      }
+      if (imputaciones.length) {
+        await tx.comprobanteImputacion.createMany({
+          data: imputaciones.map((i) => ({ ...i, comprobanteId: creado.id })),
         });
       }
       if (retenciones.length) {

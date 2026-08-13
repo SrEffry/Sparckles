@@ -140,8 +140,10 @@ Búsqueda: `GET /api/puc?sector=&q=&imputables=1`.
   el endpoint (ver `lib/facturaCalc.js`, `lib/nominaCalc.js`, `lib/compraValidation.js`).
 - Todo endpoint valida sesión (`obtenerSesion`) y **filtra por `usuarioId`**.
 - Dinero en `Decimal(18,2)`; nunca float.
-- **Documentos fiscales son anulables, NO borrables** (facturas, asientos, soportes → `PATCH
-  {accion:'anular'}`). Compras/notas sí se pueden editar/eliminar (notas revierten el saldo).
+- **Documentos fiscales son anulables, NO borrables** (facturas, soportes → `PATCH
+  {accion:'anular'}`). Compras/notas sí se pueden editar/eliminar (notas revierten el saldo) —
+  pero su **asiento no se borra**: se le suma el contraasiento. Los asientos no se anulan por
+  su cuenta; se corrige el documento que los originó.
 - Numeración de documentos: **consecutivo en transacción** + `@@unique` como red de seguridad.
 - Si el módulo es submódulo, enlázalo desde su **hub**, no desde el Sidebar.
 
@@ -192,6 +194,26 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   `POST /api/asientos` y `PUT/PATCH /api/asientos/[id]` responden **410**. Un error se corrige
   reversando el documento que lo originó, que emite el contraasiento — el art. 125 no admite
   huecos en la numeración.
+- **TODA operación genera asiento** (`lib/asientoAutomatico.js`): factura, nota D/C, compra,
+  documento soporte y nómina, además de los comprobantes de tesorería y las notas contables.
+  Un tipo nuevo se agrega ahí y en `app/api/contabilizar/route.js`, en ningún otro sitio.
+  - Si al **mapa de cuentas** le falta una cuenta, el documento **se emite igual** con
+    `asientoId: null` y aparece en Contabilidad como *pendiente por contabilizar*, con el
+    nombre de la cuenta que falta. Bloquear la emisión por una tarea de configuración pararía
+    el negocio; dejar el hueco en silencio es lo que este diseño evita.
+  - `POST /api/contabilizar` contabiliza lo que el mapa ya permita —no es todo o nada— y hace
+    también de **backfill** de los documentos anteriores.
+  - Corregir **no borra del libro**: anular o eliminar emite el **contraasiento fechado hoy**.
+    Editar una compra deja tres líneas (original, contraasiento, versión vigente). El número
+    del asiento es la referencia del documento (`CP-FP-450`) y toma sufijo si ya está tomado.
+- **Saldos de apertura**: el tipo de ajuste `apertura` es el ÚNICO que levanta el blindaje de
+  cartera/proveedores/tesorería, y solo se admite **uno por ejercicio**. Sin él, el sistema no
+  se podía estrenar con una empresa en marcha. Ojo: cargar cartera ahí **no** crea las facturas
+  pendientes de cobro.
+- ⚠️ **El catálogo PUC cargado no trae** cuentas de Impuesto al Consumo por pagar, salud y
+  pensión por pagar (2370), cuentas por cobrar a trabajadores (1365) ni gastos generales
+  (5195). Mientras el usuario no elija sus auxiliares, las facturas con INC y la nómina quedan
+  pendientes por contabilizar.
 - **Nota de contabilidad** (`CC-`, no `NC-`, que ya lo usa la nota crédito): el comprobante de
   los *ajustes* sin documento propio. Lleva **periodo contable afectado** y **tipo de ajuste**;
   ciclo borrador → emitido → reversado. **No sirve** para ventas, compras, recaudos, pagos ni

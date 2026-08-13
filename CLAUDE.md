@@ -69,8 +69,9 @@ en `lib/generated/prisma/` (ignorado por git — correr `prisma generate` tras c
 │   ├── (auth)/            # login, registro (layout de 2 paneles con logo + ilustración)
 │   ├── (panel)/           # panel: layout compartido (Sidebar + guardia de sesión UNA vez)
 │   │   ├── dashboard/ empresas/ clientes/ productos/ facturacion/ notas/
-│   │   ├── compras/ documentos-soportes/ asientos-contables/ nomina/ recursos/
-│   │   ├── operaciones/ finanzas/ configuracion/   # hubs
+│   │   ├── compras/ documentos-soportes/ comprobantes/ certificados-retencion/
+│   │   ├── notas-contabilidad/ libro-diario/ nomina/ recursos/
+│   │   ├── operaciones/ finanzas/ contabilidad/ configuracion/   # hubs
 │   │   └── hubs.module.css                         # CSS compartido de los hubs
 │   ├── api/               # endpoints (route handlers)
 │   ├── globals.css        # tokens de diseño + clases compartidas
@@ -100,11 +101,15 @@ también en sus submódulos):
 |---|---|
 | **Inicio** (`/dashboard`) | KPIs + accesos rápidos |
 | **Empresas** | — |
-| **Operaciones** | Nueva factura, Facturas, Notas D/C, Compras, Asientos, Config. Facturación |
-| **Finanzas** | Documentos soporte, Compras, Facturas (tabs Tesorería/Impuestos) |
+| **Operaciones** | Nueva factura, Facturas, Notas D/C, Compras, Config. Facturación |
+| **Finanzas** | Comprobantes de ingreso/egreso, Documentos soporte, Certificados de retención (tabs Tesorería/Impuestos) |
+| **Contabilidad** | Notas de contabilidad, Libro diario, Mapa de cuentas |
 | **Recursos** | Nómina |
 | **Configuración** | Clientes, Mis productos, Config. Facturación, Empresas |
 | **Reportes** | `ready:false` — el cliente le dará un enfoque nuevo (no migrado a propósito) |
+
+**Operaciones vs. Contabilidad**: en Operaciones se *opera* (los documentos que originan el
+movimiento); en Contabilidad se sostienen los *libros*. Por eso los asientos se movieron.
 
 ## Arquitectura de datos
 
@@ -112,7 +117,9 @@ también en sus submódulos):
 clientes, productos, facturas, etc. Nada es global salvo el catálogo PUC. (Confirmado por el cliente.)
 
 Modelos: `Usuario, Empresa, Cliente, Producto, ConfigFacturacion, Factura(+Item), Nota(+Item),
-Compra(+Item), DocumentoSoporte, Asiento(+Movimiento), Empleado, Nomina, CuentaPUC`.
+Compra(+Item), DocumentoSoporte, Asiento(+Movimiento), Empleado, Nomina, CuentaPUC,
+MapaCuentas, CuentaTesoreria, ComprobanteTesoreria(+Aplicacion/Retencion), ConsecutivoDocumento,
+RetencionPracticada, CertificadoRetencion, NotaContabilidad(+Movimiento), Impuesto`.
 Mapeo detallado del dominio: [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
 ### PUC (catálogo global, `CuentaPUC`)
@@ -179,7 +186,27 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   Bogotá es UTC-5; después de las 19:00 fecharía los documentos al día siguiente.
 - **Notas D/C**: motivos DIAN (Anexo 1.9), consecutivo `NC-/ND-`, afectan `saldoAplicadoNC/ND` de
   la factura y **revierten** al eliminarse.
-- **Asientos**: partida doble; balance (débitos=créditos) exigido solo para estado `registrado`.
+- **El libro diario es de SOLO LECTURA.** Un asiento es la *consecuencia* de un documento
+  (factura, compra, comprobante de tesorería, nota de contabilidad), nunca el documento en sí:
+  sin soporte le falta el origen y la justificación que exige el art. 124 del D. 2649.
+  `POST /api/asientos` y `PUT/PATCH /api/asientos/[id]` responden **410**. Un error se corrige
+  reversando el documento que lo originó, que emite el contraasiento — el art. 123 no admite
+  huecos en la numeración.
+- **Nota de contabilidad** (`CC-`, no `NC-`, que ya lo usa la nota crédito): el comprobante de
+  los *ajustes* sin documento propio. Lleva **periodo contable afectado** y **tipo de ajuste**;
+  ciclo borrador → emitido → reversado. **No sirve** para ventas, compras, recaudos, pagos ni
+  nómina: eso tiene módulo propio, y es el mal uso más común.
+- **Cuentas blindadas**: una nota NO puede mover cartera, proveedores, anticipos ni tesorería
+  (`lib/notaContabilidadValidation.js`). Esos saldos los materializan otros módulos; moverlos a
+  mano desincroniza el libro contra los pendientes por cobrar sin que nada avise.
+- **Retenciones practicadas**: todo documento que retenga escribe en `RetencionPracticada`, en
+  su misma transacción. `MapaCuentas.retencionesEnCausacion` decide cuál fila es `vinculante`
+  —la de la causación o la del pago—; **las dos ramas deben cablearse** o el certificado cuenta
+  el doble. El concepto es obligatorio y su tarifa la **impone la norma**, no el usuario.
+- **Certificado de retención** (Art. 381 E.T.): ReteFuente anual, **ReteIVA por periodo
+  gravable** del art. 600 (nunca anual), ReteICA **por municipio**. Los pagos laborales se
+  excluyen: van por el Formulario 220 (Arts. 378-379). No expedir cuesta el **5% de los pagos**
+  (Art. 667), así que la pantalla avisa del plazo antes de que se venza.
 - **Nómina**: salud y pensión 4% sobre salario proporcional + extras + comisiones (el auxilio de
   transporte NO cotiza).
 - **Documento soporte**: ReteFuente en % (÷100) y **ReteICA por mil ‰ (÷1000)**.

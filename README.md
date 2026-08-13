@@ -78,8 +78,9 @@ app/
 ├── (auth)/          # login y registro
 ├── (panel)/         # panel: sidebar + guardia de sesión compartidos
 │   ├── dashboard/ empresas/ clientes/ productos/ facturacion/ notas/
-│   ├── compras/ documentos-soportes/ asientos-contables/ nomina/ recursos/
-│   └── operaciones/ finanzas/ configuracion/     # hubs
+│   ├── compras/ documentos-soportes/ comprobantes/ certificados-retencion/
+│   ├── notas-contabilidad/ libro-diario/ nomina/ recursos/
+│   └── operaciones/ finanzas/ contabilidad/ configuracion/     # hubs
 └── api/             # endpoints
 components/          # Sidebar, EmpresaWizard
 lib/                 # auth, prisma, validaciones, cálculos, data/, pdf/

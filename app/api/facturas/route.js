@@ -5,6 +5,7 @@ import { calcularFactura } from "@/lib/facturaCalc";
 import { validarFactura } from "@/lib/facturaValidation";
 import { construirWhere } from "@/lib/facturaFiltros";
 import { hoyBogota } from "@/lib/fechas";
+import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
 // GET /api/facturas → historial filtrado, paginado y con agregados fiscales.
 //
@@ -229,7 +230,7 @@ export async function POST(request) {
         data: { numeracionActual: numero + 1 },
       });
 
-      return tx.factura.create({
+      const creada = await tx.factura.create({
         data: {
           usuarioId: sesion.id,
           numero,
@@ -315,6 +316,18 @@ export async function POST(request) {
         },
         include: { items: { include: { impuestos: true } } },
       });
+
+      // La venta entra al libro diario. Si al mapa de cuentas le falta alguna, la factura se
+      // emite igual y queda pendiente por contabilizar: bloquear la emisión por una tarea de
+      // configuración pararía el negocio, y el hueco queda visible en Contabilidad.
+      const contab = await contabilizarYEnlazar(tx, {
+        usuarioId: sesion.id,
+        tipo: "factura",
+        documento: creada,
+        mapa: await tx.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } }),
+      });
+
+      return { ...creada, asientoId: contab.asiento?.id || null, contabilizacion: contab };
     });
 
     return NextResponse.json({ factura }, { status: 201 });

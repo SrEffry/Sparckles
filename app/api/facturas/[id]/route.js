@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { hoyBogota } from "@/lib/fechas";
+import { reversarAsientoDe } from "@/lib/asientoAutomatico";
 
 // GET /api/facturas/:id → detalle con ítems
 export async function GET(_request, { params }) {
@@ -42,13 +43,21 @@ export async function PATCH(request, { params }) {
     // Se fecha la anulación: sin ella, un periodo ya declarado deja de ser reproducible.
     // Anular hoy una factura de marzo no debe cambiar lo que devolvía el filtro del
     // bimestre marzo-abril cuando se presentó la declaración.
-    const actualizada = await prisma.factura.update({
-      where: { id },
-      data: {
-        estado: "anulada",
-        fechaAnulacion: hoyBogota(),
-        motivoAnulacion: (body.motivo || "").trim() || null,
-      },
+    const motivo = (body.motivo || "").trim() || null;
+    const actualizada = await prisma.$transaction(async (tx) => {
+      // El asiento no se borra: se le suma el contraasiento, fechado HOY. El art. 125 del
+      // Decreto 2649 no admite huecos en el libro, y antedatar la reversión modificaría en
+      // silencio un periodo que puede estar ya declarado.
+      await reversarAsientoDe(tx, {
+        usuarioId: sesion.id,
+        asientoId: factura.asientoId,
+        fecha: hoyBogota(),
+        motivo: motivo || "Factura anulada",
+      });
+      return tx.factura.update({
+        where: { id },
+        data: { estado: "anulada", fechaAnulacion: hoyBogota(), motivoAnulacion: motivo },
+      });
     });
     return NextResponse.json({ factura: actualizada });
   }

@@ -321,3 +321,45 @@
   text-decoration: underline;
   padding: 0;
 }
+
+/* Documentos que no llegaron al libro. Se muestra como tarea pendiente, no como error: el
+   documento existe y es válido, solo le falta la imputación. */
+.pendientes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  color: #8a5b00;
+}
+.pendientesTexto {
+  flex: 1;
+  min-width: 280px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.pendientesLista {
+  margin: 8px 0 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.pendientesMuestra {
+  color: #a4713a;
+  font-size: 12px;
+}
+.avisoError {
+  background: var(--danger-tint);
+  border: 1px solid #f3c2c2;
+  border-radius: 10px;
+  padding: 12px 15px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--danger);
+}

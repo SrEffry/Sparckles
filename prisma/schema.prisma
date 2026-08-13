@@ -312,6 +312,11 @@ model Factura {
   // historial deje de ser una promesa: hasta ahora el sistema no sabía qué se había cobrado.
   totalRecaudado Decimal @default(0) @db.Decimal(18, 2)
 
+  // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
+  // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
+  // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
+  asientoId String?
+
   items        FacturaItem[]
   notas        Nota[]
   aplicaciones ComprobanteAplicacion[]
@@ -358,6 +363,11 @@ model Nota {
   totalIva        Decimal @default(0) @db.Decimal(18, 2)
   totalNota       Decimal @db.Decimal(18, 2)
   observaciones   String?
+
+  // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
+  // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
+  // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
+  asientoId String?
 
   items NotaItem[]
 
@@ -441,6 +451,11 @@ model Nomina {
   totalDeducciones Decimal @db.Decimal(18, 2)
   neto             Decimal @db.Decimal(18, 2)
 
+  // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
+  // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
+  // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
+  asientoId String?
+
   estado String @default("Pendiente") // Pendiente | Pagada | Anulada
 
   @@index([usuarioId])
@@ -485,6 +500,11 @@ model Compra {
 
   // Pagado mediante comprobantes de egreso. Ver la nota de `Factura.totalRecaudado`.
   totalPagado Decimal @default(0) @db.Decimal(18, 2)
+
+  // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
+  // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
+  // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
+  asientoId String?
 
   items                  CompraItem[]
   aplicaciones           ComprobanteAplicacion[]
@@ -559,14 +579,14 @@ model RetencionPracticada {
   tipo           String // 'retefuente' | 'reteiva' | 'reteica'
   conceptoCodigo String? // id de lib/data/tablaRetefuente.js, para agrupar sin ambigüedad
   conceptoNombre String?
-  base           Decimal @db.Decimal(18, 2)
+  base           Decimal  @db.Decimal(18, 2)
   // Valor de la operación gravada SIN IVA. Solo lo usa la ReteIVA, cuya `base` es el IVA y no
   // el valor de la operación: el art. 1.6.1.12.13 del Decreto 1625 exige los dos por separado
   // en el certificado, y con una sola columna el documento sale incompleto.
   baseOperacion  Decimal? @db.Decimal(18, 2)
-  tarifa         Decimal @db.Decimal(8, 4)
-  unidad         String  @default("%") // '%' o '‰' (el ICA va por mil)
-  valor          Decimal @db.Decimal(18, 2)
+  tarifa         Decimal  @db.Decimal(8, 4)
+  unidad         String   @default("%") // '%' o '‰' (el ICA va por mil)
+  valor          Decimal  @db.Decimal(18, 2)
   // El ICA se declara en el municipio donde se practicó: mezclarlos liquida mal esa declaración.
   municipio      String?
 
@@ -619,8 +639,8 @@ model CertificadoRetencion {
   terceroNumeroDocumento String
   terceroDv              String?
 
-  totalBase  Decimal @db.Decimal(18, 2)
-  totalValor Decimal @db.Decimal(18, 2)
+  totalBase      Decimal  @db.Decimal(18, 2)
+  totalValor     Decimal  @db.Decimal(18, 2)
   // Suma de las operaciones gravadas sin IVA. Solo aplica a ReteIVA (art. 1.6.1.12.13 Dcto 1625).
   totalOperacion Decimal? @db.Decimal(18, 2)
 
@@ -846,6 +866,28 @@ model MapaCuentas {
   proveedores      String?
   anticipoClientes String?
 
+  // ---- Cuentas de resultado, para que las OPERACIONES lleguen al libro ----
+  // Hasta ahora solo los comprobantes de tesorería y las notas de contabilidad generaban
+  // asiento: las ventas, las compras, las notas D/C, los documentos soporte y la nómina no
+  // entraban al libro diario por ninguna vía. Sin estas cuentas no hay contra qué imputarlas.
+  //
+  // Una sola cuenta por concepto, no una por producto: el desglose fino es una decisión que
+  // cada empresa toma distinto, y proponer un default razonable vale más que exigir un mapeo
+  // exhaustivo antes de poder facturar.
+  ingresosVentas     String? // 4135 o la que use el usuario
+  devolucionesVentas String? // 4175 — la nota crédito no se registra como ingreso negativo
+  comprasInventario  String? // 1435 (inventario) o 6205 (compras), según el método
+  gastosGenerales    String? // 5195 — contrapartida del documento soporte
+
+  // Nómina. La salud y la pensión DESCONTADAS al trabajador son un pasivo con la EPS y el
+  // fondo, no un gasto: el gasto es el devengo completo.
+  gastoNomina            String? // 5105
+  salariosPorPagar       String? // 2505
+  saludPorPagar          String? // 237005
+  pensionPorPagar        String? // 237006
+  prestamosEmpleados     String? // 1365 — el descuento abona la cuenta por cobrar
+  otrasDeduccionesNomina String? // 2380 u otras por pagar
+
   // Retenciones que NOS practican: son un ACTIVO (anticipo de impuesto a favor).
   reteFuenteFavor String?
   reteIvaFavor    String?
@@ -1065,6 +1107,11 @@ model DocumentoSoporte {
   // Como en Factura: sin fecha, un periodo ya declarado deja de ser reproducible.
   fechaAnulacion  String?
   motivoAnulacion String?
+
+  // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
+  // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
+  // contabilizar" y se pueden contabilizar después; no se pierden ni se ocultan.
+  asientoId String?
 
   retencionesPracticadas RetencionPracticada[]
 

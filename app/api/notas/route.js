@@ -4,6 +4,7 @@ import { obtenerSesion } from "@/lib/session";
 import { normalizarNota } from "@/lib/notaValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
+import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
 // GET /api/notas → historial de notas del usuario
 export async function GET() {
@@ -104,7 +105,16 @@ export async function POST(request) {
         });
       }
 
-      return nota;
+      // La nota entra al libro. La crédito NO se registra como ingreso negativo: va a
+      // devoluciones en ventas, para que el ingreso bruto del periodo siga viéndose.
+      const contab = await contabilizarYEnlazar(tx, {
+        usuarioId: sesion.id,
+        tipo: "nota",
+        documento: nota,
+        mapa: await tx.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } }),
+      });
+
+      return { ...nota, asientoId: contab.asiento?.id || null };
     });
 
     return NextResponse.json({ nota }, { status: 201 });

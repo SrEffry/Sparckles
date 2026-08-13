@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { borrarRetencionesDe } from "@/lib/retencionesDeDocumentos";
+import { reversarAsientoDe } from "@/lib/asientoAutomatico";
 import { hoyBogota } from "@/lib/fechas";
 
 export async function GET(_request, { params }) {
@@ -40,6 +41,13 @@ export async function PATCH(request, { params }) {
       // certificado del proveedor, que entonces contradecía la declaración mensual del
       // agente: el tercero descontaría algo que nadie consignó.
       await borrarRetencionesDe(tx, { documentoSoporteId: id });
+      // Y el asiento se reversa con un contraasiento, no se borra.
+      await reversarAsientoDe(tx, {
+        usuarioId: sesion.id,
+        asientoId: soporte.asientoId,
+        fecha: hoyBogota(),
+        motivo: `Documento soporte ${soporte.numero} anulado`,
+      });
       return tx.documentoSoporte.update({
         where: { id },
         data: {

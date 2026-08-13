@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { reversarAsientoDe } from "@/lib/asientoAutomatico";
+import { hoyBogota } from "@/lib/fechas";
 
 export async function GET(_request, { params }) {
   const sesion = await obtenerSesion();
@@ -33,6 +35,13 @@ export async function DELETE(_request, { params }) {
         await tx.factura.update({ where: { id: factura.id }, data: { [campo]: nuevo } });
       }
     }
+    // El asiento no se borra con la nota: se le suma el contraasiento (art. 125 D. 2649).
+    await reversarAsientoDe(tx, {
+      usuarioId: sesion.id,
+      asientoId: nota.asientoId,
+      fecha: hoyBogota(),
+      motivo: `Nota ${nota.numero} eliminada`,
+    });
     await tx.nota.delete({ where: { id } });
   });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { calcularLiquidacion } from "@/lib/nominaCalc";
+import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -44,20 +45,33 @@ export async function POST(request) {
     otrasDeducciones: body.otrasDeducciones,
   });
 
-  const nomina = await prisma.nomina.create({
-    data: {
+  const nomina = await prisma.$transaction(async (tx) => {
+    const creada = await tx.nomina.create({
+      data: {
+        usuarioId: sesion.id,
+        empleadoId: empleado.id,
+        empleadoNombre: `${empleado.nombres} ${empleado.apellidos}`,
+        empleadoDocumento: empleado.documento,
+        empleadoCargo: empleado.cargo,
+        salarioBase: empleado.salarioBase,
+        ...calc,
+        totalDevengos: calc.totalDevengos,
+        totalDeducciones: calc.totalDeducciones,
+        neto: calc.neto,
+        estado: "Pendiente",
+      },
+    });
+
+    // La nómina entra al libro. El catálogo NIIF cargado no trae cuentas de salud y pensión
+    // por pagar, así que lo normal es que quede pendiente hasta que el usuario elija las
+    // suyas en el mapa: aparece en Contabilidad con el resto de pendientes.
+    const contab = await contabilizarYEnlazar(tx, {
       usuarioId: sesion.id,
-      empleadoId: empleado.id,
-      empleadoNombre: `${empleado.nombres} ${empleado.apellidos}`,
-      empleadoDocumento: empleado.documento,
-      empleadoCargo: empleado.cargo,
-      salarioBase: empleado.salarioBase,
-      ...calc,
-      totalDevengos: calc.totalDevengos,
-      totalDeducciones: calc.totalDeducciones,
-      neto: calc.neto,
-      estado: "Pendiente",
-    },
+      tipo: "nomina",
+      documento: creada,
+      mapa: await tx.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } }),
+    });
+    return { ...creada, asientoId: contab.asiento?.id || null };
   });
 
   return NextResponse.json({ nomina }, { status: 201 });

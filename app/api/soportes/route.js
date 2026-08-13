@@ -5,6 +5,7 @@ import { normalizarSoporte } from "@/lib/soporteValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
 import { registrarRetencionesDeSoporte } from "@/lib/retencionesDeDocumentos";
+import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -56,7 +57,13 @@ export async function POST(request) {
       // Siempre vinculante: el soporte no tiene contraparte en tesorería, así que no hay
       // riesgo de doble conteo y la política de causación no le aplica.
       await registrarRetencionesDeSoporte(tx, sesion.id, creado);
-      return creado;
+      const contab = await contabilizarYEnlazar(tx, {
+        usuarioId: sesion.id,
+        tipo: "documento_soporte",
+        documento: creado,
+        mapa: await tx.mapaCuentas.findUnique({ where: { usuarioId: sesion.id } }),
+      });
+      return { ...creado, asientoId: contab.asiento?.id || null };
     });
     return NextResponse.json({ soporte }, { status: 201 });
   } catch (e) {

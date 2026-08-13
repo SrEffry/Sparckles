@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarCompra } from "@/lib/compraValidation";
 import { registrarRetencionesDeCompra } from "@/lib/retencionesDeDocumentos";
+import { contabilizarYEnlazar, reversarAsientoDe } from "@/lib/asientoAutomatico";
+import { hoyBogota } from "@/lib/fechas";
 
 async function compraDelUsuario(id, usuarioId) {
   const c = await prisma.compra.findUnique({ where: { id } });
@@ -50,7 +52,23 @@ export async function PUT(request, { params }) {
     // Se reescriben: editar una compra puede cambiar sus retenciones, y el certificado debe
     // reflejar la versión vigente, no la anterior.
     await registrarRetencionesDeCompra(tx, sesion.id, actualizada, causadas);
-    return actualizada;
+
+    // El libro no se reescribe: se reversa el asiento anterior y se registra el nuevo. Así
+    // quedan las tres líneas (original, contraasiento y versión vigente) y el art. 125 se
+    // cumple — corregir el libro borrando sería justo lo que prohíbe.
+    await reversarAsientoDe(tx, {
+      usuarioId: sesion.id,
+      asientoId: existente.asientoId,
+      fecha: hoyBogota(),
+      motivo: "Compra editada",
+    });
+    const contab = await contabilizarYEnlazar(tx, {
+      usuarioId: sesion.id,
+      tipo: "compra",
+      documento: { ...actualizada, asientoId: null },
+      mapa,
+    });
+    return { ...actualizada, asientoId: contab.asiento?.id || null };
   });
   return NextResponse.json({ compra });
 }
@@ -63,6 +81,16 @@ export async function DELETE(_request, { params }) {
   const existente = await compraDelUsuario(id, sesion.id);
   if (!existente) return NextResponse.json({ error: "Compra no encontrada." }, { status: 404 });
 
-  await prisma.compra.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    // El asiento NO se borra con la compra: se le suma el contraasiento. Borrarlo dejaría un
+    // hueco en el libro, y el art. 125 del Decreto 2649 no lo admite.
+    await reversarAsientoDe(tx, {
+      usuarioId: sesion.id,
+      asientoId: existente.asientoId,
+      fecha: hoyBogota(),
+      motivo: `Compra ${existente.numFactura} eliminada`,
+    });
+    await tx.compra.delete({ where: { id } });
+  });
   return NextResponse.json({ ok: true });
 }

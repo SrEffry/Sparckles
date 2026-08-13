@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { normalizarCompra } from "@/lib/compraValidation";
 import { registrarRetencionesDeCompra } from "@/lib/retencionesDeDocumentos";
+import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -42,7 +43,10 @@ export async function POST(request) {
     // Las retenciones practicadas al proveedor van también a la tabla unificada: es lo que
     // alimenta el certificado anual.
     await registrarRetencionesDeCompra(tx, sesion.id, creada, causadas);
-    return creada;
+    // Y la compra entra al libro diario. Si falta una cuenta del mapa, queda pendiente por
+    // contabilizar en vez de bloquear el registro.
+    const contab = await contabilizarYEnlazar(tx, { usuarioId: sesion.id, tipo: "compra", documento: creada, mapa });
+    return { ...creada, asientoId: contab.asiento?.id || null };
   });
   return NextResponse.json({ compra }, { status: 201 });
 }

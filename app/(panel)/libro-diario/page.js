@@ -10,7 +10,7 @@
 // Tampoco se anula desde aquí: el libro no se corrige borrando, se corrige con el contraasiento
 // que emite la reversión del documento que lo originó.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { listarAsientos, obtenerAsiento } from "@/lib/asientosApi";
 import styles from "./libro.module.css";
@@ -20,8 +20,15 @@ const fmt = (v) =>
     Number(v) || 0
   );
 
-// De qué documento vino el asiento, y a dónde ir para corregirlo.
+// De qué documento vino el asiento, y a dónde ir para corregirlo. Debe cubrir todos los
+// `tipo` que escribe `lib/asientoAutomatico.js`: los que falten se leerían como "manual", que
+// es justo lo contrario de lo que son.
 const ORIGEN = {
+  factura: { etiqueta: "Factura de venta", ruta: "/facturacion" },
+  nota: { etiqueta: "Nota débito / crédito", ruta: "/notas" },
+  compra: { etiqueta: "Compra", ruta: "/compras" },
+  documento_soporte: { etiqueta: "Documento soporte", ruta: "/documentos-soportes" },
+  nomina: { etiqueta: "Nómina", ruta: "/nomina" },
   ingreso: { etiqueta: "Comprobante de ingreso", ruta: "/comprobantes?tipo=ingreso" },
   egreso: { etiqueta: "Comprobante de egreso", ruta: "/comprobantes?tipo=egreso" },
   nota_contabilidad: { etiqueta: "Nota de contabilidad", ruta: "/notas-contabilidad" },
@@ -29,38 +36,45 @@ const ORIGEN = {
   asiento: { etiqueta: "Manual (histórico)", ruta: null },
 };
 
+/** Rango del mes en curso: el filtro más usado, y evita traer el libro entero al abrirlo. */
+function mesActual() {
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  const [a, m] = hoy.split("-");
+  const fin = new Date(Date.UTC(Number(a), Number(m), 0)).getUTCDate();
+  return { desde: `${a}-${m}-01`, hasta: `${a}-${m}-${String(fin).padStart(2, "0")}` };
+}
+
 export default function LibroDiarioPage() {
   const router = useRouter();
-  const [asientos, setAsientos] = useState(null);
+  const [datos, setDatos] = useState(null);
   const [search, setSearch] = useState("");
   const [origen, setOrigen] = useState("");
+  const [rango, setRango] = useState({ desde: "", hasta: "" });
+  const [pagina, setPagina] = useState(1);
   const [detalle, setDetalle] = useState(null);
 
+  // El filtrado lo hace el servidor: el libro crece sin techo y traerlo entero a memoria
+  // dejaba de funcionar al tercer año.
   useEffect(() => {
-    listarAsientos().then(setAsientos);
-  }, []);
+    const t = setTimeout(() => {
+      listarAsientos({ ...rango, origen, q: search, pagina }).then(setDatos);
+    }, search ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [rango, origen, search, pagina]);
 
-  const stats = useMemo(() => {
-    const l = asientos || [];
-    const vivos = l.filter((a) => !a.anulado);
-    return {
-      total: l.length,
-      debitos: vivos.reduce((s, a) => s + Number(a.totalDebitos), 0),
-      creditos: vivos.reduce((s, a) => s + Number(a.totalCreditos), 0),
-    };
-  }, [asientos]);
+  // Cambiar un filtro devuelve a la primera página: quedarse en la 4 de un resultado de 2
+  // muestra una tabla vacía sin explicar por qué.
+  useEffect(() => {
+    setPagina(1);
+  }, [rango, origen, search]);
 
-  const filtrados = useMemo(() => {
-    const q = search.toLowerCase();
-    return (asientos || []).filter((a) => {
-      if (origen && (a.tipo || "manual") !== origen) return false;
-      if (!q) return true;
-      return [a.numero, a.descripcion, a.documentoRef].filter(Boolean).some((v) => v.toLowerCase().includes(q));
-    });
-  }, [asientos, search, origen]);
+  const asientos = datos?.asientos || null;
+  const totales = datos?.totales || { debitos: 0, creditos: 0 };
+  const pag = datos?.paginacion;
 
-  // El libro debe cuadrar globalmente: si no, hay un asiento descuadrado y hay que verlo.
-  const descuadre = Math.abs(stats.debitos - stats.creditos);
+  // El libro debe cuadrar: si no, hay un asiento descuadrado y hay que verlo. Se calcula sobre
+  // el filtro completo, no sobre la página.
+  const descuadre = Math.abs(totales.debitos - totales.creditos);
 
   async function ver(id) {
     const a = await obtenerAsiento(id);
@@ -87,11 +101,11 @@ export default function LibroDiarioPage() {
       </div>
 
       <section className={styles.stats}>
-        <StatCard label="Asientos" valor={stats.total} />
-        <StatCard label="Total débitos" valor={fmt(stats.debitos)} chico />
-        <StatCard label="Total créditos" valor={fmt(stats.creditos)} chico />
+        <StatCard label="Asientos" valor={pag?.total ?? "…"} />
+        <StatCard label="Total débitos" valor={fmt(totales.debitos)} chico />
+        <StatCard label="Total créditos" valor={fmt(totales.creditos)} chico />
         <StatCard
-          label={descuadre < 0.01 ? "Libro cuadrado" : "Descuadre — revísalo"}
+          label={descuadre < 0.01 ? "Sumas iguales" : "Descuadre — revísalo"}
           valor={descuadre < 0.01 ? "✓" : fmt(descuadre)}
           chico
           malo={descuadre >= 0.01}
@@ -105,8 +119,39 @@ export default function LibroDiarioPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <div className={styles.rango}>
+          <label>
+            Desde
+            <input
+              type="date"
+              value={rango.desde}
+              onChange={(e) => setRango((r) => ({ ...r, desde: e.target.value }))}
+            />
+          </label>
+          <label>
+            Hasta
+            <input
+              type="date"
+              value={rango.hasta}
+              onChange={(e) => setRango((r) => ({ ...r, hasta: e.target.value }))}
+            />
+          </label>
+          <button className={styles.enlaceChico} onClick={() => setRango(mesActual())}>
+            Este mes
+          </button>
+          {(rango.desde || rango.hasta) && (
+            <button className={styles.enlaceChico} onClick={() => setRango({ desde: "", hasta: "" })}>
+              Todo
+            </button>
+          )}
+        </div>
         <select className={styles.filtro} value={origen} onChange={(e) => setOrigen(e.target.value)}>
           <option value="">Todos los orígenes</option>
+          <option value="factura">Facturas de venta</option>
+          <option value="nota">Notas débito y crédito</option>
+          <option value="compra">Compras</option>
+          <option value="documento_soporte">Documentos soporte</option>
+          <option value="nomina">Nómina</option>
           <option value="ingreso">Comprobantes de ingreso</option>
           <option value="egreso">Comprobantes de egreso</option>
           <option value="nota_contabilidad">Notas de contabilidad</option>
@@ -116,7 +161,7 @@ export default function LibroDiarioPage() {
 
       {asientos === null ? (
         <div className={styles.empty}>Cargando…</div>
-      ) : filtrados.length === 0 ? (
+      ) : asientos.length === 0 ? (
         <div className={styles.empty}>
           <p>No hay asientos con esos filtros.</p>
         </div>
@@ -136,7 +181,7 @@ export default function LibroDiarioPage() {
               </tr>
             </thead>
             <tbody>
-              {filtrados.map((a) => {
+              {asientos.map((a) => {
                 const o = ORIGEN[a.tipo] || ORIGEN.manual;
                 return (
                   <tr key={a.id} className={a.anulado ? styles.anulada : ""}>
@@ -175,6 +220,20 @@ export default function LibroDiarioPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {pag && pag.paginas > 1 && (
+        <div className={styles.paginacion}>
+          <button disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}>
+            Anterior
+          </button>
+          <span>
+            Página {pag.pagina} de {pag.paginas} · {pag.total} asientos
+          </span>
+          <button disabled={pagina >= pag.paginas} onClick={() => setPagina((p) => p + 1)}>
+            Siguiente
+          </button>
         </div>
       )}
 

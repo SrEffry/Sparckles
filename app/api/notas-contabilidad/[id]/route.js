@@ -6,6 +6,7 @@ import {
   cuentasBlindadas,
   blindarTesoreria,
   validarCuentasBlindadas,
+  TIPO_APERTURA,
 } from "@/lib/notaContabilidadValidation";
 import { validarCuentasPUC } from "@/lib/asientoValidation";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
@@ -172,8 +173,9 @@ async function emitir(nota, sesion, body) {
 
   // Cartera, proveedores y tesorería tienen saldos que mantienen otros módulos. Moverlos aquí
   // descuadra el libro contra los pendientes por cobrar y por pagar sin que nada avise.
+  // La apertura es la única excepción: son esas mismas cuentas las que hay que cargar.
   const blindadas = blindarTesoreria(cuentasBlindadas(mapa), tesoreria);
-  const choques = validarCuentasBlindadas(nota.movimientos, blindadas);
+  const choques = validarCuentasBlindadas(nota.movimientos, blindadas, nota.tipoAjuste);
   if (choques.length) {
     const e = new Error(choques[0]);
     e.code = "NOTA";
@@ -181,6 +183,28 @@ async function emitir(nota, sesion, body) {
   }
 
   const anio = Number((nota.fecha || "").slice(0, 4)) || new Date().getFullYear();
+
+  // UNA sola apertura por ejercicio. Es un permiso extraordinario —levanta el blindaje— y
+  // repetirlo duplicaría los saldos iniciales sin que nada lo notara: la segunda apertura
+  // sumaría otra vez toda la cartera y el patrimonio.
+  if (nota.tipoAjuste === TIPO_APERTURA) {
+    const previa = await prisma.notaContabilidad.findFirst({
+      where: {
+        usuarioId: sesion.id,
+        tipoAjuste: TIPO_APERTURA,
+        estado: "emitido",
+        numero: { startsWith: `CC-${anio}-` },
+      },
+      select: { numero: true },
+    });
+    if (previa) {
+      const e = new Error(
+        `Ya existe una nota de saldos de apertura para ${anio} (${previa.numero}). Si está mal, revérsala antes de emitir otra: dos aperturas duplicarían los saldos iniciales.`
+      );
+      e.code = "NOTA";
+      throw e;
+    }
+  }
 
   const actualizada = await prisma.$transaction(async (tx) => {
     const consecutivo = await siguienteConsecutivo(tx, {

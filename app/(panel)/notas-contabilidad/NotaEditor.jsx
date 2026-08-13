@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { buscarCuentas } from "@/lib/asientosApi";
-import { TIPOS_AJUSTE } from "@/lib/notaContabilidadValidation";
+import { TIPOS_AJUSTE, TIPO_APERTURA } from "@/lib/notaContabilidadValidation";
 import { numeroALetras } from "@/lib/numeroALetras";
 import { hoyBogota } from "@/lib/fechas";
 import styles from "./notas.module.css";
@@ -47,7 +47,13 @@ export default function NotaEditor({ nota, sector = "comercial", blindadas = [],
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
-  const bloqueo = useMemo(() => new Map(blindadas.map((b) => [b.cuenta, b.motivo])), [blindadas]);
+  // En una apertura el blindaje no aplica: cargar cartera, proveedores y bancos es justo lo
+  // que hay que hacer para estrenar el sistema con una empresa en marcha.
+  const esApertura = tipoAjuste === TIPO_APERTURA;
+  const bloqueo = useMemo(
+    () => (esApertura ? new Map() : new Map(blindadas.map((b) => [b.cuenta, b.motivo]))),
+    [blindadas, esApertura]
+  );
 
   const totales = useMemo(() => {
     let d = 0;
@@ -159,6 +165,17 @@ export default function NotaEditor({ nota, sector = "comercial", blindadas = [],
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitulo}>Imputación contable</h2>
+
+        {/* La apertura levanta el blindaje, así que conviene decir qué implica antes de que
+            alguien la use como atajo para "arreglar" un saldo. */}
+        {esApertura && (
+          <div className={styles.alerta}>
+            <strong>Esta nota puede mover cartera, proveedores y tesorería.</strong> Es la única que
+            puede, y solo se admite <strong>una por ejercicio</strong>. Ten en cuenta que cargar el
+            saldo de cartera aquí <em>no</em> crea las facturas pendientes de cobro: si quieres poder
+            aplicarles recaudos, regístralas también como facturas.
+          </div>
+        )}
 
         <div className={styles.movHead}>
           <span>Cuenta (PUC)</span>

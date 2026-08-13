@@ -327,3 +327,102 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Rango de fechas: el art. 125 exige orden cronológico, así que consultar el libro por periodo
+   es la operación normal, no un extra. */
+.rango {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rango label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.rango input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12.5px;
+  background: #fafafa;
+}
+.rango input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: #fff;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.paginacion button {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.paginacion button:hover:not(:disabled) {
+  background: #fafafa;
+}
+.paginacion button:disabled {
+  opacity: 0.4;
+}
+
+/* Enlace en línea dentro de la tabla y los avisos. */
+.enlaceChico {
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+  text-align: left;
+}
+.origenSuelto {
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+.enlace {
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  padding: 0;
+}
+.avisoAlcance {
+  background: var(--info-tint);
+  border: 1px solid #c5dff5;
+  border-radius: 9px;
+  padding: 10px 13px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #10508a;
+}
+.statMalo {
+  background: var(--danger-tint);
+  border-color: #f3c2c2;
+}
+.statMalo .statValorChico {
+  color: var(--danger);
+}

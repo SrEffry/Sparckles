@@ -206,6 +206,27 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   - Corregir **no borra del libro**: anular o eliminar emite el **contraasiento fechado hoy**.
     Editar una compra deja tres líneas (original, contraasiento, versión vigente). El número
     del asiento es la referencia del documento (`CP-FP-450`) y toma sufijo si ya está tomado.
+- **Comprobantes de tesorería: DOS MODOS.**
+  - *Aplicación*: cancela el saldo de un documento previo (factura o compra). La contrapartida
+    la pone el sistema.
+  - *Imputación*: sin documento previo — nómina, impuestos, servicios, caja menor, anticipos,
+    préstamos, aportes. El usuario elige un **concepto de una lista cerrada**
+    (`lib/conceptosComprobante.js`) y el concepto trae su cuenta del mapa. **Nunca se acepta un
+    código PUC del cliente**: eso sería el asiento manual que se cerró a propósito. Cartera y
+    proveedores quedan fuera del modo imputación, y un GASTO exige la referencia de la factura
+    o del documento soporte (Art. 771-2 E.T.).
+- **Legalizar un egreso con documento soporte** (`lib/soporteDesdeComprobante.js`): desde un
+  egreso emitido se CREA un documento soporte; el comprobante no se transforma, sigue siendo la
+  prueba del pago. Reglas que no se pueden relajar:
+  - **Una sola línea vinculante por operación**, la del hecho que ocurrió primero. El soporte
+    generado desde un pago va `vinculante: false` — si no, el certificado del Art. 381 le
+    certifica al proveedor el doble de lo que se le retuvo.
+  - **La contrapartida es *anticipos por legalizar* (1330)**, no proveedores: la plata ya salió,
+    el soporte cancela un anticipo. Con proveedores esa cuenta queda en saldo débito.
+  - **Orden de deshacer: LIFO documental.** Nada se anula mientras exista vivo algo creado
+    después que se apoye en ello. Un soporte normal se paga después, así que primero se reversa
+    el pago; uno generado desde un pago se anula primero.
+  - La **fecha es la de la operación**, no la del pago (art. 1.6.1.4.12 del DUT 1625).
 - **Saldos de apertura**: el tipo de ajuste `apertura` es el ÚNICO que levanta el blindaje de
   cartera/proveedores/tesorería, y solo se admite **uno por ejercicio**. Sin él, el sistema no
   se podía estrenar con una empresa en marcha. Ojo: cargar cartera ahí **no** crea las facturas

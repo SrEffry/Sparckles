@@ -257,6 +257,16 @@
   color: #8a5b00;
 }
 
+/* Aclaración bajo un campo cuando el nombre solo no basta: horas extra y recargos se ven
+   iguales y no tienen la misma base prestacional. */
+.pista {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-soft, #86868b);
+}
+
 /* El costo real para la empresa, separado del neto que recibe el trabajador. */
 .totCosto {
   display: flex;

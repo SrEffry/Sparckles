@@ -440,6 +440,12 @@ model Nomina {
 
   fechaLiquidacion DateTime @default(now())
 
+  // Periodo liquidado, "AAAA-MM". Es lo que identifica la nómina, no la fecha en que se digitó:
+  // sin él se podía liquidar dos veces el mismo mes —duplicando el gasto y el pasivo de
+  // seguridad social— y una nómina de diciembre digitada en enero se liquidaba con los
+  // parámetros del año nuevo. El `@@unique` de abajo lo sostiene desde la base.
+  periodo String
+
   // Snapshot del empleado
   empleadoNombre    String
   empleadoDocumento String?
@@ -450,7 +456,10 @@ model Nomina {
   diasTrabajados      Int     @default(30)
   salarioProporcional Decimal @db.Decimal(18, 2)
   transporte          Decimal @default(0) @db.Decimal(18, 2)
+  // Horas extra y recargos van SEPARADOS: ambos son salario y cotizan, pero el trabajo
+  // suplementario NO entra en la base de vacaciones (art. 192 num. 2 CST) y los recargos sí.
   extras              Decimal @default(0) @db.Decimal(18, 2)
+  recargos            Decimal @default(0) @db.Decimal(18, 2)
   comisiones          Decimal @default(0) @db.Decimal(18, 2)
   salud               Decimal @default(0) @db.Decimal(18, 2)
   pension             Decimal @default(0) @db.Decimal(18, 2)
@@ -495,6 +504,7 @@ model Nomina {
 
   estado String @default("Pendiente") // Pendiente | Pagada | Anulada
 
+  @@unique([empleadoId, periodo])
   @@index([usuarioId])
   @@index([empleadoId])
   @@map("nominas")
@@ -964,8 +974,17 @@ model MapaCuentas {
 
   // Aportes del empleador y prestaciones sociales. El GASTO va separado por concepto porque
   // así lo pide el estado de resultados y porque cada uno tiene su propia base de cálculo.
-  gastoAportesPatronales     String? // 5105xx — salud, pensión, ARL y parafiscales
-  gastoPrestaciones          String? // 5105xx — cesantías, intereses, prima y vacaciones
+  // Una cuenta por componente. Antes eran dos cuentas agregadas, y cualquier código del PUC que
+  // se eligiera llevaba el nombre de UNO de los componentes: la ARL terminaba sumada bajo
+  // "Aportes a EPS". El pasivo ya iba desagregado; el gasto también debe estarlo.
+  gastoSaludPatronal         String? // 510527
+  gastoPensionPatronal       String? // 510528
+  gastoArl                   String? // 510529
+  gastoParafiscales          String? // 510531 — SENA, ICBF y caja
+  gastoCesantias             String? // 510530
+  gastoInteresesCesantias    String? // 510533
+  gastoPrima                 String? // 510536
+  gastoVacaciones            String? // 510539
   arlPorPagar                String? // 237010
   parafiscalesPorPagar       String? // 237015 — SENA, ICBF y caja de compensación
   cesantiasPorPagar          String? // 250510

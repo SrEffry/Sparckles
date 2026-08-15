@@ -15,7 +15,7 @@ export async function GET(_request, { params }) {
   const { id } = await params;
   const empleado = await empleadoDelUsuario(id, sesion.id);
   if (!empleado) return NextResponse.json({ error: "Empleado no encontrado." }, { status: 404 });
-  return NextResponse.json({ empleado });
+  return NextResponse.json({ empleado, avisos });
 }
 
 export async function PUT(request, { params }) {
@@ -33,7 +33,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: "Petición inválida." }, { status: 400 });
   }
 
-  const { data, errors } = normalizarEmpleado(body);
+  const { data, errors, avisos } = normalizarEmpleado(body);
   if (errors.length) return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
 
   const empleado = await prisma.empleado.update({ where: { id }, data });

@@ -250,8 +250,32 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   gravable** del art. 600 (nunca anual), ReteICA **por municipio**. Los pagos laborales se
   excluyen: van por el Formulario 220 (Arts. 378-379). No expedir cuesta el **5% de los pagos**
   (Art. 667), así que la pantalla avisa del plazo antes de que se venza.
-- **Nómina**: salud y pensión 4% sobre salario proporcional + extras + comisiones (el auxilio de
-  transporte NO cotiza).
+- **Nómina — el costo laboral NO es el salario.** El asiento lleva los tres bloques: devengo del
+  trabajador, aportes del **empleador** (salud, pensión, ARL, parafiscales) y **prestaciones**
+  (cesantías, intereses, prima, vacaciones), cada componente a **su propia cuenta** de gasto y de
+  pasivo. Sobre un salario de $2.000.000 el costo real es ~$3.037.000 (+52%).
+  - **Las bases no son la misma**: aportes = salario + extras + recargos + comisiones (el auxilio
+    de transporte **NO** cotiza, art. 128 CST); prestacional = lo anterior **más** el auxilio
+    (art. 7 Ley 1ª/1963); **vacaciones = SIN auxilio y SIN horas extra** (art. 192 num. 2 CST).
+    Por eso `extras` y `recargos` son campos **distintos**: los dos cotizan, solo uno va a
+    vacaciones.
+  - **IBC con piso (1 SMLMV) y techo (25)** para salud, pensión y FSP (art. 18 Ley 100). Los
+    **parafiscales NO comparten el tope**: van sobre la nómina completa.
+  - **Los umbrales se miden sobre lo DEVENGADO del mes**, no sobre el salario del contrato: la
+    exoneración del art. 114-1 (<10 SMLMV) y el FSP (≥4 SMLMV) cambian si ese mes hubo comisiones.
+    La exoneración cubre salud, SENA e ICBF; la **caja y la pensión se pagan siempre**.
+  - **Intereses sobre cesantías = 12% de las cesantías del mes**, sin volver a prorratear: las
+    cesantías ya vienen prorrateadas por los días.
+  - **Periodo `AAAA-MM` obligatorio**, `@@unique([empleadoId, periodo])`. La nómina se **causa en
+    su periodo**, no el día en que se digita, y anularla libera el periodo para rehacerla.
+  - **Prestación de servicios NO se liquida por nómina** (no hay relación laboral): se registra
+    como compra o documento soporte, con retención por honorarios o servicios.
+  - El **mes laboral son 30 días** para todo efecto salarial y prestacional, también en los de 31.
+  - Los valores que cambian por decreto (**SMLMV y auxilio de transporte**) viven en
+    `lib/data/parametrosNomina.js` con su norma; **no se inventan**. 2026: $1.750.905 / $249.095
+    (Decretos 1469 y 1470 del 29-dic-2025).
+  - **No hace**: PILA, nómina electrónica (Res. DIAN 000013/2021), retención por rentas de trabajo
+    (art. 383 E.T.), salario integral, incapacidades ni licencias.
 - **Documento soporte**: ReteFuente en % (÷100) y **ReteICA por mil ‰ (÷1000)**.
 - **Hubs**: agregados reales vía `GET /api/resumen` (IVA generado/descontable, IVA por pagar, etc.).
 

@@ -47,6 +47,13 @@ export async function PATCH(request, { params }) {
         fecha: hoyBogota(),
         motivo: "Nómina anulada",
       });
+      // El periodo queda libre para rehacer la liquidación. La restricción de unicidad no
+      // distingue estados, así que el periodo de la anulada se marca; el mes real sigue legible
+      // y la nómina anulada no se pierde ni se puede confundir con la buena.
+      return tx.nomina.update({
+        where: { id },
+        data: { estado: "Anulada", periodo: `${nomina.periodo}-anulada-${id.slice(-6)}` },
+      });
     }
     return tx.nomina.update({ where: { id }, data: { estado: body.estado } });
   });

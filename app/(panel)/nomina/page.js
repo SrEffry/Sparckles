@@ -27,6 +27,8 @@ export default function NominaPage() {
   const [modalEmp, setModalEmp] = useState(null); // {empleado}
   const [liquidar, setLiquidar] = useState(null); // empleado
   const [notif, setNotif] = useState(null);
+  // Avisos que vienen del servidor y NO son errores: se quedan hasta que el usuario los cierra.
+  const [avisosServidor, setAvisosServidor] = useState(null);
   // Art. 114-1 E.T.: es un atributo de la EMPRESA y cambia el costo de cada nómina.
   const [exoneradoEmpleador, setExonerado] = useState(false);
 
@@ -62,7 +64,8 @@ export default function NominaPage() {
     if (res.error) return res;
     await recargar();
     setModalEmp(null);
-    notificar(id ? "Empleado actualizado" : "Empleado creado");
+    if (res.avisos?.length) setAvisosServidor(res.avisos);
+    else notificar(id ? "Empleado actualizado" : "Empleado creado");
     return {};
   }
 
@@ -143,7 +146,18 @@ export default function NominaPage() {
                     </td>
                     <td>
                       <div className={styles.actions}>
-                        <button className={styles.liq} onClick={() => setLiquidar(e)} disabled={!e.activo}>Liquidar</button>
+                        <button
+                          className={styles.liq}
+                          onClick={() => setLiquidar(e)}
+                          disabled={!e.activo || e.tipoContrato === "Prestación de servicios"}
+                          title={
+                            e.tipoContrato === "Prestación de servicios"
+                              ? "Una prestación de servicios no es relación laboral: se paga contra cuenta de cobro o factura, no por nómina."
+                              : undefined
+                          }
+                        >
+                          Liquidar
+                        </button>
                         <button onClick={() => setModalEmp({ empleado: e })}>Editar</button>
                         <button className={styles.del} onClick={() => borrarEmpleado(e)}>Eliminar</button>
                       </div>
@@ -160,13 +174,16 @@ export default function NominaPage() {
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
-              <tr><th>Empleado</th><th>Fecha</th><th>Devengos</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>Empleado</th><th>Periodo</th><th>Causación</th><th>Devengos</th><th>Deducciones</th><th>Neto</th><th>Estado</th><th>Acciones</th></tr>
             </thead>
             <tbody>
               {nominas.map((n) => (
                 <tr key={n.id} className={n.estado === "Anulada" ? styles.anulada : ""}>
                   <td><strong>{n.empleadoNombre}</strong><div className={styles.sub}>{n.empleadoCargo}</div></td>
-                  <td>{new Date(n.fechaLiquidacion).toLocaleDateString("es-CO")}</td>
+                  {/* El periodo es lo que identifica la nómina; la causación es cuándo entró al
+                      libro. En una nómina de diciembre digitada en enero no son la misma fecha. */}
+                  <td>{(n.periodo || "").split("-anulada-")[0]}</td>
+                  <td className={styles.sub}>{new Date(n.fechaLiquidacion).toLocaleDateString("es-CO")}</td>
                   <td>{fmt(n.totalDevengos)}</td>
                   <td className={styles.ded}>{fmt(n.totalDeducciones)}</td>
                   <td className={styles.monto}><strong>{fmt(n.neto)}</strong></td>
@@ -208,12 +225,40 @@ export default function NominaPage() {
             await recargar();
             setLiquidar(null);
             setTab("historial");
-            notificar("Nómina liquidada");
+            // Los avisos del servidor duran más que una notificación de 3 segundos: son cosas
+            // que hay que revisar antes de pagar (auxilio en cero, topes del IBC, parámetros
+            // de otro año).
+            if (res.avisos?.length) setAvisosServidor(res.avisos);
+            else notificar("Nómina liquidada");
             return {};
           }}
         />
       )}
       {notif && <div className={`${styles.toast} ${styles[notif.tipo]}`}>{notif.mensaje}</div>}
+
+      {avisosServidor && (
+        <div className="modal-overlay" onClick={() => setAvisosServidor(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <h2>Revisa antes de pagar</h2>
+              <button className="modal-close" onClick={() => setAvisosServidor(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              {/* Se guardó. Estos avisos no impiden nada: señalan lo que un contador miraría
+                  antes de dar la nómina por buena. */}
+              <p className={styles.sub} style={{ marginBottom: 10 }}>
+                Se guardó correctamente. Estos puntos conviene verificarlos:
+              </p>
+              {avisosServidor.map((a) => (
+                <p key={a} className={styles.avisoNomina}>{a}</p>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={() => setAvisosServidor(null)}>Entendido</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -316,9 +361,13 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
 
 function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) {
   const [form, setForm] = useState({
+    // El mes que se liquida. Por defecto el corriente, pero se puede liquidar uno anterior: la
+    // nómina se causa y se parametriza por su periodo, no por el día en que se digita.
+    periodo: new Date().toISOString().slice(0, 7),
     diasTrabajados: 30,
     transporte: 0,
     extras: 0,
+    recargos: 0,
     comisiones: 0,
     prestamos: 0,
     otrasDeducciones: 0,
@@ -336,6 +385,9 @@ function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) 
         claseRiesgoArl: empleado.claseRiesgoArl || "I",
         exoneradoEmpleador,
         ...form,
+        // El año sale del periodo liquidado: una nómina de diciembre lleva el salario mínimo
+        // de diciembre, no el del año en que se está digitando.
+        anio: Number((form.periodo || "").slice(0, 4)) || new Date().getFullYear(),
       }),
     [empleado, form]
   );
@@ -365,12 +417,32 @@ function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) 
 
           <h3 className={styles.grupo}>Devengos</h3>
           <div className="form-row">
-            <div className="form-group"><label>Días trabajados</label><input type="number" min="1" max="31" value={form.diasTrabajados} onChange={(e) => set("diasTrabajados", e.target.value)} /></div>
-            <div className="form-group"><label>Aux. transporte</label><input type="number" min="0" value={form.transporte} onChange={(e) => set("transporte", e.target.value)} /></div>
+            <div className="form-group">
+              <label>Periodo liquidado</label>
+              {/* El mes laboral son 30 días para todo efecto salarial y prestacional
+                  (art. 134 CST), también en los meses de 31. */}
+              <input type="month" value={form.periodo} max={new Date().toISOString().slice(0, 7)} onChange={(e) => set("periodo", e.target.value)} />
+            </div>
+            <div className="form-group"><label>Días trabajados</label><input type="number" min="1" max="30" value={form.diasTrabajados} onChange={(e) => set("diasTrabajados", e.target.value)} /></div>
           </div>
           <div className="form-row">
-            <div className="form-group"><label>Horas extra</label><input type="number" min="0" value={form.extras} onChange={(e) => set("extras", e.target.value)} /></div>
+            <div className="form-group"><label>Aux. transporte</label><input type="number" min="0" value={form.transporte} onChange={(e) => set("transporte", e.target.value)} /></div>
             <div className="form-group"><label>Comisiones</label><input type="number" min="0" value={form.comisiones} onChange={(e) => set("comisiones", e.target.value)} /></div>
+          </div>
+          <div className="form-row">
+            {/* Van separados a propósito: los dos cotizan, pero el trabajo suplementario NO
+                entra en la base de vacaciones y el recargo nocturno o dominical sí
+                (art. 192 num. 2 CST). */}
+            <div className="form-group">
+              <label>Horas extra</label>
+              <input type="number" min="0" value={form.extras} onChange={(e) => set("extras", e.target.value)} />
+              <small className={styles.pista}>No entran en la base de vacaciones.</small>
+            </div>
+            <div className="form-group">
+              <label>Recargos</label>
+              <input type="number" min="0" value={form.recargos} onChange={(e) => set("recargos", e.target.value)} />
+              <small className={styles.pista}>Nocturno y dominical: sí entran en vacaciones.</small>
+            </div>
           </div>
 
           <h3 className={styles.grupo}>Deducciones</h3>

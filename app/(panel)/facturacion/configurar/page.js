@@ -17,6 +17,7 @@ const VACIO = {
   nit: "",
   regimen: "",
   responsableIva: true,
+  exoneradoParafiscales: false,
   direccion: "",
   ciudad: "",
   telefono: "",
@@ -49,6 +50,7 @@ export default function ConfigurarFacturacionPage() {
           nit: config.nit || "",
           regimen: config.regimen || "",
           responsableIva: config.responsableIva ?? true,
+          exoneradoParafiscales: config.exoneradoParafiscales ?? false,
           direccion: config.direccion || "",
           ciudad: config.ciudad || "",
           telefono: config.telefono || "",
@@ -178,6 +180,25 @@ export default function ConfigurarFacturacionPage() {
           <small className={styles.hint}>
             Si no eres responsable de IVA no puedes cobrarlo: tus facturas se emitirán con IVA en
             cero, aunque los productos tengan tarifa.
+          </small>
+        </div>
+
+        {/* Art. 114-1 E.T. Cambia el costo de CADA nómina, así que se declara aquí y no se
+            deduce: quién califica es criterio del contador, no del software. */}
+        <div className={styles.ivaBox}>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={form.exoneradoParafiscales}
+              onChange={(e) => set("exoneradoParafiscales", e.target.checked)}
+            />
+            Estoy <strong>exonerado de aportes</strong> (Art. 114-1 E.T.)
+          </label>
+          <small className={styles.hint}>
+            Exonera de salud patronal (8,5%), SENA (2%) e ICBF (3%) por los trabajadores que
+            devenguen menos de 10 SMLMV. La caja de compensación (4%) y la pensión (12%) se pagan
+            igual. Aplica a sociedades y personas jurídicas declarantes de renta, y a personas
+            naturales con dos o más trabajadores: <strong>confírmalo con tu contador</strong>.
           </small>
         </div>
         <div className="form-row">

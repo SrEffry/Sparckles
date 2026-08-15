@@ -204,6 +204,12 @@ model ConfigFacturacion {
   pieFact            String?
   observaciones      String?
 
+  // Art. 114-1 E.T.: exonera al empleador de salud (8,5%), SENA (2%) e ICBF (3%) por los
+  // trabajadores que devenguen menos de 10 SMLMV. La caja de compensación (4%) y la pensión
+  // (12%) NUNCA se exoneran. Quién califica es criterio del contador, así que se declara aquí
+  // en vez de deducirse.
+  exoneradoParafiscales Boolean @default(false)
+
   // Resolución DIAN.
   // La vigencia (expedición + vencimiento) es NOT NULL a propósito: es una regla fiscal y debe
   // sostenerla la BD, no la convención de que otro módulo haya validado bien. Sin vigencia no se
@@ -402,15 +408,20 @@ model Empleado {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  nombres      String
-  apellidos    String
-  documento    String
-  cargo        String
-  tipoContrato String?
-  salarioBase  Decimal @db.Decimal(18, 2)
-  eps          String?
-  afp          String?
-  activo       Boolean @default(true)
+  nombres        String
+  apellidos      String
+  documento      String
+  cargo          String
+  tipoContrato   String?
+  salarioBase    Decimal @db.Decimal(18, 2)
+  eps            String?
+  afp            String?
+  arl            String?
+  // Clase de riesgo I..V. La tarifa de la ARL la determina la actividad del cargo, no el
+  // salario, y va del 0,522% al 6,96%: asumir la clase I subestima el costo laboral hasta en
+  // un 6,4% del salario en los trabajos de alto riesgo.
+  claseRiesgoArl String  @default("I")
+  activo         Boolean @default(true)
 
   nominas Nomina[]
 
@@ -446,10 +457,36 @@ model Nomina {
   prestamos           Decimal @default(0) @db.Decimal(18, 2)
   otrasDeducciones    Decimal @default(0) @db.Decimal(18, 2)
 
+  // Fondo de solidaridad pensional: 1% adicional a cargo del TRABAJADOR desde 4 SMLMV
+  // (art. 27 Ley 100/1993).
+  fsp Decimal @default(0) @db.Decimal(18, 2)
+
+  // Aportes del EMPLEADOR. No se le descuentan al trabajador: son costo adicional. Sin ellos
+  // el gasto de nómina quedaba subestimado en torno al 38% del salario.
+  saludPatronal    Decimal @default(0) @db.Decimal(18, 2)
+  pensionPatronal  Decimal @default(0) @db.Decimal(18, 2)
+  arl              Decimal @default(0) @db.Decimal(18, 2)
+  sena             Decimal @default(0) @db.Decimal(18, 2)
+  icbf             Decimal @default(0) @db.Decimal(18, 2)
+  cajaCompensacion Decimal @default(0) @db.Decimal(18, 2)
+  // Si se aplicó la exoneración del art. 114-1 E.T. Se guarda el HECHO, no solo su efecto:
+  // dentro de dos años hay que poder explicar por qué esa nómina no llevó salud patronal.
+  exonerado        Boolean @default(false)
+
+  // Prestaciones sociales. Son PROVISIÓN mensual: se causan aunque se paguen después.
+  cesantias          Decimal @default(0) @db.Decimal(18, 2)
+  interesesCesantias Decimal @default(0) @db.Decimal(18, 2)
+  prima              Decimal @default(0) @db.Decimal(18, 2)
+  vacaciones         Decimal @default(0) @db.Decimal(18, 2)
+
   // Totales
-  totalDevengos    Decimal @db.Decimal(18, 2)
-  totalDeducciones Decimal @db.Decimal(18, 2)
-  neto             Decimal @db.Decimal(18, 2)
+  totalDevengos          Decimal @db.Decimal(18, 2)
+  totalDeducciones       Decimal @db.Decimal(18, 2)
+  totalAportesPatronales Decimal @default(0) @db.Decimal(18, 2)
+  totalPrestaciones      Decimal @default(0) @db.Decimal(18, 2)
+  // Lo que de verdad cuesta el trabajador: devengos + aportes patronales + prestaciones.
+  costoTotal             Decimal @default(0) @db.Decimal(18, 2)
+  neto                   Decimal @db.Decimal(18, 2)
 
   // Asiento que generó al emitirse. `null` = todavía no está en el libro diario, casi siempre
   // porque al emitir faltaba una cuenta del mapa. Esos documentos se listan como "sin
@@ -924,6 +961,17 @@ model MapaCuentas {
   pensionPorPagar        String? // 237006
   prestamosEmpleados     String? // 1365 — el descuento abona la cuenta por cobrar
   otrasDeduccionesNomina String? // 2380 u otras por pagar
+
+  // Aportes del empleador y prestaciones sociales. El GASTO va separado por concepto porque
+  // así lo pide el estado de resultados y porque cada uno tiene su propia base de cálculo.
+  gastoAportesPatronales     String? // 5105xx — salud, pensión, ARL y parafiscales
+  gastoPrestaciones          String? // 5105xx — cesantías, intereses, prima y vacaciones
+  arlPorPagar                String? // 237010
+  parafiscalesPorPagar       String? // 237015 — SENA, ICBF y caja de compensación
+  cesantiasPorPagar          String? // 250510
+  interesesCesantiasPorPagar String? // 250515
+  primaPorPagar              String? // 250520
+  vacacionesPorPagar         String? // 250525
 
   // Retenciones que NOS practican: son un ACTIVO (anticipo de impuesto a favor).
   reteFuenteFavor String?

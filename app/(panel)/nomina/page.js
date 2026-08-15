@@ -9,6 +9,8 @@ import {
 } from "@/lib/empleadosApi";
 import { listarNominas, liquidarNomina, cambiarEstadoNomina } from "@/lib/nominasApi";
 import { calcularLiquidacion } from "@/lib/nominaCalc";
+import { obtenerConfig } from "@/lib/configFacturacionApi";
+import { CLASES_RIESGO_ARL } from "@/lib/data/parametrosNomina";
 import styles from "./nomina.module.css";
 
 const fmt = (v) =>
@@ -25,10 +27,14 @@ export default function NominaPage() {
   const [modalEmp, setModalEmp] = useState(null); // {empleado}
   const [liquidar, setLiquidar] = useState(null); // empleado
   const [notif, setNotif] = useState(null);
+  // Art. 114-1 E.T.: es un atributo de la EMPRESA y cambia el costo de cada nómina.
+  const [exoneradoEmpleador, setExonerado] = useState(false);
 
   async function recargar() {
     setEmpleados(await listarEmpleados());
     setNominas(await listarNominas());
+    const cfg = await obtenerConfig();
+    setExonerado(cfg?.exoneradoParafiscales === true);
   }
   useEffect(() => {
     recargar();
@@ -194,6 +200,7 @@ export default function NominaPage() {
       {liquidar && (
         <LiquidacionModal
           empleado={liquidar}
+          exoneradoEmpleador={exoneradoEmpleador}
           onClose={() => setLiquidar(null)}
           onGuardar={async (payload) => {
             const res = await liquidarNomina(payload);
@@ -230,6 +237,8 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
     salarioBase: inicial?.salarioBase != null ? String(inicial.salarioBase) : "",
     eps: inicial?.eps || "",
     afp: inicial?.afp || "",
+    arl: inicial?.arl || "",
+    claseRiesgoArl: inicial?.claseRiesgoArl || "I",
     activo: inicial?.activo ?? true,
   }));
   const [error, setError] = useState("");
@@ -275,6 +284,22 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
             <div className="form-group"><label>EPS</label><input value={form.eps} onChange={(e) => set("eps", e.target.value)} /></div>
             <div className="form-group"><label>AFP (Pensión)</label><input value={form.afp} onChange={(e) => set("afp", e.target.value)} /></div>
           </div>
+          <div className="form-row">
+            <div className="form-group"><label>ARL</label><input value={form.arl} onChange={(e) => set("arl", e.target.value)} /></div>
+            {/* La tarifa de la ARL la fija la actividad del cargo, no el salario, y va del
+                0,522% al 6,96%: dejarla siempre en I subestima el costo laboral hasta en un
+                6,4% del salario en trabajos de alto riesgo. */}
+            <div className="form-group">
+              <label>Clase de riesgo</label>
+              <select value={form.claseRiesgoArl} onChange={(e) => set("claseRiesgoArl", e.target.value)}>
+                {CLASES_RIESGO_ARL.map((c) => (
+                  <option key={c.clase} value={c.clase}>
+                    {c.clase} — {(c.tarifa * 100).toFixed(3)}% · {c.ejemplo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <label className={styles.checkRow}>
             <input type="checkbox" checked={form.activo} onChange={(e) => set("activo", e.target.checked)} /> Empleado activo
           </label>
@@ -289,7 +314,7 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
   );
 }
 
-function LiquidacionModal({ empleado, onClose, onGuardar }) {
+function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) {
   const [form, setForm] = useState({
     diasTrabajados: 30,
     transporte: 0,
@@ -303,7 +328,15 @@ function LiquidacionModal({ empleado, onClose, onGuardar }) {
   const set = (c, v) => setForm((f) => ({ ...f, [c]: v }));
 
   const calc = useMemo(
-    () => calcularLiquidacion({ salarioBase: empleado.salarioBase, ...form }),
+    () =>
+      calcularLiquidacion({
+        salarioBase: empleado.salarioBase,
+        // Los mismos parámetros que usa el servidor: si la vista previa los ignora, el usuario
+        // ve un costo y se guarda otro.
+        claseRiesgoArl: empleado.claseRiesgoArl || "I",
+        exoneradoEmpleador,
+        ...form,
+      }),
     [empleado, form]
   );
 
@@ -350,11 +383,59 @@ function LiquidacionModal({ empleado, onClose, onGuardar }) {
             <div className="form-group"><label>Otras deducciones</label><input type="number" min="0" value={form.otrasDeducciones} onChange={(e) => set("otrasDeducciones", e.target.value)} /></div>
           </div>
 
+          {/* El costo laboral NO es el salario. Estos dos bloques son gasto del empleador y
+              no se le descuentan a nadie: sin ellos el gasto de nómina quedaba subestimado
+              en torno al 38%. */}
+          <h3 className={styles.grupo}>Aportes del empleador</h3>
+          {calc.exonerado && (
+            <p className={styles.avisoNomina}>
+              Exonerado del art. 114-1 E.T.: no se liquidan salud patronal, SENA ni ICBF. La caja
+              de compensación y la pensión se pagan igual.
+            </p>
+          )}
+          <div className="form-row">
+            <div className="form-group"><label>Salud (8,5%)</label><input value={fmt(calc.saludPatronal)} readOnly /></div>
+            <div className="form-group"><label>Pensión (12%)</label><input value={fmt(calc.pensionPatronal)} readOnly /></div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>ARL (clase {empleado.claseRiesgoArl || "I"})</label>
+              <input value={fmt(calc.arl)} readOnly />
+            </div>
+            <div className="form-group">
+              <label>Parafiscales (SENA, ICBF, Caja)</label>
+              <input value={fmt(calc.sena + calc.icbf + calc.cajaCompensacion)} readOnly />
+            </div>
+          </div>
+
+          <h3 className={styles.grupo}>Prestaciones sociales</h3>
+          <div className="form-row">
+            <div className="form-group"><label>Cesantías (8,33%)</label><input value={fmt(calc.cesantias)} readOnly /></div>
+            <div className="form-group"><label>Intereses s/ cesantías</label><input value={fmt(calc.interesesCesantias)} readOnly /></div>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label>Prima (8,33%)</label><input value={fmt(calc.prima)} readOnly /></div>
+            <div className="form-group"><label>Vacaciones (4,17%)</label><input value={fmt(calc.vacaciones)} readOnly /></div>
+          </div>
+
           <div className={styles.liqTot}>
             <div className={styles.totRow}><span>Total devengos</span><span>{fmt(calc.totalDevengos)}</span></div>
             <div className={styles.totRow}><span>Total deducciones</span><span className={styles.ded}>−{fmt(calc.totalDeducciones)}</span></div>
             <div className={styles.totFinal}><span>Neto a pagar</span><strong>{fmt(calc.neto)}</strong></div>
+            <div className={styles.totRow} style={{ marginTop: 10 }}>
+              <span>Aportes del empleador</span><span>{fmt(calc.totalAportesPatronales)}</span>
+            </div>
+            <div className={styles.totRow}><span>Prestaciones sociales</span><span>{fmt(calc.totalPrestaciones)}</span></div>
+            <div className={styles.totCosto}>
+              <span>Costo total para la empresa</span>
+              <strong>{fmt(calc.costoTotal)}</strong>
+            </div>
           </div>
+
+          {(calc.avisos || []).map((a) => (
+            <p key={a} className={styles.avisoNomina}>{a}</p>
+          ))}
+
           {error && <div className="mensaje-error">{error}</div>}
         </div>
         <div className="modal-footer">

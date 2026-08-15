@@ -35,6 +35,9 @@ export async function POST(request) {
   if (Number.isNaN(dias) || dias <= 0 || dias > 31)
     return NextResponse.json({ error: "Los días trabajados deben estar entre 1 y 31." }, { status: 400 });
 
+  // La exoneración del art. 114-1 E.T. es un atributo de la EMPRESA, no del trabajador.
+  const cfgEmpresa = await prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+
   const calc = calcularLiquidacion({
     salarioBase: empleado.salarioBase,
     diasTrabajados: dias,
@@ -43,6 +46,11 @@ export async function POST(request) {
     comisiones: body.comisiones,
     prestamos: body.prestamos,
     otrasDeducciones: body.otrasDeducciones,
+    // El costo laboral depende de la clase de riesgo del cargo y de si la empresa está
+    // exonerada por el art. 114-1 E.T. Ninguno de los dos se puede deducir del salario.
+    claseRiesgoArl: empleado.claseRiesgoArl || "I",
+    exoneradoEmpleador: cfgEmpresa?.exoneradoParafiscales === true,
+    anio: Number((body.fecha || "").slice(0, 4)) || new Date().getFullYear(),
   });
 
   const nomina = await prisma.$transaction(async (tx) => {
@@ -54,7 +62,8 @@ export async function POST(request) {
         empleadoDocumento: empleado.documento,
         empleadoCargo: empleado.cargo,
         salarioBase: empleado.salarioBase,
-        ...calc,
+        // `parametros` y `avisos` son contexto de la liquidación, no columnas de la tabla.
+        ...(({ parametros, avisos, ...columnas }) => columnas)(calc),
         totalDevengos: calc.totalDevengos,
         totalDeducciones: calc.totalDeducciones,
         neto: calc.neto,
@@ -74,5 +83,5 @@ export async function POST(request) {
     return { ...creada, asientoId: contab.asiento?.id || null };
   });
 
-  return NextResponse.json({ nomina }, { status: 201 });
+  return NextResponse.json({ nomina, avisos: calc.avisos, parametros: calc.parametros }, { status: 201 });
 }

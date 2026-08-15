@@ -244,3 +244,28 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Aviso de la liquidación: parámetros pendientes de confirmar, exoneración aplicada, topes. */
+.avisoNomina {
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  border-radius: 9px;
+  padding: 9px 12px;
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #8a5b00;
+}
+
+/* El costo real para la empresa, separado del neto que recibe el trabajador. */
+.totCosto {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 2px solid var(--primary);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+}

@@ -231,10 +231,13 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   cartera/proveedores/tesorería, y solo se admite **uno por ejercicio**. Sin él, el sistema no
   se podía estrenar con una empresa en marcha. Ojo: cargar cartera ahí **no** crea las facturas
   pendientes de cobro.
-- ⚠️ **El catálogo PUC cargado no trae** cuentas de Impuesto al Consumo por pagar, salud y
-  pensión por pagar (2370), cuentas por cobrar a trabajadores (1365) ni gastos generales
-  (5195). Mientras el usuario no elija sus auxiliares, las facturas con INC y la nómina quedan
-  pendientes por contabilizar.
+- ⚠️ **Lo que le falta al catálogo PUC comercial**: gastos generales (**5195**) y una cuenta de
+  ajuste al peso. Las de seguridad social (2370), cuentas por cobrar a trabajadores (1365),
+  acreedores varios (2380) y las nueve de gasto de personal **sí se cargaron** y están sugeridas
+  en el mapa. En **ESAL** faltan las de aportes patronales desagregadas: el catálogo solo tiene
+  `510540 Aportes a seguridad social` y `2335` agregadas, así que esos campos quedan sin sugerir
+  a propósito —repetirlas sería contabilizar la ARL bajo el nombre de otra cuenta— y aparecen
+  como pendientes.
 - **Nota de contabilidad** (`CC-`, no `NC-`, que ya lo usa la nota crédito): el comprobante de
   los *ajustes* sin documento propio. Lleva **periodo contable afectado** y **tipo de ajuste**;
   ciclo borrador → emitido → reversado. **No sirve** para ventas, compras, recaudos, pagos ni
@@ -259,23 +262,40 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
     (art. 7 Ley 1ª/1963); **vacaciones = SIN auxilio y SIN horas extra** (art. 192 num. 2 CST).
     Por eso `extras` y `recargos` son campos **distintos**: los dos cotizan, solo uno va a
     vacaciones.
-  - **IBC con piso (1 SMLMV) y techo (25)** para salud, pensión y FSP (art. 18 Ley 100). Los
-    **parafiscales NO comparten el tope**: van sobre la nómina completa.
-  - **Los umbrales se miden sobre lo DEVENGADO del mes**, no sobre el salario del contrato: la
-    exoneración del art. 114-1 (<10 SMLMV) y el FSP (≥4 SMLMV) cambian si ese mes hubo comisiones.
-    La exoneración cubre salud, SENA e ICBF; la **caja y la pensión se pagan siempre**.
+  - **IBC con piso (1 SMLMV) y techo (25)** para salud, pensión, **ARL** y FSP (art. 18 Ley 100;
+    art. 5 D. 1772/1994 para la ARL). Los **parafiscales NO comparten el tope**: van sobre la
+    nómina completa.
+  - **Los umbrales se miden sobre lo DEVENGADO del mes** —no sobre el salario del contrato— y
+    **mensualizado**: en un mes incompleto se compara `valor × 30/días`, porque si no, alguien
+    que entra el día 16 cae en el tramo equivocado y se deja de liquidar lo que sí se debe. La
+    exoneración del art. 114-1 (<10 SMLMV) cubre salud, SENA e ICBF; **caja y pensión se pagan
+    siempre**. El **FSP es escalonado** (`TRAMOS_FSP`): 1% desde 4 SMLMV y hasta 2% sobre 20.
+  - **Todo se redondea en el ORIGEN**, no al presentarlo: si cada total se redondea por su
+    cuenta, el asiento descuadra por céntimos y la nómina se queda fuera del libro sin que falte
+    ninguna cuenta. Los factores prestacionales van exactos (**1/12**, **1/24**), no truncados.
   - **Intereses sobre cesantías = 12% de las cesantías del mes**, sin volver a prorratear: las
     cesantías ya vienen prorrateadas por los días.
-  - **Periodo `AAAA-MM` obligatorio**, `@@unique([empleadoId, periodo])`. La nómina se **causa en
-    su periodo**, no el día en que se digita, y anularla libera el periodo para rehacerla.
+  - **Periodo `AAAA-MM` obligatorio**, con **índice único PARCIAL** (`WHERE estado <> 'Anulada'`,
+    SQL crudo en su migración: Prisma no expresa índices parciales). La nómina se **causa en su
+    periodo**, no el día en que se digita. **Anulada es terminal** —no se reactiva, su asiento ya
+    fue reversado— y anularla libera el mes sin mutar el documento.
+  - **Un empleado con nóminas no se borra** (art. 28 Ley 962/2005): se marca inactivo. Borrarlo
+    dejaría `empleadoId` en null y, como los NULL no chocan en Postgres, desactivaría de paso la
+    unicidad del periodo.
+  - **El auxilio de transporte va a su propia cuenta de gasto**: no es salario y la nómina
+    electrónica lo exige identificado.
   - **Prestación de servicios NO se liquida por nómina** (no hay relación laboral): se registra
     como compra o documento soporte, con retención por honorarios o servicios.
   - El **mes laboral son 30 días** para todo efecto salarial y prestacional, también en los de 31.
   - Los valores que cambian por decreto (**SMLMV y auxilio de transporte**) viven en
     `lib/data/parametrosNomina.js` con su norma; **no se inventan**. 2026: $1.750.905 / $249.095
-    (Decretos 1469 y 1470 del 29-dic-2025).
+    (**Decreto 0159 del 19-feb-2026**, transitorio: el Decreto 1469 sigue suspendido por el
+    Consejo de Estado y la cifra puede cambiar con la sentencia. El auxilio va por el D. 1470).
   - **No hace**: PILA, nómina electrónica (Res. DIAN 000013/2021), retención por rentas de trabajo
-    (art. 383 E.T.), salario integral, incapacidades ni licencias.
+    (art. 383 E.T.), salario integral, incapacidades, licencias ni la cotización por semanas de la
+    jornada parcial (D. 2616/2013). Lo que **no se liquida se AVISA**: la retefuente cuando la base
+    depurada pasa de 95 UVT, el salario bajo el mínimo, el mes incompleto con exoneración y los
+    parámetros de un año no cargado. Los avisos llegan al cliente y se muestran en un modal.
 - **Documento soporte**: ReteFuente en % (÷100) y **ReteICA por mil ‰ (÷1000)**.
 - **Hubs**: agregados reales vía `GET /api/resumen` (IVA generado/descontable, IVA por pagar, etc.).
 

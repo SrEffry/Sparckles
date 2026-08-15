@@ -504,9 +504,14 @@ model Nomina {
 
   estado String @default("Pendiente") // Pendiente | Pagada | Anulada
 
-  @@unique([empleadoId, periodo])
+  // La unicidad de empleado + periodo es PARCIAL: solo entre las nóminas VIVAS. Prisma no
+  // expresa índices parciales, así que vive como SQL crudo en la migración
+  // `20260815140000_nomina_unicidad_parcial`. Antes era un @@unique total, y para poder rehacer
+  // una nómina anulada había que RENOMBRARLE el periodo: se mutaba el campo que identifica un
+  // documento fiscal ya emitido, justo lo que este repo no hace en ningún otro módulo.
   @@index([usuarioId])
   @@index([empleadoId])
+  @@index([empleadoId, periodo])
   @@map("nominas")
 }
 
@@ -977,6 +982,7 @@ model MapaCuentas {
   // Una cuenta por componente. Antes eran dos cuentas agregadas, y cualquier código del PUC que
   // se eligiera llevaba el nombre de UNO de los componentes: la ARL terminaba sumada bajo
   // "Aportes a EPS". El pasivo ya iba desagregado; el gasto también debe estarlo.
+  gastoAuxilioTransporte     String? // 510515 — no es salario, no se mezcla con el sueldo
   gastoSaludPatronal         String? // 510527
   gastoPensionPatronal       String? // 510528
   gastoArl                   String? // 510529

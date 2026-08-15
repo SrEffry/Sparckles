@@ -36,6 +36,22 @@ export async function PATCH(request, { params }) {
   if (!ESTADOS.includes(body.estado))
     return NextResponse.json({ error: "Estado no válido." }, { status: 400 });
 
+  // ANULADA ES TERMINAL. Sin esta guarda, un PATCH {estado:"Pendiente"} revivía una nómina cuyo
+  // asiento ya había sido contra-asentado: quedaba viva, sin efecto en el libro y compitiendo
+  // por el mismo periodo con la que se hizo para reemplazarla. La UI escondía el botón, pero el
+  // servidor es el que manda.
+  if (nomina.estado === "Anulada") {
+    return NextResponse.json(
+      {
+        error:
+          "Esta nómina está anulada y no se puede reactivar: su asiento ya fue reversado. Liquida el periodo de nuevo.",
+      },
+      { status: 409 }
+    );
+  }
+  if (body.estado === nomina.estado)
+    return NextResponse.json({ nomina });
+
   const actualizada = await prisma.$transaction(async (tx) => {
     // Anular una nómina dejaba vivos el gasto de nómina y los pasivos con la EPS, el fondo y
     // el trabajador: el costo laboral del mes salía inflado y la base de la planilla PILA con
@@ -47,13 +63,9 @@ export async function PATCH(request, { params }) {
         fecha: hoyBogota(),
         motivo: "Nómina anulada",
       });
-      // El periodo queda libre para rehacer la liquidación. La restricción de unicidad no
-      // distingue estados, así que el periodo de la anulada se marca; el mes real sigue legible
-      // y la nómina anulada no se pierde ni se puede confundir con la buena.
-      return tx.nomina.update({
-        where: { id },
-        data: { estado: "Anulada", periodo: `${nomina.periodo}-anulada-${id.slice(-6)}` },
-      });
+      // El periodo NO se toca: el índice único es parcial y solo cuenta las nóminas vivas, así
+      // que anularla ya libera el mes para rehacerla sin mutar el documento.
+      return tx.nomina.update({ where: { id }, data: { estado: "Anulada" } });
     }
     return tx.nomina.update({ where: { id }, data: { estado: body.estado } });
   });

@@ -11,6 +11,7 @@ import { listarNominas, liquidarNomina, cambiarEstadoNomina } from "@/lib/nomina
 import { calcularLiquidacion } from "@/lib/nominaCalc";
 import { obtenerConfig } from "@/lib/configFacturacionApi";
 import { CLASES_RIESGO_ARL } from "@/lib/data/parametrosNomina";
+import { hoyBogota } from "@/lib/fechas";
 import styles from "./nomina.module.css";
 
 const fmt = (v) =>
@@ -71,11 +72,11 @@ export default function NominaPage() {
 
   async function borrarEmpleado(e) {
     if (!confirm(`¿Eliminar a ${e.nombres} ${e.apellidos}?`)) return;
-    const ok = await eliminarEmpleado(e.id);
-    if (ok) {
+    const res = await eliminarEmpleado(e.id);
+    if (res.ok) {
       await recargar();
       notificar("Empleado eliminado");
-    } else notificar("No se pudo eliminar", "error");
+    } else setAvisosServidor([res.error]);
   }
 
   async function cambiarEstado(n, estado) {
@@ -363,7 +364,7 @@ function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) 
   const [form, setForm] = useState({
     // El mes que se liquida. Por defecto el corriente, pero se puede liquidar uno anterior: la
     // nómina se causa y se parametriza por su periodo, no por el día en que se digita.
-    periodo: new Date().toISOString().slice(0, 7),
+    periodo: hoyBogota().slice(0, 7),
     diasTrabajados: 30,
     transporte: 0,
     extras: 0,
@@ -387,7 +388,7 @@ function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) 
         ...form,
         // El año sale del periodo liquidado: una nómina de diciembre lleva el salario mínimo
         // de diciembre, no el del año en que se está digitando.
-        anio: Number((form.periodo || "").slice(0, 4)) || new Date().getFullYear(),
+        anio: Number((form.periodo || "").slice(0, 4)) || Number(hoyBogota().slice(0, 4)),
       }),
     [empleado, form]
   );
@@ -421,7 +422,7 @@ function LiquidacionModal({ empleado, exoneradoEmpleador, onClose, onGuardar }) 
               <label>Periodo liquidado</label>
               {/* El mes laboral son 30 días para todo efecto salarial y prestacional
                   (art. 134 CST), también en los meses de 31. */}
-              <input type="month" value={form.periodo} max={new Date().toISOString().slice(0, 7)} onChange={(e) => set("periodo", e.target.value)} />
+              <input type="month" value={form.periodo} max={hoyBogota().slice(0, 7)} onChange={(e) => set("periodo", e.target.value)} />
             </div>
             <div className="form-group"><label>Días trabajados</label><input type="number" min="1" max="30" value={form.diasTrabajados} onChange={(e) => set("diasTrabajados", e.target.value)} /></div>
           </div>

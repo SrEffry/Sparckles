@@ -247,11 +247,23 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   `530535` descuento por pronto pago. En **ESAL** se agregó `519530 Ajuste al peso` y se
   enchufaron cuentas que ya existían y estaban sin sugerir —entre ellas **`2205` proveedores,
   que es campo MÍNIMO**: sin él una ESAL no podía contabilizar ni una compra.
-  > ⚠️ Al tocar `pucComercial.json` o `pucEsal.json` hay que **recargar**:
-  > `POST /api/puc/seed?force=1`. El seed normal no hace nada si ya hay cuentas, y hasta
-  > recargar las sugerencias nuevas apuntan a códigos que no están en BD y el mapa las rechaza
-  > como inexistentes. `force` es seguro: `CuentaPUC` no tiene FKs entrantes y `MapaCuentas`
-  > guarda **códigos como texto**, así que un mapa ya configurado no se pierde.
+  > ⚠️ **Tocar los JSON del PUC no basta: hay que llevar el cambio a la BD.** El seed normal
+  > (`POST /api/puc/seed`) no hace **nada** si ya hay cuentas, y mientras tanto las sugerencias
+  > nuevas apuntan a códigos inexistentes y el mapa las rechaza.
+  >
+  > **Si solo se AGREGARON cuentas —el caso normal—, `?force=1` es la herramienta equivocada**:
+  > borra el catálogo entero para reinsertarlo. Basta el `createMany({ skipDuplicates: true })`
+  > sobre los dos JSON **sin el `deleteMany`**: el `@@unique([sector, codigo])` deja entrar solo
+  > lo que falta, es idempotente y se puede repetir sin miedo. Así se cargó `esal/519530`
+  > (872 → 873 cuentas, 1 insertada).
+  >
+  > `?force=1` queda para cuando una cuenta **cambió de nombre, de clase o de imputabilidad**,
+  > o hay que eliminar alguna. Es seguro en cuanto a datos —`CuentaPUC` no tiene FKs entrantes y
+  > `MapaCuentas` guarda **códigos como texto**, así que ningún mapa configurado se pierde—,
+  > pero sigue siendo un borrado innecesario si solo se agregó.
+  >
+  > Ojo con el `id`: es `cuid()` **de Prisma, sin default en la BD**. Un `INSERT` en SQL crudo
+  > tiene que generarlo a mano; por eso conviene hacerlo con el cliente Prisma.
 - **Lo que queda sin sugerir es a propósito**, y por dos razones distintas:
   - *La cuenta solo existe agregada*: en ESAL los aportes patronales (`510540` seguridad social,
     `2335` parafiscales no imputable) — repetirlas sería contabilizar la ARL bajo el nombre de

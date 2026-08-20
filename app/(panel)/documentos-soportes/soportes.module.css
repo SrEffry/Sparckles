@@ -112,6 +112,37 @@
   white-space: nowrap;
 }
 
+/* Los botones de la fila, sin envolverse: en una tabla ancha "PDF" y "Anular" caben al lado. */
+.acciones {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.acciones button {
+  background: #f0f0f2;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.acciones button:hover {
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+/* `.acciones button` (clase + elemento) gana por especificidad a `.del`, así que el rojo de
+   anular se vuelve a fijar aquí; si no, el botón destructivo quedaba del color neutro. */
+.acciones .del {
+  color: var(--danger);
+}
+.acciones .del:hover {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
 .del {
   background: #f0f0f2;
   border: none;

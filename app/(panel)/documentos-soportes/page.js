@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { listarSoportes, crearSoporte, anularSoporte } from "@/lib/soportesApi";
+import { listarSoportes, crearSoporte, anularSoporte, obtenerSoporte } from "@/lib/soportesApi";
+import { generarSoportePDF } from "@/lib/pdf/soportePdf";
 import { hoyBogota } from "@/lib/fechas";
 import { conceptosPorCategoria, tarifaOficial, tarifaVariable } from "@/lib/conceptosRetencion";
 import styles from "./soportes.module.css";
@@ -45,6 +46,18 @@ export default function SoportesPage() {
   function notificar(mensaje, tipo = "success") {
     setNotif({ mensaje, tipo });
     setTimeout(() => setNotif(null), 3000);
+  }
+
+  // Se pide el detalle antes de imprimir: la lista no trae el asiento, ni el concepto de la
+  // retención, ni el egreso que lo originó, y sin eso el impreso sale incompleto.
+  async function descargarPDF(s) {
+    const d = await obtenerSoporte(s.id);
+    if (!d) return notificar("No se pudo cargar el documento.", "error");
+    generarSoportePDF(d.soporte, {
+      asiento: d.asiento,
+      emisor: d.emisor,
+      comprobanteOrigen: d.comprobanteOrigen,
+    });
   }
 
   async function anular(s) {
@@ -102,7 +115,14 @@ export default function SoportesPage() {
                   <td className={styles.ret}>{Number(s.reteFuente) + Number(s.reteIca) > 0 ? `−${fmt(Number(s.reteFuente) + Number(s.reteIca))}` : "—"}</td>
                   <td className={styles.monto}><strong>{fmt(s.neto)}</strong></td>
                   <td><span className={`badge-estado ${s.estado === "Anulado" ? "inactivo" : "activo"}`}>{s.estado}</span></td>
-                  <td>{s.estado === "Emitido" && <button className={styles.del} onClick={() => anular(s)}>Anular</button>}</td>
+                  <td>
+                    <div className={styles.acciones}>
+                      {/* También se imprime un anulado: es la prueba de que se anuló, y el
+                          impreso lleva la marca de agua y el motivo. */}
+                      <button onClick={() => descargarPDF(s)}>PDF</button>
+                      {s.estado === "Emitido" && <button className={styles.del} onClick={() => anular(s)}>Anular</button>}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

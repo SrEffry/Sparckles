@@ -123,13 +123,14 @@ RetencionPracticada, CertificadoRetencion, NotaContabilidad(+Movimiento), Impues
 Mapeo detallado del dominio: [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
 ### PUC (catálogo global, `CuentaPUC`)
-Dos sectores **separados** (varias cuentas difieren): `comercial` (marco **NIIF/IFRS**, 403 cuentas
+Dos sectores **separados** (varias cuentas difieren): `comercial` (marco **NIIF/IFRS**, 434 cuentas
 con auxiliares de 8 dígitos; reemplazó al Decreto 2650 por decisión del cliente — Ley 1314/2009) y
-`esal` (sin ánimo de lucro, marco **NIIF para Pymes**, 438 cuentas — modelo de referencia sobre la
+`esal` (sin ánimo de lucro, marco **NIIF para Pymes**, 439 cuentas — modelo de referencia sobre la
 Orientación Técnica 014 del CTCP; revisado por el agente `contador-tributario` antes de cargar).
 Cargado desde `lib/data/pucComercial.json` (generado de `PUC_NIIF_Auxiliares.md`) y `pucEsal.json`
 (generado de `Catalogo_Cuentas_ESAL_NIIF.md`). Seed: `POST /api/puc/seed`
-(`?force=1` recarga). El catálogo Decreto 2650 anterior sigue en git (commit `ee203f0`).
+(`?force=1` recarga — **obligatorio tras tocar cualquiera de los dos JSON**, ver más abajo).
+El catálogo Decreto 2650 anterior sigue en git (commit `ee203f0`).
 Búsqueda: `GET /api/puc?sector=&q=&imputables=1`.
 
 ## Convenciones para agregar/tocar un módulo
@@ -146,6 +147,10 @@ Búsqueda: `GET /api/puc?sector=&q=&imputables=1`.
   su cuenta; se corrige el documento que los originó.
 - Numeración de documentos: **consecutivo en transacción** + `@@unique` como red de seguridad.
 - Si el módulo es submódulo, enlázalo desde su **hub**, no desde el Sidebar.
+- **Este archivo se actualiza en el MISMO cambio que lo vuelve obsoleto**, no después. Es lo
+  único que se lee al arrancar: una línea vieja aquí no es un comentario desactualizado, es una
+  instrucción falsa que dirige mal el trabajo siguiente. Si el cambio agrega un paso operativo
+  (recargar el PUC, correr una migración), ese paso va aquí, no solo en la conversación.
 
 ## Revisión contable/tributaria (obligatoria por módulo)
 
@@ -231,13 +236,33 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   cartera/proveedores/tesorería, y solo se admite **uno por ejercicio**. Sin él, el sistema no
   se podía estrenar con una empresa en marcha. Ojo: cargar cartera ahí **no** crea las facturas
   pendientes de cobro.
-- ⚠️ **Lo que le falta al catálogo PUC comercial**: gastos generales (**5195**) y una cuenta de
-  ajuste al peso. Las de seguridad social (2370), cuentas por cobrar a trabajadores (1365),
-  acreedores varios (2380) y las nueve de gasto de personal **sí se cargaron** y están sugeridas
-  en el mapa. En **ESAL** faltan las de aportes patronales desagregadas: el catálogo solo tiene
-  `510540 Aportes a seguridad social` y `2335` agregadas, así que esos campos quedan sin sugerir
-  a propósito —repetirlas sería contabilizar la ARL bajo el nombre de otra cuenta— y aparecen
-  como pendientes.
+- **El mapa de cuentas valida la CLASE, no solo que la cuenta exista**
+  (`CLASES_ESPERADAS` en `lib/data/mapaCuentasDefecto.js`). Antes bastaba que el código
+  existiera y fuera imputable, y se podía mapear "Gastos generales" a una cuenta de **ingresos**
+  sin un solo error: cada documento soporte debitaba la 4135 y el estado de resultados salía
+  mal por los dos lados. Se valida **solo el primer dígito**; el auxiliar dentro de la clase lo
+  elige el usuario, que ahí manda su plan de cuentas y no el software.
+- **Huecos del catálogo PUC, ya cerrados**: en **comercial** se agregaron 5135 servicios,
+  **5195 diversos** (`519505` gastos generales, `519530` ajuste al peso), `530530` GMF y
+  `530535` descuento por pronto pago. En **ESAL** se agregó `519530 Ajuste al peso` y se
+  enchufaron cuentas que ya existían y estaban sin sugerir —entre ellas **`2205` proveedores,
+  que es campo MÍNIMO**: sin él una ESAL no podía contabilizar ni una compra.
+  > ⚠️ Al tocar `pucComercial.json` o `pucEsal.json` hay que **recargar**:
+  > `POST /api/puc/seed?force=1`. El seed normal no hace nada si ya hay cuentas, y hasta
+  > recargar las sugerencias nuevas apuntan a códigos que no están en BD y el mapa las rechaza
+  > como inexistentes. `force` es seguro: `CuentaPUC` no tiene FKs entrantes y `MapaCuentas`
+  > guarda **códigos como texto**, así que un mapa ya configurado no se pierde.
+- **Lo que queda sin sugerir es a propósito**, y por dos razones distintas:
+  - *La cuenta solo existe agregada*: en ESAL los aportes patronales (`510540` seguridad social,
+    `2335` parafiscales no imputable) — repetirlas sería contabilizar la ARL bajo el nombre de
+    otra cuenta.
+  - *Elegir sería adivinar el modelo de negocio*: `ingresosVentas` en ESAL (el catálogo separa
+    4125 prestación de servicios de 4130 venta de bienes) y `aportesSociales` (3105 fondo social
+    / 3110 fundadores / 3115 asociados, lo dicen los estatutos).
+  En ambos casos el campo aparece **como pendiente y a la vista**, que es preferible a acertar
+  la mitad de las veces. En ESAL `ivaGenerado` e `ivaDescontable` van los **dos a la `2410`**:
+  el catálogo la trae agregada y es el modelo clásico de la 2408, donde el IVA por pagar es la
+  cuenta neta.
 - **Nota de contabilidad** (`CC-`, no `NC-`, que ya lo usa la nota crédito): el comprobante de
   los *ajustes* sin documento propio. Lleva **periodo contable afectado** y **tipo de ajuste**;
   ciclo borrador → emitido → reversado. **No sirve** para ventas, compras, recaudos, pagos ni
@@ -297,6 +322,17 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
     depurada pasa de 95 UVT, el salario bajo el mínimo, el mes incompleto con exoneración y los
     parámetros de un año no cargado. Los avisos llegan al cliente y se muestran en un modal.
 - **Documento soporte**: ReteFuente en % (÷100) y **ReteICA por mil ‰ (÷1000)**.
+  - **Lo expide el ADQUIRENTE (nosotros)**, no el vendedor: por eso lleva `emisorSnapshot`
+    congelado al emitir, igual que factura y comprobante — el impreso de un documento de hace
+    dos años no puede depender de la `ConfigFacturacion` de hoy (Res. DIAN 000167/2021).
+  - **Impreso** en `lib/pdf/soportePdf.js` (A5). Lleva la **denominación literal** que exige la
+    resolución —es un requisito, no un título—, separa la **fecha de la operación** de la del
+    pago, y saca las retenciones de `RetencionPracticada` (ahí están el concepto y el municipio
+    que después arman el certificado del Art. 381), no de los porcentajes del documento.
+    Un soporte generado desde un egreso lo **dice en el impreso**: legaliza un pago ya hecho y
+    la retención la certifica ese comprobante, no este papel.
+  - El detalle para imprimir se pide a `GET /api/soportes/[id]`, que devuelve
+    `{soporte, asiento, comprobanteOrigen, emisor}`. La lista no trae nada de eso.
 - **Hubs**: agregados reales vía `GET /api/resumen` (IVA generado/descontable, IVA por pagar, etc.).
 
 ## Pendientes conocidos

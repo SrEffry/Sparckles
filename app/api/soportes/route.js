@@ -34,6 +34,22 @@ export async function POST(request) {
 
   const anio = Number((data.fecha || "").slice(0, 4)) || Number(hoyBogota().slice(0, 4));
 
+  // La Res. DIAN 167/2021 exige identificar al ADQUIRENTE en el documento soporte —somos
+  // nosotros—, y el impreso de un documento de hace dos años no puede depender de la
+  // configuración de hoy. Se congela igual que en factura y comprobante. El generado desde un
+  // egreso ya lo hereda del comprobante (`lib/soporteDesdeComprobante.js`).
+  const cfg = await prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+  const emisorSnapshot = cfg
+    ? {
+        razonSocial: cfg.razonSocial,
+        nit: cfg.nit,
+        direccion: cfg.direccion,
+        ciudad: cfg.ciudad,
+        telefono: cfg.telefono,
+        email: cfg.email,
+      }
+    : null;
+
   try {
     const soporte = await prisma.$transaction(async (tx) => {
       // Contador propio por año, no `count(*)`: el documento soporte lleva numeración
@@ -52,7 +68,7 @@ export async function POST(request) {
       });
       const numero = `DS-${anio}-${String(consecutivo).padStart(4, "0")}`;
       const creado = await tx.documentoSoporte.create({
-        data: { ...data, numero, usuarioId: sesion.id },
+        data: { ...data, numero, usuarioId: sesion.id, emisorSnapshot },
       });
       // Siempre vinculante: el soporte no tiene contraparte en tesorería, así que no hay
       // riesgo de doble conteo y la política de causación no le aplica.

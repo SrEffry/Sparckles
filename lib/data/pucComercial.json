@@ -3159,6 +3159,51 @@
     "imputable": true
   },
   {
+    "codigo": "5135",
+    "nombre": "SERVICIOS",
+    "clase": "5",
+    "nivel": 4,
+    "imputable": false,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "513505",
+    "nombre": "Aseo y vigilancia",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "513525",
+    "nombre": "Acueducto y alcantarillado",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "513530",
+    "nombre": "Energía eléctrica",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "513535",
+    "nombre": "Teléfono e internet",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
     "sector": "comercial",
     "codigo": "5160",
     "nombre": "DEPRECIACIONES",
@@ -3229,6 +3274,42 @@
     "nivel": 8,
     "naturaleza": "Débito",
     "imputable": true
+  },
+  {
+    "codigo": "5195",
+    "nombre": "DIVERSOS",
+    "clase": "5",
+    "nivel": 4,
+    "imputable": false,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "519505",
+    "nombre": "Gastos generales",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "519530",
+    "nombre": "Ajuste al peso",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "519595",
+    "nombre": "Otros gastos diversos",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
   },
   {
     "sector": "comercial",
@@ -3409,6 +3490,24 @@
     "nivel": 8,
     "naturaleza": "Débito",
     "imputable": true
+  },
+  {
+    "codigo": "530530",
+    "nombre": "Gravamen a los movimientos financieros (4x1000)",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
+  },
+  {
+    "codigo": "530535",
+    "nombre": "Descuentos comerciales condicionados",
+    "clase": "5",
+    "nivel": 6,
+    "imputable": true,
+    "naturaleza": "Débito",
+    "sector": "comercial"
   },
   {
     "sector": "comercial",

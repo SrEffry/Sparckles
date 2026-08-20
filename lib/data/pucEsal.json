@@ -3160,6 +3160,15 @@
   },
   {
     "sector": "esal",
+    "codigo": "519530",
+    "nombre": "Ajuste al peso",
+    "clase": "5",
+    "nivel": 6,
+    "naturaleza": "Débito",
+    "imputable": true
+  },
+  {
+    "sector": "esal",
     "codigo": "519595",
     "nombre": "Otros",
     "clase": "5",

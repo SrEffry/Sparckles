@@ -9,10 +9,40 @@ export async function GET(_request, { params }) {
   const sesion = await obtenerSesion();
   if (!sesion) return NextResponse.json({ error: "No autenticado." }, { status: 401 });
   const { id } = await params;
-  const soporte = await prisma.documentoSoporte.findUnique({ where: { id } });
+  const soporte = await prisma.documentoSoporte.findUnique({
+    where: { id },
+    include: {
+      // La retención practicada trae el concepto y el municipio, que el impreso necesita: el
+      // documento soporte es la prueba de la retención y sin el concepto no se puede certificar.
+      retencionesPracticadas: true,
+      pagos: { include: { comprobante: { select: { numero: true, fecha: true, medioPago: true } } } },
+    },
+  });
   if (!soporte || soporte.usuarioId !== sesion.id)
     return NextResponse.json({ error: "Documento no encontrado." }, { status: 404 });
-  return NextResponse.json({ soporte });
+
+  // El asiento, para imprimir la imputación contable y su número. Un soporte sin contabilizar
+  // sale sin ella —y el impreso lo dice— en vez de fingir que está en el libro.
+  const asiento = soporte.asientoId
+    ? await prisma.asiento.findUnique({
+        where: { id: soporte.asientoId },
+        include: { movimientos: true },
+      })
+    : null;
+
+  // El egreso desde el que se generó, cuando se usó el atajo: el impreso tiene que decir que
+  // este soporte legaliza un pago ya hecho, no que crea una cuenta por pagar.
+  const comprobanteOrigen = soporte.generadoDesdeComprobanteId
+    ? await prisma.comprobanteTesoreria.findUnique({
+        where: { id: soporte.generadoDesdeComprobanteId },
+        select: { numero: true, fecha: true, medioPago: true, estado: true },
+      })
+    : null;
+
+  // El emisor de respaldo, para los soportes anteriores al snapshot.
+  const cfg = await prisma.configFacturacion.findUnique({ where: { usuarioId: sesion.id } });
+
+  return NextResponse.json({ soporte, asiento, comprobanteOrigen, emisor: cfg || null });
 }
 
 // PATCH → anular (documento: no se borra)

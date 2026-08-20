@@ -101,7 +101,7 @@ también en sus submódulos):
 |---|---|
 | **Inicio** (`/dashboard`) | KPIs + accesos rápidos |
 | **Empresas** | — |
-| **Operaciones** | Nueva factura, Facturas, Notas D/C, Compras, Config. Facturación |
+| **Operaciones** | Nueva factura (borrador), Facturas (pestañas Borradores / Historial fiscal), Notas D/C, Compras, Config. Facturación |
 | **Finanzas** | Comprobantes de ingreso/egreso, Documentos soporte, Certificados de retención (tabs Tesorería/Impuestos) |
 | **Contabilidad** | Notas de contabilidad, Libro diario, Mapa de cuentas |
 | **Recursos** | Nómina |
@@ -116,7 +116,7 @@ movimiento); en Contabilidad se sostienen los *libros*. Por eso los asientos se 
 **Alcance: TODO se liga a un Usuario** (`usuarioId`). Cada usuario tiene sus propias empresas,
 clientes, productos, facturas, etc. Nada es global salvo el catálogo PUC. (Confirmado por el cliente.)
 
-Modelos: `Usuario, Empresa, Cliente, Producto, ConfigFacturacion, Factura(+Item), Nota(+Item),
+Modelos: `Usuario, Empresa, Cliente, Producto, ConfigFacturacion, Factura(+Item), BorradorFactura, Nota(+Item),
 Compra(+Item), DocumentoSoporte, Asiento(+Movimiento), Empleado, Nomina, CuentaPUC,
 MapaCuentas, CuentaTesoreria, ComprobanteTesoreria(+Aplicacion/Retencion), ConsecutivoDocumento,
 RetencionPracticada, CertificadoRetencion, NotaContabilidad(+Movimiento), Impuesto`.
@@ -183,6 +183,42 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
 - **IVA según el emisor**: si `ConfigFacturacion.responsableIva` es false, la factura se liquida
   con **IVA 0** aunque el producto tenga tarifa. `calcularFactura` **exige** el parámetro (sin
   default) para que la vista previa nunca muestre un total distinto al que se emite.
+- **TODA factura nace como BORRADOR** (`BorradorFactura`, tabla aparte). Ciclo
+  `borrador → revisado → emitido`; emitir es siempre un acto deliberado y aparte.
+  - **Tabla aparte, no un estado más de `Factura`.** Media aplicación consulta `facturas` dando
+    por hecho que toda fila es un documento fiscal: `api/contabilizar` recorre
+    `estado != 'anulada'` —un borrador habría acabado en el **libro diario**—, `api/resumen`
+    cuenta sin filtrar estado, `comprobantes/pendientes` lo habría mostrado como cartera e
+    `importExport/registro` lo habría exportado. Con la tabla aparte, esos cuatro sitios no
+    cambian.
+  - **Un borrador es el INSUMO guardado, no una factura a medias.** No guarda totales, ni
+    número, ni snapshots: guardar aritmética sería guardar cifras que envejecen. **Todo se
+    recalcula al emitir**, con las tarifas y la configuración de ese momento. Por eso `items`
+    va en JSON y no en tabla hija (`FacturaItem` tiene columnas calculadas).
+  - **No consume consecutivo DIAN.** Un borrador abandonado que hubiera tomado número dejaría
+    un hueco en la numeración autorizada (art. 617 E.T.). El número se asigna al emitir.
+  - **Se valida distinto**: un borrador puede estar INCOMPLETO (se guarda; lo que falta se
+    reporta con `pendientesParaEmitir` como tarea, no como error) pero no MAL FORMADO
+    (cantidad negativa, descuento del 400% → se rechaza). Lo fiscal se valida al emitir.
+  - **El paso de revisión congela `totalRevisado`.** Al emitir se recalcula y, si no coincide,
+    **no emite**: devuelve el borrador a `borrador` y lo dice. Entre la revisión y la emisión
+    pueden cambiar el precio del producto, la tarifa, o el cliente puede pasar a autorretenedor
+    (y morir la ReteFuente). Aprobar unas cifras y emitir otras en silencio sería peor que no
+    aprobar nada. ⚠️ **No es segregación de funciones**: no hay multiusuario, quien revisa y
+    quien emite son la misma cuenta. Es autocontrol.
+  - **La fecha NO se arrastra del borrador**: al emitir es `hoyBogota()` salvo que se indique
+    otra. Un borrador de enero emitido en febrero no puede antedatar el documento.
+  - Un borrador **se borra de verdad** (no es documento fiscal, no le aplica el art. 617). El ya
+    emitido queda **archivado y enlazado** a su factura: inmutable y no borrable, es el rastro
+    de origen.
+- **Un solo camino de emisión: `lib/emitirFactura.js`.** Ahí viven el consecutivo atómico, el
+  rango, la vigencia y el recálculo. Entran por él `POST /api/facturas` (emisión directa por
+  API) y `POST /api/facturas/borradores/[id]/emitir`. **Nunca duplicar esos guardas**: la copia
+  se desactualiza y el día que se corrija uno, el otro sigue emitiendo con resolución vencida.
+  - El borrador se marca como emitido **dentro de la misma transacción** que crea la factura
+    (callback `alEmitir`), con `updateMany ... WHERE estado='revisado'` como compare-and-set.
+    Fuera de la transacción, un fallo entre ambas dejaría un consecutivo quemado y un borrador
+    todavía emitible: dos clics, dos facturas de la misma venta.
 - **Numeración de facturas**: lee+incrementa `numeracionActual` de `ConfigFacturacion` dentro de
   `prisma.$transaction`. El **prefijo no se inventa**: si la resolución no tiene prefijo, el número
   va sin él.

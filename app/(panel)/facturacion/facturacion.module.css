@@ -224,3 +224,88 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---- Pestañas: borradores (trabajo en curso) vs. historial fiscal (documentos reales) ---- */
+.pestanas {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.pestana,
+.pestanaActiva {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.pestanaActiva {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.pestana:hover {
+  color: var(--text);
+}
+
+/* Sub-filtros por estado del borrador */
+.subfiltros {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.chip,
+.chipActivo {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.chipActivo {
+  background: var(--primary-tint);
+  border-color: var(--primary-tint);
+  color: var(--primary);
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+.acciones {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.acciones button {
+  background: #f0f0f2;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+.acciones button:hover {
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+/* Clase + elemento gana por especificidad a `.del`, así que el rojo se refija aquí. */
+.acciones .del {
+  color: var(--danger);
+}
+.acciones .del:hover {
+  background: var(--danger-tint);
+  color: var(--danger);
+}

@@ -31,6 +31,7 @@ model Usuario {
   clientes     Cliente[]
   productos    Producto[]
   facturas     Factura[]
+  borradores   BorradorFactura[]
   notas        Nota[]
   empleados    Empleado[]
   nominas      Nomina[]
@@ -326,6 +327,9 @@ model Factura {
   items        FacturaItem[]
   notas        Nota[]
   aplicaciones ComprobanteAplicacion[]
+  // Borrador del que salió, si nació de uno. Campo virtual: la llave vive en el borrador y
+  // aquí no se crea columna. La factura no sabe de borradores para nada más que la traza.
+  borrador     BorradorFactura?
 
   @@unique([usuarioId, numeroCompleto])
   @@index([usuarioId])
@@ -338,6 +342,77 @@ model Factura {
   @@index([usuarioId, clienteId, fecha])
   @@index([usuarioId, numero])
   @@map("facturas")
+}
+
+// ============================ Borrador de factura ============================
+//
+// TABLA APARTE, Y NO UN ESTADO MÁS DE `Factura`. La diferencia no es de estilo: hoy media
+// aplicación consulta `facturas` dando por hecho que toda fila es un documento fiscal.
+// `app/api/contabilizar` recorre `estado != 'anulada'` —un borrador habría acabado en el LIBRO
+// DIARIO—, `app/api/resumen` cuenta sin filtrar estado, `comprobantes/pendientes` lo habría
+// mostrado como cartera por cobrar y `importExport/registro` lo habría exportado como registro
+// fiscal. Con la tabla aparte, ninguno de esos cuatro sitios cambia y el invariante "toda fila
+// de `facturas` es un documento fiscal" sigue en pie.
+//
+// Y CONCEPTUALMENTE UN BORRADOR NO ES UNA FACTURA A MEDIAS: es el INSUMO guardado. La factura
+// la calcula el servidor. Por eso aquí no hay `subtotal`, ni `iva`, ni `numero`, ni snapshots:
+// guardar aritmética en un borrador es guardar números que envejecen —cambia una tarifa y el
+// borrador miente—. Todo se recalcula al emitir, contra las tarifas y la configuración de ese
+// momento.
+//
+// LO QUE UN BORRADOR NO HACE, y es el punto de que exista: no consume consecutivo DIAN. Un
+// borrador abandonado que hubiera tomado número dejaría un hueco en la numeración autorizada,
+// que es justo lo que prohíbe el art. 617 del E.T.
+model BorradorFactura {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // borrador → revisado → emitido. `emitido` es TERMINAL: deja de ser editable y borrable,
+  // porque pasa a ser el rastro de origen de un documento fiscal.
+  estado String @default("borrador")
+
+  // ---- Insumos: lo que el usuario escribió, nada calculado ----
+  clienteId                 String?
+  fecha                     String?
+  fechaVencimiento          String?
+  formaPago                 String?
+  medioPago                 String?
+  observaciones             String?
+  descuentoGlobalPorcentaje Decimal @default(0) @db.Decimal(6, 3)
+  reteIvaPorcentaje         Decimal @default(0) @db.Decimal(6, 3)
+  reteIcaPorMil             Decimal @default(0) @db.Decimal(8, 4)
+  // [{ productoId, cantidad, precioUnitario, descuentoPorcentaje }]. En JSON y no en tabla
+  // hija a propósito: `FacturaItem` guarda columnas CALCULADAS (base, valorIva, subtotal,
+  // tipoIva) que en un borrador serían aritmética caducada. Además el borrador se reescribe
+  // entero en cada guardado, y una tabla hija obligaría a borrar y recrear filas cada vez.
+  items                     Json
+  instrumentos              Json?
+
+  // ---- Revisión ----
+  // Cifras contra las que se dio el visto bueno. NO son autoritativas para nada fiscal: existen
+  // solo para detectar si algo cambió entre la revisión y la emisión (una tarifa, el precio de
+  // un producto, el cliente que pasó a autorretenedor). Si al emitir el recálculo no coincide,
+  // el borrador vuelve a `borrador` en vez de emitir cifras que nadie aprobó.
+  totalRevisado Decimal? @db.Decimal(18, 2)
+  revisadoEn    String? // YYYY-MM-DD, hora Bogotá
+  // Quién revisó. Hoy es SIEMPRE el dueño de la cuenta: no hay modelo multiusuario, así que
+  // esto es autocontrol y no segregación de funciones. Se deja escrito para no tener que
+  // rehacer la tabla el día que haya miembros y roles de verdad.
+  revisadoPorId String?
+
+  // ---- Emisión ----
+  // La factura que salió de este borrador. `Restrict` porque los documentos fiscales no se
+  // borran; el `@unique` es la red de seguridad contra la doble emisión —dos clics no pueden
+  // costar dos consecutivos DIAN.
+  factura   Factura? @relation(fields: [facturaId], references: [id], onDelete: Restrict)
+  facturaId String?  @unique
+  emitidoEn String?
+
+  @@index([usuarioId, estado, updatedAt])
+  @@map("borradores_factura")
 }
 
 // ============================ Notas débito / crédito (DIAN Anexo 1.9) ============================

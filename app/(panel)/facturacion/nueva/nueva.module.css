@@ -269,3 +269,43 @@
   font-size: 14px;
   margin-bottom: 16px;
 }
+
+/* Botonera del borrador. El orden es deliberado: primero guardar (lo que se hace siempre),
+   luego el paso de revisión y solo entonces emitir, que es lo irreversible. Eliminar va
+   separado al final. */
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.secundario {
+  width: 100%;
+  background: var(--primary-tint);
+  color: var(--primary);
+  border: none;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secundario:hover {
+  filter: brightness(0.96);
+}
+.destructivo {
+  width: 100%;
+  background: none;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.destructivo:hover {
+  background: var(--danger-tint);
+  border-color: var(--danger-tint);
+}

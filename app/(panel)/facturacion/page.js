@@ -7,6 +7,7 @@ import { generarFacturaPDF } from "@/lib/pdf/facturaPdf";
 import { hoyBogota } from "@/lib/fechas";
 import ImportExport from "@/components/ImportExport";
 import FiltrosFacturas from "./FiltrosFacturas";
+import Borradores from "./Borradores";
 import PieTotales from "./PieTotales";
 import filtroStyles from "./filtros.module.css";
 import styles from "./facturacion.module.css";
@@ -22,6 +23,9 @@ export default function HistorialFacturasPage() {
   // El estado por defecto es "emitidas" y se muestra como chip: sumar las anuladas infla la
   // declaración, pero ocultarlas en silencio hace creer que se ve el histórico completo.
   const [filtros, setFiltros] = useState({ estado: "emitida", page: 1, hoy });
+  // Dos poblaciones distintas, nunca en la misma tabla: borradores (trabajo en curso, sin
+  // existencia fiscal) e historial (documentos con número de resolución DIAN).
+  const [pestana, setPestana] = useState("historial");
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -77,6 +81,25 @@ export default function HistorialFacturasPage() {
         </div>
       </header>
 
+      <div className={styles.pestanas}>
+        <button
+          className={pestana === "historial" ? styles.pestanaActiva : styles.pestana}
+          onClick={() => setPestana("historial")}
+        >
+          Historial fiscal
+        </button>
+        <button
+          className={pestana === "borradores" ? styles.pestanaActiva : styles.pestana}
+          onClick={() => setPestana("borradores")}
+        >
+          Borradores
+        </button>
+      </div>
+
+      {pestana === "borradores" ? (
+        <Borradores onNotificar={notificar} />
+      ) : (
+      <>
       <FiltrosFacturas
         filtros={filtros}
         onCambio={setFiltros}
@@ -91,7 +114,7 @@ export default function HistorialFacturasPage() {
         <div className={styles.empty}>
           <p>Ninguna factura coincide con los filtros aplicados.</p>
           <button className="btn-secondary" onClick={() => router.push("/facturacion/nueva")}>
-            Emitir una factura
+            Crear un borrador
           </button>
         </div>
       ) : (
@@ -164,6 +187,8 @@ export default function HistorialFacturasPage() {
       )}
 
       <PieTotales agregados={datos?.agregados} avisos={datos?.avisos} filtros={datos?.filtros} />
+      </>
+      )}
 
       {detalle && <FacturaDetalle factura={detalle} onClose={() => setDetalle(null)} />}
       {notif && <div className={`${styles.toast} ${styles[notif.tipo]}`}>{notif.mensaje}</div>}

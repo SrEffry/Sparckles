@@ -298,9 +298,11 @@ function Editor() {
 
   async function emitir() {
     if (!borradorId) return;
+    // La fecha real se dice EXPLÍCITAMENTE aquí: es el último punto en que el usuario puede
+    // darse cuenta de que no es la que anotó en el borrador.
     if (
       !confirm(
-        "Al emitir se consume un número de la resolución DIAN y la factura deja de ser editable. ¿Continuar?"
+        `La factura se emitirá con fecha ${hoyBogota()}. Se consumirá un número de la resolución DIAN y dejará de ser editable. ¿Continuar?`
       )
     )
       return;
@@ -346,8 +348,12 @@ function Editor() {
       {aviso && !error && <div className={styles.aviso}>{aviso}</div>}
       {desfase && (
         <div className="mensaje-error">
-          {desfase.mensaje} Se revisó por <strong>{fmt(desfase.revisado)}</strong> y ahora daría{" "}
-          <strong>{fmt(desfase.actual)}</strong>.
+          {desfase.mensaje}
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+            {desfase.cambios.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
         </div>
       )}
       {soloLectura && (
@@ -453,8 +459,16 @@ function Editor() {
             <h2 className={styles.cardTitle}>Detalles y pago</h2>
             <div className="form-row">
               <div className="form-group">
-                <label>Fecha de emisión</label>
+                {/* NO se llama "fecha de emisión" y la distinción no es cosmética: la factura
+                    sale fechada el día en que se EMITE, no el que diga el borrador. Llamarla
+                    fecha de emisión hacía creer al usuario que estaba fechando el documento
+                    cuando solo estaba anotando una previsión. */}
+                <label>Fecha prevista de la operación</label>
                 <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+                <small className={styles.muted}>
+                  Referencia del borrador. La factura se emitirá con la fecha del día en que se
+                  emita.
+                </small>
               </div>
               <div className="form-group">
                 <label>Forma de pago</label>

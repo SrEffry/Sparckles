@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { hoyBogota } from "@/lib/fechas";
-import { emitirFactura, errorDeEmision } from "@/lib/emitirFactura";
+import { emitirFactura, errorDeEmision, diferenciasDeHuella } from "@/lib/emitirFactura";
 import { entradaDesdeBorrador, pendientesParaEmitir } from "@/lib/borradorFacturaValidation";
 
 // POST /api/facturas/borradores/:id/emitir → convierte el borrador en factura.
@@ -68,16 +68,20 @@ export async function POST(request, { params }) {
     const { factura, contabilizacion } = await emitirFactura({
       usuarioId: sesion.id,
       entrada,
-      alEmitir: async (tx, creada) => {
+      alEmitir: async (tx, creada, calc) => {
         // Se comprueba que las cifras sigan siendo las revisadas, con la factura ya calculada
         // y DENTRO de la transacción: si no coinciden, se lanza y todo se deshace —incluido el
         // consecutivo, que vuelve atrás con el rollback.
-        const revisado = Number(borrador.totalRevisado);
-        if (Number.isFinite(revisado) && Math.abs(Number(creada.totalACobrar) - revisado) > 0.5) {
+        //
+        // Se comparan TODOS los componentes con igualdad exacta, no solo el total a cobrar.
+        // Comparar una sola cifra dejaba pasar los cambios que se compensan: pasar un producto
+        // de gravado a excluido subiéndole el precio da el mismo total y mueve todo el IVA
+        // generado del periodo. Ver `COMPONENTES_HUELLA` en `lib/emitirFactura.js`.
+        const cambios = diferenciasDeHuella(borrador.huellaRevisada, calc);
+        if (cambios.length) {
           const e = new Error("DESFASE");
           e.code = "DESFASE";
-          e.revisado = revisado;
-          e.actual = Number(creada.totalACobrar);
+          e.cambios = cambios;
           throw e;
         }
 
@@ -102,11 +106,12 @@ export async function POST(request, { params }) {
       // El borrador vuelve a `borrador`: lo que se había aprobado ya no es lo que saldría.
       await prisma.borradorFactura.update({
         where: { id },
-        data: { estado: "borrador", totalRevisado: null, revisadoEn: null, revisadoPorId: null },
+        data: { estado: "borrador", huellaRevisada: null, totalRevisado: null, revisadoEn: null, revisadoPorId: null },
       });
       return NextResponse.json(
         {
-          error: `Las cifras cambiaron desde la revisión (se revisó por ${e.revisado.toLocaleString("es-CO")} y ahora daría ${e.actual.toLocaleString("es-CO")}). No se emitió nada. Revisa el borrador de nuevo.`,
+          error: `Las cifras cambiaron desde la revisión — ${e.cambios.join("; ")}. No se emitió nada y no se gastó numeración. Revisa el borrador de nuevo.`,
+          cambios: e.cambios,
         },
         { status: 409 }
       );

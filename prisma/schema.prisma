@@ -384,7 +384,9 @@ model BorradorFactura {
   descuentoGlobalPorcentaje Decimal @default(0) @db.Decimal(6, 3)
   reteIvaPorcentaje         Decimal @default(0) @db.Decimal(6, 3)
   reteIcaPorMil             Decimal @default(0) @db.Decimal(8, 4)
-  // [{ productoId, cantidad, precioUnitario, descuentoPorcentaje }]. En JSON y no en tabla
+  // [{ productoId, cantidad, descuentoPorcentaje }]. Sin precio: el de la línea SIEMPRE sale
+  // del catálogo al emitir, así que guardarlo aquí prometería un "precio pactado" que el
+  // sistema no honra. En JSON y no en tabla
   // hija a propósito: `FacturaItem` guarda columnas CALCULADAS (base, valorIva, subtotal,
   // tipoIva) que en un borrador serían aritmética caducada. Además el borrador se reescribe
   // entero en cada guardado, y una tabla hija obligaría a borrar y recrear filas cada vez.
@@ -392,10 +394,19 @@ model BorradorFactura {
   instrumentos              Json?
 
   // ---- Revisión ----
-  // Cifras contra las que se dio el visto bueno. NO son autoritativas para nada fiscal: existen
-  // solo para detectar si algo cambió entre la revisión y la emisión (una tarifa, el precio de
-  // un producto, el cliente que pasó a autorretenedor). Si al emitir el recálculo no coincide,
-  // el borrador vuelve a `borrador` en vez de emitir cifras que nadie aprobó.
+  // Huella COMPLETA de la liquidación aprobada (ver `COMPONENTES_HUELLA` en
+  // `lib/emitirFactura.js`): subtotal, cada base por tratamiento de IVA, IVA, INC, cada
+  // retención y los totales. NO es autoritativa para nada fiscal; existe solo para detectar si
+  // algo cambió entre la revisión y la emisión.
+  //
+  // Es la huella entera y no un total porque comparar una sola cifra deja pasar cambios que se
+  // compensan: pasar un producto de gravado a excluido subiéndole el precio da el mismo total a
+  // cobrar y mueve todo el IVA generado del periodo. Al emitir se comparan campo a campo con
+  // igualdad exacta; si algo difiere, el borrador vuelve a `borrador` en vez de emitir cifras
+  // que nadie aprobó.
+  huellaRevisada Json?
+  // El total aprobado, aparte y en columna propia: es lo único que necesita la LISTA de
+  // borradores, y sacarlo del JSON en cada fila para pintarlo sería trabajo de más.
   totalRevisado Decimal? @db.Decimal(18, 2)
   revisadoEn    String? // YYYY-MM-DD, hora Bogotá
   // Quién revisó. Hoy es SIEMPRE el dueño de la cuenta: no hay modelo multiusuario, así que

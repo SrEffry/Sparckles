@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
 import { hoyBogota } from "@/lib/fechas";
-import { liquidarFactura, errorDeEmision } from "@/lib/emitirFactura";
+import { liquidarFactura, errorDeEmision, huellaDe, diferenciasDeHuella } from "@/lib/emitirFactura";
 import {
   validarBorradorFactura,
   pendientesParaEmitir,
@@ -59,21 +59,22 @@ export async function GET(_request, { params }) {
 
   const { previa, avisos } = await previaDe(sesion.id, borrador);
 
-  // Si ya se había revisado y la cifra cambió, se avisa aquí y no solo al emitir: el usuario
-  // debe enterarse al abrirlo, no cuando ya le dio al botón.
-  const desfase =
-    borrador.estado === "revisado" &&
-    previa &&
-    Math.abs(Number(previa.totalACobrar) - Number(borrador.totalRevisado)) > 0.5;
+  // Si ya se había revisado y algo cambió, se avisa aquí y no solo al emitir: el usuario debe
+  // enterarse al abrirlo, no cuando ya le dio al botón. Se comparan TODOS los componentes, no
+  // solo el total: un cambio de gravado a excluido con el precio compensado da el mismo total
+  // a cobrar y mueve todo el IVA del periodo.
+  const cambios =
+    borrador.estado === "revisado" && previa
+      ? diferenciasDeHuella(borrador.huellaRevisada, previa)
+      : [];
 
   return NextResponse.json({
     borrador: { ...borrador, pendientes: pendientesParaEmitir(borrador) },
     previa,
     avisos,
-    desfase: desfase
+    desfase: cambios.length
       ? {
-          revisado: Number(borrador.totalRevisado),
-          actual: Number(previa.totalACobrar),
+          cambios,
           mensaje:
             "Las cifras cambiaron desde que se revisó este borrador. Revísalo de nuevo antes de emitir.",
         }
@@ -113,7 +114,7 @@ export async function PUT(request, { params }) {
 
   const actualizado = await prisma.borradorFactura.update({
     where: { id },
-    data: { ...datos, estado: "borrador", totalRevisado: null, revisadoEn: null, revisadoPorId: null },
+    data: { ...datos, estado: "borrador", huellaRevisada: null, totalRevisado: null, revisadoEn: null, revisadoPorId: null },
   });
 
   return NextResponse.json({
@@ -142,7 +143,7 @@ export async function PATCH(request, { params }) {
   if (body.accion === "devolver") {
     const actualizado = await prisma.borradorFactura.update({
       where: { id },
-      data: { estado: "borrador", totalRevisado: null, revisadoEn: null, revisadoPorId: null },
+      data: { estado: "borrador", huellaRevisada: null, totalRevisado: null, revisadoEn: null, revisadoPorId: null },
     });
     return NextResponse.json({ borrador: actualizado });
   }
@@ -156,9 +157,9 @@ export async function PATCH(request, { params }) {
         { status: 400 }
       );
 
-    // Se liquida y se CONGELA el total revisado. Ese número es lo que le da sentido al paso:
+    // Se liquida y se CONGELA la huella de la liquidación. Eso es lo que le da sentido al paso:
     // "revisado" significa revisado contra estas cifras, y al emitir se comprueba que sigan
-    // siendo las mismas.
+    // siendo las mismas, componente por componente.
     let calc;
     try {
       ({ calc } = await liquidarFactura({
@@ -178,6 +179,7 @@ export async function PATCH(request, { params }) {
       where: { id },
       data: {
         estado: "revisado",
+        huellaRevisada: huellaDe(calc),
         totalRevisado: calc.totalACobrar,
         revisadoEn: hoyBogota(),
         revisadoPorId: sesion.id,

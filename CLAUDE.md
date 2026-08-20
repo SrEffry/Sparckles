@@ -200,14 +200,31 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   - **Se valida distinto**: un borrador puede estar INCOMPLETO (se guarda; lo que falta se
     reporta con `pendientesParaEmitir` como tarea, no como error) pero no MAL FORMADO
     (cantidad negativa, descuento del 400% → se rechaza). Lo fiscal se valida al emitir.
-  - **El paso de revisión congela `totalRevisado`.** Al emitir se recalcula y, si no coincide,
-    **no emite**: devuelve el borrador a `borrador` y lo dice. Entre la revisión y la emisión
-    pueden cambiar el precio del producto, la tarifa, o el cliente puede pasar a autorretenedor
-    (y morir la ReteFuente). Aprobar unas cifras y emitir otras en silencio sería peor que no
-    aprobar nada. ⚠️ **No es segregación de funciones**: no hay multiusuario, quien revisa y
-    quien emite son la misma cuenta. Es autocontrol.
+  - **El paso de revisión congela la HUELLA COMPLETA de la liquidación** (`huellaRevisada`,
+    `COMPONENTES_HUELLA` en `lib/emitirFactura.js`): subtotal, cada base por tratamiento de IVA,
+    IVA, INC, cada retención y los totales. Al emitir se recalcula y se compara **campo a campo
+    con igualdad exacta**; si algo difiere, **no emite**, devuelve el borrador a `borrador` y
+    dice qué cambió.
+    - ⚠️ **Comparar solo el total NO sirve, y ya se probó que no**: pasar un producto de gravado
+      a excluido subiéndole el precio da el **mismo total a cobrar** y mueve todo el IVA del
+      periodo. Probado con el escenario real: diferencia de **$0,00** en el total y **$190.000**
+      de IVA generado que desaparecen. Sin tolerancia numérica: todo pasa por `r2()` y se guarda
+      en `Decimal(18,2)`, así que no hay deriva que absorber y una holgura solo dejaría pasar
+      cambios reales.
+    - El callback `alEmitir` recibe `(tx, factura, calc)`: hay que comparar contra **`calc`**,
+      no contra la fila `Factura`, porque los nombres difieren (`totalIva` vs `iva`,
+      `totalRetenciones` vs `retenciones`).
+    - ⚠️ **No es segregación de funciones**: no hay multiusuario, quien revisa y quien emite son
+      la misma cuenta. Es autocontrol.
   - **La fecha NO se arrastra del borrador**: al emitir es `hoyBogota()` salvo que se indique
-    otra. Un borrador de enero emitido en febrero no puede antedatar el documento.
+    otra. Un borrador de enero emitido en febrero no puede antedatar el documento. El campo de
+    la pantalla se llama **"Fecha prevista de la operación"**, no "de emisión", y el diálogo de
+    confirmación dice con qué fecha va a salir: llamarla de emisión hacía creer que se estaba
+    fechando el documento.
+  - **El borrador NO guarda precio de línea.** El precio sale siempre del catálogo al emitir
+    (`facturaCalc.js` lee `producto.precioVenta`). Aceptarlo prometía un "precio pactado" que el
+    sistema no honra. Si algún día se quiere de verdad, se implementa en `calcularFactura`
+    primero.
   - Un borrador **se borra de verdad** (no es documento fiscal, no le aplica el art. 617). El ya
     emitido queda **archivado y enlazado** a su factura: inmutable y no borrable, es el rastro
     de origen.

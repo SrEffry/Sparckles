@@ -106,7 +106,7 @@ también en sus submódulos):
 | **Contabilidad** | Notas de contabilidad, Libro diario, Mapa de cuentas |
 | **Recursos** | Nómina |
 | **Configuración** | Clientes, Mis productos, Config. Facturación, Empresas |
-| **Reportes** | `ready:false` — el cliente le dará un enfoque nuevo (no migrado a propósito) |
+| **Reportes** | Preparación para exógena (diagnóstico de datos + calendario de plazos) |
 
 **Operaciones vs. Contabilidad**: en Operaciones se *opera* (los documentos que originan el
 movimiento); en Contabilidad se sostienen los *libros*. Por eso los asientos se movieron.
@@ -463,8 +463,23 @@ contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 
 0. **Cimientos** — DANE ✅ · tipos de documento ✅ · campos en `Cliente` ✅ · tercero normalizado
    ✅ · **modelo `Tercero`/proveedor real: PENDIENTE** (hoy los proveedores son texto suelto en
    `Compra.proveedorNombre` y `DocumentoSoporte.proveedorNombre`, no una entidad).
-1. **Tablero de preparación** en `/reportes` + calendario con aviso de plazo (patrón de
-   Certificados). No genera reportes: dice qué datos faltan por tercero mientras hay tiempo.
+1. **Tablero de preparación** ✅ — `/reportes` (hub) y `/reportes/exogena`.
+   `lib/exogenaPreparacion.js` + `GET /api/reportes/exogena/preparacion?anio=` +
+   `lib/reportesApi.js`. NO genera reportes ni envía nada: por eso no puede costar una sanción.
+   - Separa **`criticos`** (sin esto la fila del formato no se puede armar: documento, tipo,
+     nombre) de **`faltantes`** (columnas que quedarían vacías). No es lo mismo "no tiene NIT"
+     que "le falta el código de municipio".
+   - Los **proveedores se DERIVAN** de `Compra` y `DocumentoSoporte` agrupando por documento
+     normalizado, porque todavía no son una tabla. Eso es justo lo que destapa el problema caro:
+     el mismo NIT con varias grafías o varios nombres.
+   - Cuando el municipio escrito a mano se resuelve **sin ambigüedad**, se ofrece el código como
+     sugerencia; si hay ambigüedad no se sugiere nada.
+   - **Plazos en `lib/data/plazosExogena.js`**, con su norma y por año gravable. Un año sin
+     resolución publicada devuelve `null` y la pantalla lo dice: **no se estiman fechas**, igual
+     que con el SMLMV. Hoy solo está cargado el **AG 2025**; el AG 2026 se carga cuando salga.
+   - ⚠️ En los plazos de **grandes contribuyentes**, los dígitos 1, 2 y 3 llevan la ampliación de
+     la Res. 000012/2026; los dígitos 4 a 0 vienen de la tabla original y están **por confirmar**
+     (cada fila lleva su `fuente`).
 2. **1003, 1006, 1005, 1007** como `.xlsx` rotulado *borrador para revisión*.
 3. Motor de saldos a fecha de corte → **1008, 1009**.
 4. **1001** (no antes de la fase 0 completa).

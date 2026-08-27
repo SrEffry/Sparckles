@@ -37,7 +37,7 @@ const NAV = [
     ready: true,
     rutas: ["/configuracion", "/clientes", "/productos"],
   },
-  { label: "Reportes", href: "/reportes", ready: false, rutas: ["/reportes"] },
+  { label: "Reportes", href: "/reportes", ready: true, rutas: ["/reportes"] },
 ];
 
 export default function Sidebar({ usuario }) {

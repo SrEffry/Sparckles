@@ -16,6 +16,10 @@
   --danger-tint: #ffe6e6;
   --info: #1976d2;
   --info-tint: #e3f2fd;
+  /* El warning de la paleta ya estaba documentado pero no tenía token, así que cada pantalla
+     que lo necesitaba escribía el hex a mano. */
+  --warning: #ff8f00;
+  --warning-tint: #fff8e6;
   --radius: 14px;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }

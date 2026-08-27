@@ -67,7 +67,7 @@ export default function TercerosPage() {
     const r = res.resumen;
     await recargar();
     avisar(
-      `${r.tercerosCreados} ficha(s) creada(s) · ${r.comprasEnlazadas} compra(s) y ${r.soportesEnlazados} soporte(s) enlazados` +
+      `${r.tercerosCreados} ficha(s) creada(s) · ${r.comprasEnlazadas} compra(s), ${r.soportesEnlazados} soporte(s) y ${r.clientesEnlazados} cliente(s) enlazados` +
         (r.sinDocumento ? ` · ${r.sinDocumento} sin documento, no se pudieron enlazar` : "")
     );
   }
@@ -134,6 +134,7 @@ export default function TercerosPage() {
               <tr>
                 <th>Tercero</th>
                 <th>Documento</th>
+                <th>Rol</th>
                 <th>Ubicación</th>
                 <th>Documentos</th>
                 <th>Estado exógena</th>
@@ -159,6 +160,20 @@ export default function TercerosPage() {
                         : <span className={styles.falta}>sin tipo DIAN</span>}
                     </div>
                   </td>
+                  {/* EL PUNTO DE LA UNIFICACIÓN: un mismo NIT que nos vende y nos compra es UN
+                      tercero con dos roles, no dos fichas. La DIAN cruza el 1007 del receptor
+                      contra el 1001 del pagador, así que dos identidades no cuadran. */}
+                  <td>
+                    <div className={styles.roles}>
+                      {t._count.clientes > 0 && <span className={styles.rol}>Cliente</span>}
+                      {t._count.compras + t._count.soportes > 0 && (
+                        <span className={styles.rol}>Proveedor</span>
+                      )}
+                      {t._count.clientes === 0 && t._count.compras + t._count.soportes === 0 && (
+                        <span className={styles.sub}>—</span>
+                      )}
+                    </div>
+                  </td>
                   <td>
                     {t.codigoDepartamento && t.codigoMunicipio ? (
                       `${t.codigoDepartamento}${t.codigoMunicipio}`
@@ -166,7 +181,7 @@ export default function TercerosPage() {
                       <span className={styles.falta}>—</span>
                     )}
                   </td>
-                  <td>{t._count.compras + t._count.soportes}</td>
+                  <td>{t._count.compras + t._count.soportes + t._count.clientes}</td>
                   <td>
                     {t.criticos?.length ? (
                       <span className={styles.pill} data-t="critico">

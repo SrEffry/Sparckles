@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { hoyBogota } from "@/lib/fechas";
 import { obtenerPreparacionExogena } from "@/lib/reportesApi";
 import styles from "./exogena.module.css";
 
@@ -19,7 +20,8 @@ const GRUPOS = [
 
 export default function PreparacionExogenaPage() {
   const router = useRouter();
-  const anioActual = new Date().getFullYear();
+  // `new Date()` usa la zona del navegador; el proyecto ya resolvió esto con `hoyBogota()`.
+  const anioActual = Number(hoyBogota().slice(0, 4));
   const [anio, setAnio] = useState(anioActual);
   const [grupo, setGrupo] = useState("clientes");
   const [soloProblemas, setSoloProblemas] = useState(true);

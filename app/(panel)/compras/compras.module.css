@@ -150,7 +150,8 @@
 .itemsHead,
 .itemRow {
   display: grid;
-  grid-template-columns: 2.4fr 0.8fr 1.2fr 0.8fr 0.8fr 0.5fr;
+  /* La penúltima columna es la casilla de activo fijo. */
+  grid-template-columns: 2.4fr 0.8fr 1.2fr 0.8fr 0.8fr 0.5fr 0.5fr;
   gap: 8px;
   align-items: center;
 }
@@ -347,4 +348,13 @@
   .detGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Casilla de activo fijo: no es un input de texto, así que no hereda el ancho completo. */
+.itemRow input.activoFijo {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  justify-self: center;
+  cursor: pointer;
 }

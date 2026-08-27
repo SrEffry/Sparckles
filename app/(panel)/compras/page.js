@@ -177,7 +177,7 @@ function StatCard({ label, valor, chico }) {
   );
 }
 
-const itemVacio = () => ({ descripcion: "", cantidad: 1, precioUnitario: 0, descuento: 0, iva: 19 });
+const itemVacio = () => ({ descripcion: "", cantidad: 1, precioUnitario: 0, descuento: 0, iva: 19, esActivoFijo: false });
 
 function estadoInicial(c) {
   return {
@@ -193,7 +193,7 @@ function estadoInicial(c) {
     proveedorTel: c?.proveedorTel || "",
     observaciones: c?.observaciones || "",
     items: c?.items?.length
-      ? c.items.map((i) => ({ descripcion: i.descripcion, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), descuento: Number(i.descuento), iva: Number(i.iva) }))
+      ? c.items.map((i) => ({ descripcion: i.descripcion, cantidad: Number(i.cantidad), precioUnitario: Number(i.precioUnitario), descuento: Number(i.descuento), iva: Number(i.iva), esActivoFijo: !!i.esActivoFijo }))
       : [itemVacio()],
     // `concepto` y `municipio` no son adorno: sin ellos la retención no se puede certificar
     // (Art. 381 lit. f, y el ICA se declara en el municipio donde se practicó).
@@ -393,7 +393,7 @@ function CompraModal({ inicial, onClose, onGuardar }) {
           </div>
 
           <h3 className={styles.grupo}>Ítems</h3>
-          <div className={styles.itemsHead}><span>Descripción</span><span>Cant.</span><span>P. Unit.</span><span>Dto%</span><span>IVA%</span><span></span></div>
+          <div className={styles.itemsHead}><span>Descripción</span><span>Cant.</span><span>P. Unit.</span><span>Dto%</span><span>IVA%</span><span title="El IVA en compra de activos fijos NO es descontable (art. 491 E.T.)">A.Fijo</span><span></span></div>
           {form.items.map((it, idx) => (
             <div key={idx} className={styles.itemRow}>
               <input value={it.descripcion} onChange={(e) => setItem(idx, "descripcion", e.target.value)} placeholder="Descripción" />
@@ -401,6 +401,11 @@ function CompraModal({ inicial, onClose, onGuardar }) {
               <input type="number" min="0" value={it.precioUnitario} onChange={(e) => setItem(idx, "precioUnitario", e.target.value)} />
               <input type="number" min="0" max="100" value={it.descuento} onChange={(e) => setItem(idx, "descuento", e.target.value)} />
               <input type="number" min="0" value={it.iva} onChange={(e) => setItem(idx, "iva", e.target.value)} />
+              {/* El IVA de un activo fijo no es descontable (art. 491 E.T.) y en el 1001 va al
+                  concepto 5008 en vez del 5007. Sin marcarlo, ambas cosas salen mal. */}
+              <input type="checkbox" className={styles.activoFijo} checked={!!it.esActivoFijo}
+                onChange={(e) => setItem(idx, "esActivoFijo", e.target.checked)}
+                title="Marca si es un activo fijo: su IVA no es descontable" />
               <button className={styles.rm} onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))} disabled={form.items.length === 1}>✕</button>
             </div>
           ))}

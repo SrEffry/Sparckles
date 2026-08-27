@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { resolverTercero } from "@/lib/terceros";
 import { normalizarCliente } from "@/lib/clienteValidation";
 
 // GET /api/clientes → lista los clientes del usuario en sesión
@@ -33,8 +34,21 @@ export async function POST(request) {
   }
 
   try {
+    // La identidad va a `Tercero`, que es unica por documento: si este NIT ya existe como
+    // proveedor, se ENLAZA al mismo en vez de crear una segunda identidad.
+    const terceroId = await resolverTercero(prisma, sesion.id, {
+      nombre: data.nombreCompleto,
+      documento: data.nit || data.numeroDocumento,
+      tipoDocumento: data.tipo === "natural" ? data.tipoDocumento : "NIT",
+      tipo: data.tipo === "natural" ? "natural" : "juridica",
+      razonSocial: data.razonSocial,
+      direccion: data.direccion,
+      telefono: data.telefono,
+      email: data.email,
+    });
+
     const cliente = await prisma.cliente.create({
-      data: { ...data, usuarioId: sesion.id },
+      data: { ...data, usuarioId: sesion.id, terceroId },
     });
     return NextResponse.json({ cliente }, { status: 201 });
   } catch (e) {

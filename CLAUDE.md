@@ -431,12 +431,12 @@ contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 
   43, 47, 48). `codigoDianDesdeTexto()` traduce lo ya guardado ("CC" → "13") y devuelve `null`
   si no reconoce, para migrar sin adivinar. El **NIT 222222222 con tipo 43** es el de las
   cuantías menores, no un tercero real.
-- **Campos de exógena en `Cliente`**, todos **nullable a propósito**: un dato que solo hace falta
-  en abril no puede impedir crear un cliente hoy. Lo que falte se ve en el tablero de
-  preparación, no bloquea el formulario.
-  - ⚠️ Los cuatro campos de nombre (`primerApellido`, `segundoApellido`, `primerNombre`,
-    `otrosNombres`) **se capturan, no se deducen** partiendo `nombreCompleto`. Un apellido mal
-    partido es información **errónea**, que el art. 651 sanciona igual que la que falta.
+- **La identidad para exógena vive SOLO en `Tercero`.** Estuvo un tiempo duplicada en `Cliente`
+  y nunca tuvo formulario: columnas muertas. Peor, un mismo NIT que fuera cliente y proveedor
+  tenía **dos identidades**, y la DIAN cruza el 1007 del receptor contra el 1001 del pagador.
+  `Cliente` guarda la **relación comercial** (agente retenedor, autorretenedor, dirección de
+  facturación) y apunta a la identidad con `terceroId`.
+  - Los cuatro campos de nombre **se capturan, no se deducen** partiendo el nombre completo.
 - **`AsientoMovimiento.tercero` va NORMALIZADO** con `normalizarDocumento()`
   (`lib/asientoAutomatico.js`). Antes se guardaba crudo y `900123456`, `900.123.456` y
   `900123456-7` eran **tres terceros**. La exógena agrupa el año por tercero y la DIAN cruza el
@@ -468,10 +468,14 @@ aritmética del reporte sí**.
   implementado** y el endpoint lo dice en vez de fingir.
 - Un tercero **con documentos no se borra**: se desactiva. Borrarlo dejaría sus `terceroId` en
   null y volvería a partir la agrupación.
-- **`Cliente` NO se fusionó aquí, a propósito.** Ya es una entidad y ya tiene los campos, y
-  fusionarlo obligaría a tocar la emisión de facturas. Al reportar, un tercero que es cliente y
-  proveedor a la vez se consolida por `documento` normalizado: es trabajo de la capa de
-  reportes, no del modelo. **Queda pendiente** unificarlos.
+- **`Cliente` YA está unificado**: apunta a `Tercero` por `terceroId`, y `resolverTercero` lo
+  enlaza al crear o editar el cliente. Si el NIT ya existía como proveedor, **se enlaza al mismo
+  tercero y se le completan los huecos** en vez de crear una segunda identidad. La pantalla de
+  Terceros muestra los **roles** (Cliente / Proveedor).
+  - Se conserva `Cliente.documentoNormalizado` con `@@unique`: impide dos fichas comerciales del
+    mismo NIT.
+  - Lo que **no** existe: **fusionar dos terceros** con documentos distintos. El endpoint lo dice
+    en vez de fingir.
 - Los códigos de ubicación se **validan contra el catálogo** (`terceroValidation.js`): un
   municipio que no pertenece al departamento se rechaza. Un código inventado produce una columna
   que la DIAN rechaza, y ese error no se ve hasta que se presenta.
@@ -500,17 +504,30 @@ aritmética del reporte sí**.
 - El 1005 **avisa si el emisor NO es responsable de IVA**: reportar IVA descontable siendo no
   responsable es el cruce más fácil de detectar que existe.
 
+### Hallazgos ya cerrados en los extractos
+- El **1003 lee también las retenciones de los comprobantes de INGRESO** cuando el mapa tiene
+  `retencionesEnCausacion: false`. Con `true` NO las lee: ya vinieron en la factura y sumarlas
+  las contaría dos veces.
+- El **1005 excluye el IVA de los ACTIVOS FIJOS** (art. 491 E.T.). `CompraItem.esActivoFijo` lo
+  declara el usuario con casilla por línea: no se deduce de la descripción, porque si un bien es
+  fijo o movible depende del uso. Ese mismo campo es el que el 1001 necesitará para separar el
+  concepto **5007** (movibles) del **5008** (fijos).
+- El **1005 llena la columna J** (IVA por devoluciones en ventas, contra el **CLIENTE** — es el
+  descontable del art. 484 E.T.) y el **1006 suma el IVA de las notas DÉBITO**.
+  *No netear las notas crédito contra el generado del 1006 sí es correcto*: en el formulario 300
+  la devolución va como descontable, no baja el generado.
+- Los terceros **sin identificar se acumulan en el NIT `222222222` tipo `43`**
+  ("CUANTÍAS MENORES"), el registro previsto por la DIAN, en vez de salir con documento vacío.
+
 ### Lo que estos extractos siguen SIN cubrir (dicho en el LÉEME)
-- El **1003 solo mira facturas**: no ve las retenciones registradas al pagar (política
-  `retencionesEnCausacion: false`), ni la **1312** de tarjetas débito/crédito, ni la **1306** de
-  rendimientos financieros, ni el timbre, ni las autorretenciones.
-- El **1005** no distingue el IVA descontable del que va al costo, ni el de **activos fijos**
-  (art. 491 E.T., no descontable), ni el IVA teórico de compras a no residentes.
-- Falta la **columna J del 1005** (IVA por devoluciones en ventas, contra el CLIENTE) y el
-  **IVA de las notas débito en el 1006**. *No netear las notas crédito contra el impuesto
-  generado del 1006 sí es correcto*: en el formulario 300 la devolución va como descontable.
-- Un cliente **sin documento** debería acumularse en el **NIT 222222222 con tipo 43**
-  ("cuantías menores"); hoy sale con documento vacío y el prevalidador lo rechaza.
+- Conceptos que el sistema no puede originar: **1312** (tarjetas débito/crédito), **1306**
+  (rendimientos financieros), **1314** (timbre) y las **autorretenciones**.
+- El **1005** no hace el prorrateo del **art. 490** ni representa el IVA teórico de compras a no
+  residentes (`DocumentoSoporte` no guarda IVA).
+- El **1007** reporta todo con concepto **4001**: una venta de activo fijo debería ir a 4002 o
+  4019 y saldría con el concepto equivocado.
+- **`Dividendos` mapea a 1310**, pero podría tener que ser **1320** (sociedades nacionales,
+  art. 242-1): depende de la naturaleza del informante, no del pago.
 
 ### Decisiones tomadas, para no rediscutirlas
 - **El XML lo genera el PREVALIDADOR de la DIAN, no nosotros.** Sparkles produce el `.xlsx` con

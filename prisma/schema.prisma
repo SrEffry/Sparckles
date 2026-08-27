@@ -138,28 +138,19 @@ model Cliente {
   esAgenteRetenedor Boolean @default(false)
   esAutorretenedor  Boolean @default(false)
 
-  // ---- Identificación para INFORMACIÓN EXÓGENA (Res. DIAN 000227/2025) ----
+  // ---- Identidad para exógena: vive en `Tercero`, no aquí ----
   //
-  // Diez de los quince formatos identifican al tercero con estas columnas, y ninguna se podía
-  // llenar con lo de arriba: `tipoDocumento` guarda "CC"/"NIT" y el formato espera "13"/"31";
-  // `ciudad` y `departamento` son texto libre y el formato espera códigos DANE; los cuatro
-  // campos de nombre van SEPARADOS y aquí solo había `nombres` y `apellidos`.
+  // Estos campos (tipo de documento DIAN, los cuatro de nombre separados, códigos DANE, país)
+  // estuvieron un tiempo duplicados en esta tabla y NUNCA tuvieron formulario: eran columnas
+  // muertas que ningún usuario podía llenar. Peor: un mismo NIT que fuera cliente y proveedor
+  // tenía DOS identidades —una aquí y otra en `Tercero`— y la DIAN cruza el 1007 del receptor
+  // contra el 1001 del pagador. Dos identidades para un NIT es un cruce que no cuadra.
   //
-  // TODOS NULLABLE, a propósito. Un dato que solo hace falta en abril no puede impedir crear un
-  // cliente hoy: lo que falte se reporta en el tablero de preparación de Reportes, que es donde
-  // se completa a tiempo. Bloquear el formulario pararía la operación por una tarea de abril.
-  //
-  // ⚠️ Los cuatro campos de nombre NO se deducen partiendo `nombreCompleto`. "María del Carmen
-  // Rodríguez Vélez de Ospina" no sale de un `split(' ')`, y un apellido mal partido es
-  // información ERRÓNEA, que el art. 651 E.T. sanciona igual que la que falta. Se capturan.
-  tipoDocumentoDian  String? // código de lib/data/tiposDocumentoDian.js: 11,12,13,21,22,31,41,42,47,48
-  primerApellido     String?
-  segundoApellido    String?
-  primerNombre       String?
-  otrosNombres       String?
-  codigoDepartamento String? // 2 dígitos DANE
-  codigoMunicipio    String? // 3 dígitos DANE (el código completo es departamento + municipio)
-  codigoPais         String? // 3 dígitos DIAN; 169 = Colombia
+  // Ahora la identidad es UNA y está en `Tercero`. `Cliente` guarda la RELACIÓN COMERCIAL —los
+  // datos que dirigen la facturación: si es agente retenedor, si es autorretenedor, su dirección
+  // de facturación— y apunta a la identidad. Se crea o se enlaza solo, al guardar el cliente.
+  tercero   Tercero? @relation(fields: [terceroId], references: [id], onDelete: SetNull)
+  terceroId String?
 
   // Un cliente con facturas NO se borra: se inactiva. `Factura.clienteId` no tiene llave
   // foránea, así que borrarlo dejaba el id apuntando a nada y esas facturas desaparecían en
@@ -442,6 +433,7 @@ model Tercero {
 
   compras  Compra[]
   soportes DocumentoSoporte[]
+  clientes Cliente[]
 
   // Un documento, un tercero, por usuario. Es la red de seguridad de la consolidación.
   @@unique([usuarioId, documento])
@@ -791,6 +783,18 @@ model CompraItem {
   iva            Decimal @default(0) @db.Decimal(6, 3) // porcentaje
   base           Decimal @db.Decimal(18, 2)
   subtotalItem   Decimal @db.Decimal(18, 2)
+
+  // ¿Es un ACTIVO FIJO? Tiene dos consecuencias fiscales y ninguna es menor:
+  //   · El IVA en la adquisición de activos fijos NO es descontable (art. 491 E.T.): va al costo
+  //     del activo, o al descuento del art. 258-1 en renta. Reportarlo como descontable en el
+  //     formato 1005 es declarar un descontable que no existe.
+  //   · En el formato 1001, la compra de activos MOVIBLES va al concepto 5007 y la de activos
+  //     FIJOS al 5008 (art. 60 E.T.). Sin este campo no hay forma de separarlos, y meterlos en
+  //     el mismo concepto descuadra el cruce contra la depreciación.
+  //
+  // Por defecto `false`: lo normal es comprar inventario y gasto corriente, y marcar activo fijo
+  // es la excepción que el usuario declara.
+  esActivoFijo Boolean @default(false)
 
   @@index([compraId])
   @@map("compra_items")

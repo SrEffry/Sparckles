@@ -25,7 +25,7 @@ export async function GET(request) {
   const terceros = await prisma.tercero.findMany({
     where,
     orderBy: { nombre: "asc" },
-    include: { _count: { select: { compras: true, soportes: true } } },
+    include: { _count: { select: { compras: true, soportes: true, clientes: true } } },
   });
 
   const conEstado = terceros.map((t) => ({ ...t, ...pendientesDeTercero(t) }));

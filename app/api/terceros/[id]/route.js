@@ -7,7 +7,7 @@ import { pendientesDeTercero } from "@/lib/terceros";
 async function cargar(id, usuarioId) {
   const t = await prisma.tercero.findUnique({
     where: { id },
-    include: { _count: { select: { compras: true, soportes: true } } },
+    include: { _count: { select: { compras: true, soportes: true, clientes: true } } },
   });
   return !t || t.usuarioId !== usuarioId ? null : t;
 }
@@ -78,7 +78,7 @@ export async function DELETE(_request, { params }) {
   const tercero = await cargar(id, sesion.id);
   if (!tercero) return NextResponse.json({ error: "Tercero no encontrado." }, { status: 404 });
 
-  const usos = tercero._count.compras + tercero._count.soportes;
+  const usos = tercero._count.compras + tercero._count.soportes + tercero._count.clientes;
   if (usos > 0) {
     await prisma.tercero.update({ where: { id }, data: { activo: false } });
     return NextResponse.json({

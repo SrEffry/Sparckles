@@ -364,3 +364,19 @@
 .error {
   background: var(--danger);
 }
+
+/* Roles del tercero. Un mismo NIT puede ser cliente y proveedor: eso es lo que la unificación
+   hace visible, y es justo lo que la DIAN cruza entre formatos. */
+.roles {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.rol {
+  background: var(--primary-tint);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}

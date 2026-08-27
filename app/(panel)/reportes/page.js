@@ -45,6 +45,21 @@ export default function ReportesPage() {
       </section>
 
       <section className={styles.cardsGrid} style={{ marginTop: 24 }}>
+        <button className={`${styles.linkCard} ${styles.cTeal}`} onClick={() => router.push("/reportes/formatos")}>
+          <span className={styles.linkIcon}>
+            <SoporteIcon />
+          </span>
+          <span className={styles.linkBody}>
+            <span className={styles.linkHead}>Extractos de exógena</span>
+            <span className={styles.linkDesc}>
+              1003, 1005, 1006 y 1007 en las columnas del layout — borrador para revisión
+            </span>
+          </span>
+          <span className={styles.linkArrow}>
+            <ChevronIcon />
+          </span>
+        </button>
+
         <button className={`${styles.linkCard} ${styles.cInfo}`} onClick={() => router.push("/reportes/exogena")}>
           <span className={styles.linkIcon}>
             <SoporteIcon />

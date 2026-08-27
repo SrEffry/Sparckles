@@ -512,9 +512,32 @@ aritmética del reporte sí**.
    - ⚠️ En los plazos de **grandes contribuyentes**, los dígitos 1, 2 y 3 llevan la ampliación de
      la Res. 000012/2026; los dígitos 4 a 0 vienen de la tabla original y están **por confirmar**
      (cada fila lleva su `fuente`).
-2. **1003, 1006, 1005, 1007** como `.xlsx` rotulado *borrador para revisión*.
+2. **1003, 1005, 1006, 1007** ✅ — `/reportes/formatos`, `lib/exogenaFormatos.js` +
+   `GET /api/reportes/exogena/formato/[numero]?anio=&formato=json|xlsx`.
+   - **Dos hojas, y el orden importa.** La primera lleva SOLO el layout (encabezado en la fila 1,
+     datos debajo) para poder pegarla en el prevalidador; una fila de advertencia encima la
+     volvería inservible justo para lo que existe. La segunda, **LÉEME**, lleva los avisos: van
+     dentro del archivo porque el archivo viaja y la pantalla no.
+   - **`ReteICA NO va en el 1003`** (`conceptosExogena.js`): es un tributo municipal, se declara
+     ante el municipio y el formato no tiene concepto para ella. Las facturas que la tengan se
+     cuentan y se avisan.
+   - El concepto del 1003 sale de `Factura.retencionesPorConcepto` mapeando la **categoría**
+     interna (`CATEGORIA_A_1003`). Lo que no tiene equivalente cae en **1308 "otros conceptos"**
+     y se avisa, en vez de forzar una equivalencia falsa. "Venta de activos" **no** se manda al
+     1311 automáticamente: ese concepto exige que el enajenante sea persona natural, y el
+     sistema no lo sabe.
+   - En el **1007**, la nota **crédito resta** y la **débito suma**: una ND aumenta el valor de
+     la factura, no lo devuelve. (Probado: el extracto dio $3.000 más que la suma de facturas, y
+     ese era exactamente el valor de la única ND del año.)
+   - Columnas que van en CERO y se dicen: el IVA recuperado en devoluciones (1006), y el IVA por
+     devoluciones y el mayor valor del costo del art. 490 (1005) — el sistema no distingue el IVA
+     descontable del que va al costo.
+   - Las compras **sin ficha de tercero quedan FUERA** del 1005 y el aviso lo dice con el conteo:
+     hay que consolidar primero.
 3. Motor de saldos a fecha de corte → **1008, 1009**.
-4. **1001** (no antes de la fase 0 completa).
+4. **1001** — pendiente. **No se deriva de `RetencionPracticada`**: falta el mapa
+   `cuenta PUC → concepto` y el discriminante activo fijo/movible en `CompraItem`. Sacarlo
+   incompleto sería peor que no sacarlo (art. 651: la información errónea también se sanciona).
 5. **Nunca sin decisión expresa**: XML directo, y los formatos 1004, 1010, 1011, 1012, 1647,
    2275 y 2276 completos (requieren modelos que no existen: socios, balance fiscal, cuentas
    bancarias con NIT del banco, y la retención por rentas de trabajo del art. 383 que nómina

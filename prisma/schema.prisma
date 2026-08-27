@@ -137,6 +137,29 @@ model Cliente {
   esAgenteRetenedor Boolean @default(false)
   esAutorretenedor  Boolean @default(false)
 
+  // ---- Identificación para INFORMACIÓN EXÓGENA (Res. DIAN 000227/2025) ----
+  //
+  // Diez de los quince formatos identifican al tercero con estas columnas, y ninguna se podía
+  // llenar con lo de arriba: `tipoDocumento` guarda "CC"/"NIT" y el formato espera "13"/"31";
+  // `ciudad` y `departamento` son texto libre y el formato espera códigos DANE; los cuatro
+  // campos de nombre van SEPARADOS y aquí solo había `nombres` y `apellidos`.
+  //
+  // TODOS NULLABLE, a propósito. Un dato que solo hace falta en abril no puede impedir crear un
+  // cliente hoy: lo que falte se reporta en el tablero de preparación de Reportes, que es donde
+  // se completa a tiempo. Bloquear el formulario pararía la operación por una tarea de abril.
+  //
+  // ⚠️ Los cuatro campos de nombre NO se deducen partiendo `nombreCompleto`. "María del Carmen
+  // Rodríguez Vélez de Ospina" no sale de un `split(' ')`, y un apellido mal partido es
+  // información ERRÓNEA, que el art. 651 E.T. sanciona igual que la que falta. Se capturan.
+  tipoDocumentoDian  String? // código de lib/data/tiposDocumentoDian.js: 11,12,13,21,22,31,41,42,47,48
+  primerApellido     String?
+  segundoApellido    String?
+  primerNombre       String?
+  otrosNombres       String?
+  codigoDepartamento String? // 2 dígitos DANE
+  codigoMunicipio    String? // 3 dígitos DANE (el código completo es departamento + municipio)
+  codigoPais         String? // 3 dígitos DIAN; 169 = Colombia
+
   @@index([usuarioId])
   @@map("clientes")
 }

@@ -400,10 +400,83 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
     `{soporte, asiento, comprobanteOrigen, emisor}`. La lista no trae nada de eso.
 - **Hubs**: agregados reales vía `GET /api/resumen` (IVA generado/descontable, IVA por pagar, etc.).
 
+## Información exógena (Reportes) — en construcción
+
+Res. DIAN **000227 del 23-sep-2025** (Resolución Única), modificada por las **000233/2025**,
+**000237/2025**, **000012/2026** y **000021/2026**. Sanción por no presentar, presentar con
+errores o extemporáneamente: **art. 651 E.T.**
+
+> ⚠️ **El objetivo es el AG 2026, que se presenta entre abril y junio de 2027.** Los plazos del
+> AG 2025 vencieron el 12-jun-2026. Construir "para 2025" es construir para un reporte vencido.
+
+**Fuente de los layouts**: `public/Formato Exógena 2025 Formatos informantes basicos.xlsx`
+(22 hojas, una por formato, con encabezados, conceptos y códigos). Es material de **un tercero**
+(Wiliam Dussán Salazar), **no la norma**: sirve de mapa, la fuente son los anexos técnicos DIAN.
+Dos trampas ya detectadas en él: el **"V2" NO es la versión del formato** (el 1001 del AG 2025 es
+**versión 11**, y una versión errada hace rechazar el archivo), y su **calendario de grandes
+contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 2 y 3 al 14, 15 y
+19 de mayo).
+
+- **Códigos DANE**: `lib/data/dane.json` (33 departamentos, **1.122 municipios** con código de 5
+  dígitos, 248 países con código DIAN; Colombia = **169**), extraído del `.xlsx` con
+  `scripts/extraer_dane.py` y accedido por `lib/data/dane.js`. **No confundir con
+  `lib/data/colombia.json`**, que son 2 KB de nombres sin códigos y con ~4-9 municipios por
+  departamento: no sirve para exógena.
+  - `resolverMunicipio(nombre, depto?)` devuelve `null` **también cuando hay ambigüedad**: hay
+    **68 nombres de municipio repetidos** en el país (Sabanalarga está en Antioquia, Atlántico y
+    Casanare). Adivinar sería peor que dejarlo pendiente.
+  - La partición del código de 5 en depto(2) + mcp(3) está centralizada en
+    `partirCodigoMunicipio` y **falta confirmarla contra el anexo técnico**.
+- **Tipos de documento DIAN**: `lib/data/tiposDocumentoDian.js` (11, 12, 13, 21, 22, 31, 41, 42,
+  43, 47, 48). `codigoDianDesdeTexto()` traduce lo ya guardado ("CC" → "13") y devuelve `null`
+  si no reconoce, para migrar sin adivinar. El **NIT 222222222 con tipo 43** es el de las
+  cuantías menores, no un tercero real.
+- **Campos de exógena en `Cliente`**, todos **nullable a propósito**: un dato que solo hace falta
+  en abril no puede impedir crear un cliente hoy. Lo que falte se ve en el tablero de
+  preparación, no bloquea el formulario.
+  - ⚠️ Los cuatro campos de nombre (`primerApellido`, `segundoApellido`, `primerNombre`,
+    `otrosNombres`) **se capturan, no se deducen** partiendo `nombreCompleto`. Un apellido mal
+    partido es información **errónea**, que el art. 651 sanciona igual que la que falta.
+- **`AsientoMovimiento.tercero` va NORMALIZADO** con `normalizarDocumento()`
+  (`lib/asientoAutomatico.js`). Antes se guardaba crudo y `900123456`, `900.123.456` y
+  `900123456-7` eran **tres terceros**. La exógena agrupa el año por tercero y la DIAN cruza el
+  1001 del pagador contra el 1007 del receptor: un proveedor partido en tres es un cruce que no
+  cuadra.
+
+### Decisiones tomadas, para no rediscutirlas
+- **El XML lo genera el PREVALIDADOR de la DIAN, no nosotros.** Sparkles produce el `.xlsx` con
+  las columnas del layout. Son 15 esquemas que cambian cada año (este año, cuatro veces), y un
+  XML mal versionado se rechaza y cuenta como no presentado. Mismo criterio que la facturación
+  electrónica.
+- **El 1001 NO se deriva de `RetencionPracticada`, se deriva del GASTO** (libro auxiliar por
+  cuenta PUC y tercero). Un pago que no llega a la base mínima **no genera retención pero sí se
+  reporta**: una compra de $400.000 no retiene y aun así supera las 3 UVT. Falta el mapa
+  `cuenta PUC → concepto 1001` y un discriminante **activo fijo / movible** en `CompraItem`
+  (5007 movibles vs. 5008 fijos).
+- **1008 y 1009 son saldos a 31-dic y SÍ se pueden reconstruir sin migrar datos**, porque
+  `Factura.fechaAnulacion` existe: `estado='emitida' OR (estado='anulada' AND fechaAnulacion >
+  corte)`. La decisión de fechar la anulación resultó ser la que habilita el saldo histórico.
+- **El 1056 NO aplica** a empresa privada ni a ESAL (es de entidades que manejan recursos del
+  Tesoro). No construirlo.
+
+### Fases
+0. **Cimientos** — DANE ✅ · tipos de documento ✅ · campos en `Cliente` ✅ · tercero normalizado
+   ✅ · **modelo `Tercero`/proveedor real: PENDIENTE** (hoy los proveedores son texto suelto en
+   `Compra.proveedorNombre` y `DocumentoSoporte.proveedorNombre`, no una entidad).
+1. **Tablero de preparación** en `/reportes` + calendario con aviso de plazo (patrón de
+   Certificados). No genera reportes: dice qué datos faltan por tercero mientras hay tiempo.
+2. **1003, 1006, 1005, 1007** como `.xlsx` rotulado *borrador para revisión*.
+3. Motor de saldos a fecha de corte → **1008, 1009**.
+4. **1001** (no antes de la fase 0 completa).
+5. **Nunca sin decisión expresa**: XML directo, y los formatos 1004, 1010, 1011, 1012, 1647,
+   2275 y 2276 completos (requieren modelos que no existen: socios, balance fiscal, cuentas
+   bancarias con NIT del banco, y la retención por rentas de trabajo del art. 383 que nómina
+   **no liquida**).
+
 ## Pendientes conocidos
 - **Facturas**: retenciones fiscales manuales (ReteIVA/ReteICA modal) y medios de pago/instrumentos.
 - **Facturación electrónica DIAN** (XML UBL, firma, CUFE, QR): track aparte, vía **proveedor
   tecnológico autorizado** — no construir el protocolo desde cero. Los PDF actuales
   (`lib/pdf/`) son **representación gráfica**, no el documento electrónico.
-- **Reportes**: pendiente de nuevo enfoque del cliente.
+- **Reportes / información exógena**: en construcción por fases. Ver la sección propia abajo.
 - `lib/data/ciiu.json` y `Ciuu.json` están preservados pero **aún sin usar** (actividad económica).

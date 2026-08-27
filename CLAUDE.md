@@ -476,6 +476,42 @@ aritmética del reporte sí**.
   municipio que no pertenece al departamento se rechaza. Un código inventado produce una columna
   que la DIAN rechaza, y ese error no se ve hasta que se presenta.
 
+### Trampas ya pisadas en los extractos (revisión contable)
+- **Un `Cliente` con facturas NO se borra: se inactiva.** `Factura.clienteId` no tiene llave
+  foránea, así que borrarlo dejaba el id apuntando a nada y esas facturas **desaparecían en
+  silencio** del 1003, del 1006 y del 1007. Además los extractos **caen al snapshot de la
+  factura** (`identidadDeSnapshot`) cuando no hay ficha, y lo avisan.
+- **`Cliente.documentoNormalizado` con `@@unique`**, como ya tenía `Tercero`. Dos fichas del
+  mismo NIT producían dos identidades distintas en un reporte que agrupa el año por documento.
+- **Las facturas ANULADAS DESPUÉS DEL CORTE sí van** (`vigentesAlCorte`): una factura de marzo de
+  2025 anulada en febrero de 2026 se declaró en 2025. Filtrar por `estado:'emitida'` a secas la
+  borraba del AG 2025.
+- **El plazo depende de si el informante es GRAN CONTRIBUYENTE** — estaba cableado en `false` y
+  esa tabla vence **hasta cinco semanas antes**. Se lee de `Empresa.caracteristicasTributarias`;
+  si no se sabe, la pantalla lo **pregunta** en vez de suponer que no lo es.
+- **El DV no es parte del NIT** al calcular el plazo: "900.123.456-7" daba "67" en vez de "56".
+  Se usa `normalizarDocumento()`. (Pendiente: `ConfigFacturacion` no tiene columna `dv` propia,
+  así que un NIT escrito sin guion sigue sin poder separarse.)
+- **Transporte y construcción son SERVICIOS (1303), no "otros conceptos"** — el pagador los
+  reporta como servicios en su 1001 y la DIAN cruza 1001 contra 1003.
+- **El layout del 1005 CAMBIA CON EL AÑO**: la columna del art. 490 se suprime desde el AG 2026.
+  Una columna de más corre todo lo que va a su derecha en el prevalidador. ⚠️ Las fuentes se
+  contradicen sobre desde cuándo; **confirmar contra el anexo técnico**.
+- El 1005 **avisa si el emisor NO es responsable de IVA**: reportar IVA descontable siendo no
+  responsable es el cruce más fácil de detectar que existe.
+
+### Lo que estos extractos siguen SIN cubrir (dicho en el LÉEME)
+- El **1003 solo mira facturas**: no ve las retenciones registradas al pagar (política
+  `retencionesEnCausacion: false`), ni la **1312** de tarjetas débito/crédito, ni la **1306** de
+  rendimientos financieros, ni el timbre, ni las autorretenciones.
+- El **1005** no distingue el IVA descontable del que va al costo, ni el de **activos fijos**
+  (art. 491 E.T., no descontable), ni el IVA teórico de compras a no residentes.
+- Falta la **columna J del 1005** (IVA por devoluciones en ventas, contra el CLIENTE) y el
+  **IVA de las notas débito en el 1006**. *No netear las notas crédito contra el impuesto
+  generado del 1006 sí es correcto*: en el formulario 300 la devolución va como descontable.
+- Un cliente **sin documento** debería acumularse en el **NIT 222222222 con tipo 43**
+  ("cuantías menores"); hoy sale con documento vacío y el prevalidador lo rechaza.
+
 ### Decisiones tomadas, para no rediscutirlas
 - **El XML lo genera el PREVALIDADOR de la DIAN, no nosotros.** Sparkles produce el `.xlsx` con
   las columnas del layout. Son 15 esquemas que cambian cada año (este año, cuatro veces), y un

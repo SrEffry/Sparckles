@@ -259,6 +259,18 @@ function Plazo({ d, anio }) {
       </div>
     );
 
+  // Se distingue de "no hay plazos" a propósito: aquí el calendario SÍ existe, lo que falta es
+  // saber cuál de las dos tablas aplica. Y la de grandes contribuyentes vence hasta cinco
+  // semanas antes, así que suponer que no lo es sería el error caro.
+  if (d.granContribuyenteDesconocido)
+    return (
+      <div className={styles.avisoInfo}>
+        No se puede calcular tu plazo porque <strong>no se sabe si eres gran contribuyente</strong>
+        , y esa tabla vence hasta cinco semanas antes. Márcalo en la ficha de tu empresa
+        (Empresas → características tributarias) y el plazo aparecerá aquí.
+      </div>
+    );
+
   if (!d.plazo)
     return (
       <div className={styles.avisoInfo}>
@@ -283,7 +295,8 @@ function Plazo({ d, anio }) {
             : `Vence el ${fecha} · faltan ${diasRestantes} días`}
         </strong>
         <div className={styles.sub}>
-          Año gravable {anio} · NIT terminado en {d.plazo.digitos} · {norma}
+          Año gravable {anio} · {d.plazo.granContribuyente ? "gran contribuyente" : "persona jurídica/natural"}
+          {" "}· NIT terminado en {d.plazo.digitos} · {norma}
           {fuente ? ` · ${fuente}` : ""}
         </div>
       </div>

@@ -161,6 +161,18 @@ model Cliente {
   codigoMunicipio    String? // 3 dígitos DANE (el código completo es departamento + municipio)
   codigoPais         String? // 3 dígitos DIAN; 169 = Colombia
 
+  // Un cliente con facturas NO se borra: se inactiva. `Factura.clienteId` no tiene llave
+  // foránea, así que borrarlo dejaba el id apuntando a nada y esas facturas desaparecían en
+  // silencio de los extractos de exógena.
+  activo Boolean @default(true)
+
+  // Documento NORMALIZADO (solo dígitos, sin DV), duplicado de `nit`/`numeroDocumento` para
+  // poder sostener la unicidad: la exógena agrupa el año entero por documento, y dos fichas del
+  // mismo NIT producían dos identidades distintas —con direcciones y códigos DANE distintos—
+  // sin que nada avisara. `Tercero` ya tenía esta red; `Cliente` no.
+  documentoNormalizado String?
+
+  @@unique([usuarioId, documentoNormalizado])
   @@index([usuarioId])
   @@map("clientes")
 }

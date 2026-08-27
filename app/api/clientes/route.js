@@ -32,8 +32,19 @@ export async function POST(request) {
     return NextResponse.json({ error: errors[0], errores: errors }, { status: 400 });
   }
 
-  const cliente = await prisma.cliente.create({
-    data: { ...data, usuarioId: sesion.id },
-  });
-  return NextResponse.json({ cliente }, { status: 201 });
+  try {
+    const cliente = await prisma.cliente.create({
+      data: { ...data, usuarioId: sesion.id },
+    });
+    return NextResponse.json({ cliente }, { status: 201 });
+  } catch (e) {
+    // El `@@unique` del documento normalizado es la red que impide dos fichas del mismo NIT,
+    // que en exógena saldrían como dos terceros distintos con direcciones distintas.
+    if (e.code === "P2002")
+      return NextResponse.json(
+        { error: "Ya existe un cliente con ese número de documento." },
+        { status: 409 }
+      );
+    throw e;
+  }
 }

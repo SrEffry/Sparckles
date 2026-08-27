@@ -279,3 +279,35 @@
   font-weight: 700;
   color: var(--primary);
 }
+
+/* Bloque plegable de datos de exógena: va al final del formulario y cerrado por defecto para
+   que no estorbe el alta de un empleado, que es la tarea de todos los días. */
+.exogena {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 8px 0 14px;
+  background: var(--bg, #f5f5f7);
+}
+.exogena > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  list-style: none;
+}
+.exogena > summary::-webkit-details-marker {
+  display: none;
+}
+.exogena > summary::before {
+  content: "▸ ";
+}
+.exogena[open] > summary::before {
+  content: "▾ ";
+}
+.exogenaAyuda {
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.5;
+  margin: 10px 0 12px;
+}

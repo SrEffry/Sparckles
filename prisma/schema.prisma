@@ -32,6 +32,7 @@ model Usuario {
   productos    Producto[]
   facturas     Factura[]
   borradores   BorradorFactura[]
+  terceros     Tercero[]
   notas        Nota[]
   empleados    Empleado[]
   nominas      Nomina[]
@@ -367,6 +368,75 @@ model Factura {
   @@map("facturas")
 }
 
+// ============================ Tercero (registro de identidad) ============================
+//
+// QUÉ PROBLEMA RESUELVE. Los proveedores no eran una entidad: vivían como TEXTO SUELTO dentro de
+// cada `Compra` y cada `DocumentoSoporte` (`proveedorNombre`, `proveedorNit`). Con eso, el mismo
+// proveedor escrito de dos formas eran dos terceros, y no había ningún sitio donde guardar su
+// tipo de documento DIAN, su dirección ni sus códigos DANE — que son columnas obligatorias en
+// diez de los quince formatos de exógena.
+//
+// La ley no exige una tabla de terceros; la ARITMÉTICA DEL REPORTE sí. La exógena agrupa el año
+// entero por tercero y la DIAN cruza el 1001 del pagador contra el 1007 del receptor: un mismo
+// proveedor partido en tres es un cruce que no cuadra, y el art. 651 E.T. sanciona la
+// información errónea igual que la que falta.
+//
+// LOS SNAPSHOTS DE LOS DOCUMENTOS NO SE TOCAN. `Compra.proveedorNombre` y compañía siguen ahí y
+// siguen siendo la verdad de ESE documento: un documento fiscal tiene que poder reimprimirse
+// como se emitió, aunque el tercero haya cambiado de nombre o de dirección después. El `Tercero`
+// es la identidad para AGRUPAR y REPORTAR, no un reemplazo del snapshot.
+//
+// POR QUÉ `Cliente` NO SE FUSIONÓ AQUÍ (todavía). Un cliente ya es una entidad y ya tiene todos
+// estos campos, y fusionarlo obligaría a tocar la emisión de facturas, que es la ruta más
+// delicada del sistema. Se deja para después, a propósito: al reportar, un tercero que es
+// cliente y proveedor a la vez se consolida por `documento` normalizado, que es trabajo de la
+// capa de reportes y no del modelo.
+model Tercero {
+  id        String   @id @default(cuid())
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // SIEMPRE normalizado con `normalizarDocumento()` antes de guardar: es la clave de
+  // consolidación y de ella depende que el cruce de la DIAN cuadre. El `@@unique` lo sostiene.
+  documento          String
+  dv                 String?
+  tipoDocumentoDian  String? // código de lib/data/tiposDocumentoDian.js
+
+  // 'natural' | 'juridica'. Decide cuál juego de nombres se exige en el reporte.
+  tipo        String  @default("juridica")
+  // Nombre para mostrar. Para una persona natural se arma de los cuatro campos; para una
+  // jurídica es la razón social.
+  nombre      String
+  razonSocial String?
+
+  // Los cuatro campos de nombre que exige la DIAN, SEPARADOS. No se deducen partiendo el nombre
+  // completo: "María del Carmen Rodríguez Vélez de Ospina" no sale de un `split(' ')`, y un
+  // apellido mal partido es información ERRÓNEA, no información faltante.
+  primerApellido  String?
+  segundoApellido String?
+  primerNombre    String?
+  otrosNombres    String?
+
+  direccion          String?
+  telefono           String?
+  email              String?
+  codigoDepartamento String? // 2 dígitos DANE
+  codigoMunicipio    String? // 3 dígitos DANE
+  codigoPais         String? // 3 dígitos DIAN; 169 = Colombia
+
+  activo Boolean @default(true)
+
+  compras  Compra[]
+  soportes DocumentoSoporte[]
+
+  // Un documento, un tercero, por usuario. Es la red de seguridad de la consolidación.
+  @@unique([usuarioId, documento])
+  @@index([usuarioId])
+  @@map("terceros")
+}
+
 // ============================ Borrador de factura ============================
 //
 // TABLA APARTE, Y NO UN ESTADO MÁS DE `Factura`. La diferencia no es de estilo: hoy media
@@ -523,6 +593,20 @@ model Empleado {
   cargo          String
   tipoContrato   String?
   salarioBase    Decimal @db.Decimal(18, 2)
+  // ---- Identificación para el formato 2276 (rentas de trabajo) ----
+  // El 2276 pide tipo de documento en código DIAN, los cuatro campos de nombre separados,
+  // dirección y ubicación con códigos DANE. Nada de eso se guardaba. Nullable: no puede impedir
+  // dar de alta a un empleado hoy; lo que falte sale en el tablero de preparación.
+  tipoDocumentoDian  String?
+  primerApellido     String?
+  segundoApellido    String?
+  primerNombre       String?
+  otrosNombres       String?
+  direccion          String?
+  codigoDepartamento String?
+  codigoMunicipio    String?
+  codigoPais         String?
+
   eps            String?
   afp            String?
   arl            String?
@@ -642,10 +726,18 @@ model Compra {
   // Proveedor.
   // El tipo de documento importa: el certificado de retención lo imprime, y dar por hecho
   // "NIT" convertía a una persona natural con cédula en una sociedad.
+  // Snapshot del proveedor EN ESE DOCUMENTO. No se toca ni se deriva del `Tercero`: la compra
+  // tiene que poder reimprimirse como se registró, aunque el tercero cambie después.
   proveedorNombre        String
   proveedorNit           String?
   proveedorTipoDocumento String?
   proveedorTel           String?
+
+  // Identidad consolidada, para agrupar y reportar. Nullable porque un documento anterior al
+  // registro de terceros —o uno sin NIT— no tiene con qué enlazarse, y eso se ve como pendiente
+  // en el tablero de exógena en vez de bloquear el registro de la compra.
+  tercero   Tercero? @relation(fields: [terceroId], references: [id], onDelete: SetNull)
+  terceroId String?
 
   // Totales
   subtotal         Decimal @db.Decimal(18, 2)
@@ -1325,9 +1417,15 @@ model DocumentoSoporte {
   // hecho posterior y no la sustituye. De aquí sale la fecha del asiento (devengo).
   fecha  String
 
+  // Snapshot del vendedor EN ESE DOCUMENTO, igual que en `Compra`: el impreso del art.
+  // 1.6.1.4.12 no puede cambiar porque el tercero se haya mudado.
   proveedorNombre    String
   proveedorDocumento String?
   concepto           String
+
+  // Identidad consolidada para agrupar y reportar (ver el modelo `Tercero`).
+  tercero   Tercero? @relation(fields: [terceroId], references: [id], onDelete: SetNull)
+  terceroId String?
 
   bruto          Decimal @db.Decimal(18, 2)
   porcReteFuente Decimal @default(0) @db.Decimal(6, 3) // porcentaje (%)

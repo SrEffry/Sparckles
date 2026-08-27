@@ -12,6 +12,8 @@ import { calcularLiquidacion } from "@/lib/nominaCalc";
 import { obtenerConfig } from "@/lib/configFacturacionApi";
 import { CLASES_RIESGO_ARL } from "@/lib/data/parametrosNomina";
 import { hoyBogota } from "@/lib/fechas";
+import { TIPOS_DOCUMENTO_SELECCIONABLES } from "@/lib/data/tiposDocumentoDian";
+import { DEPARTAMENTOS, municipiosDe, CODIGO_PAIS_COLOMBIA } from "@/lib/data/dane";
 import styles from "./nomina.module.css";
 
 const fmt = (v) =>
@@ -286,6 +288,16 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
     arl: inicial?.arl || "",
     claseRiesgoArl: inicial?.claseRiesgoArl || "I",
     activo: inicial?.activo ?? true,
+    // Datos de exógena (formato 2276). Opcionales aquí; obligatorios al reportar.
+    tipoDocumentoDian: inicial?.tipoDocumentoDian || "13",
+    primerApellido: inicial?.primerApellido || "",
+    segundoApellido: inicial?.segundoApellido || "",
+    primerNombre: inicial?.primerNombre || "",
+    otrosNombres: inicial?.otrosNombres || "",
+    direccion: inicial?.direccion || "",
+    codigoDepartamento: inicial?.codigoDepartamento || "",
+    codigoMunicipio: inicial?.codigoMunicipio || "",
+    codigoPais: inicial?.codigoPais || CODIGO_PAIS_COLOMBIA,
   }));
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -332,6 +344,10 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
           </div>
           <div className="form-row">
             <div className="form-group"><label>ARL</label><input value={form.arl} onChange={(e) => set("arl", e.target.value)} /></div>
+          </div>
+
+
+          <div className="form-row">
             {/* La tarifa de la ARL la fija la actividad del cargo, no el salario, y va del
                 0,522% al 6,96%: dejarla siempre en I subestima el costo laboral hasta en un
                 6,4% del salario en trabajos de alto riesgo. */}
@@ -346,6 +362,56 @@ function EmpleadoModal({ inicial, onClose, onGuardar }) {
               </select>
             </div>
           </div>
+          {/* ---- Datos para información exógena (formato 2276, rentas de trabajo) ----
+              Van al final y marcados como opcionales: no pueden estorbar el alta de un
+              empleado, que es una tarea de hoy, por un dato que se usa al reportar. */}
+          <details className={styles.exogena}>
+            <summary>Datos para información exógena (formato 2276) — opcional</summary>
+            <p className={styles.exogenaAyuda}>
+              La DIAN pide apellidos y nombres en cuatro campos separados. No se deducen de
+              &quot;Nombres&quot; y &quot;Apellidos&quot;: un apellido mal partido cuenta como
+              información errónea, no como información faltante.
+            </p>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Tipo de documento (DIAN)</label>
+                <select value={form.tipoDocumentoDian} onChange={(e) => set("tipoDocumentoDian", e.target.value)}>
+                  <option value="">Sin definir</option>
+                  {TIPOS_DOCUMENTO_SELECCIONABLES.map((t) => (
+                    <option key={t.codigo} value={t.codigo}>{t.codigo} — {t.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group"><label>Dirección</label><input value={form.direccion} onChange={(e) => set("direccion", e.target.value)} /></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label>Primer apellido</label><input value={form.primerApellido} onChange={(e) => set("primerApellido", e.target.value)} /></div>
+              <div className="form-group"><label>Segundo apellido</label><input value={form.segundoApellido} onChange={(e) => set("segundoApellido", e.target.value)} /></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label>Primer nombre</label><input value={form.primerNombre} onChange={(e) => set("primerNombre", e.target.value)} /></div>
+              <div className="form-group"><label>Otros nombres</label><input value={form.otrosNombres} onChange={(e) => set("otrosNombres", e.target.value)} /></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Departamento</label>
+                <select value={form.codigoDepartamento} onChange={(e) => { set("codigoDepartamento", e.target.value); set("codigoMunicipio", ""); }}>
+                  <option value="">Sin definir</option>
+                  {DEPARTAMENTOS.map((d) => <option key={d.codigo} value={d.codigo}>{d.codigo} — {d.nombre}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Municipio</label>
+                <select value={form.codigoMunicipio} onChange={(e) => set("codigoMunicipio", e.target.value)} disabled={!form.codigoDepartamento}>
+                  <option value="">{form.codigoDepartamento ? "Sin definir" : "Elige departamento"}</option>
+                  {municipiosDe(form.codigoDepartamento).map((m) => (
+                    <option key={m.codigo} value={m.codigo.slice(2)}>{m.codigo} — {m.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+
           <label className={styles.checkRow}>
             <input type="checkbox" checked={form.activo} onChange={(e) => set("activo", e.target.checked)} /> Empleado activo
           </label>

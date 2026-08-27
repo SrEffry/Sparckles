@@ -4,6 +4,7 @@ import { obtenerSesion } from "@/lib/session";
 import { normalizarCompra } from "@/lib/compraValidation";
 import { registrarRetencionesDeCompra } from "@/lib/retencionesDeDocumentos";
 import { contabilizarYEnlazar } from "@/lib/asientoAutomatico";
+import { resolverTercero } from "@/lib/terceros";
 
 export async function GET() {
   const sesion = await obtenerSesion();
@@ -36,8 +37,18 @@ export async function POST(request) {
   const causadas = mapa?.retencionesEnCausacion !== false;
 
   const compra = await prisma.$transaction(async (tx) => {
+    // El proveedor se enlaza con su ficha de tercero, creándola si es la primera vez. El
+    // snapshot de la compra NO cambia: sigue siendo la verdad de este documento. El enlace es
+    // lo que permite agrupar el año por tercero cuando llegue la exógena.
+    const terceroId = await resolverTercero(tx, sesion.id, {
+      nombre: data.proveedorNombre,
+      documento: data.proveedorNit,
+      tipoDocumento: data.proveedorTipoDocumento,
+      telefono: data.proveedorTel,
+    });
+
     const creada = await tx.compra.create({
-      data: { ...data, usuarioId: sesion.id, items: { create: items } },
+      data: { ...data, usuarioId: sesion.id, terceroId, items: { create: items } },
       include: { items: true },
     });
     // Las retenciones practicadas al proveedor van también a la tabla unificada: es lo que

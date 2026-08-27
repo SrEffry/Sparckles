@@ -137,15 +137,17 @@ export default function PreparacionExogenaPage() {
 
           {grupo === "proveedores" && (
             <p className={styles.nota}>
-              Los proveedores todavía no son una tabla: se derivan de las compras y los documentos
-              soporte del año, agrupados por documento. Por eso no pueden tener dirección ni
-              códigos DANE — no hay dónde guardarlos.
+              Se agrupan por documento a partir de las compras y los documentos soporte del año.
+              Los que ya tienen <strong>ficha de tercero</strong> se evalúan contra ella; los que
+              no, hay que consolidarlos primero en Configuración → Terceros, que es donde se
+              guardan la dirección y los códigos DANE.
             </p>
           )}
           {grupo === "empleados" && (
             <p className={styles.nota}>
-              El formato 2276 (rentas de trabajo) pide tipo de documento, dirección y ubicación
-              del empleado, y el modelo no los guarda todavía.
+              El formato 2276 (rentas de trabajo) pide tipo de documento, apellidos y nombres
+              separados, dirección y ubicación del empleado. Los campos ya existen en la ficha del
+              empleado; falta capturarlos.
             </p>
           )}
 
@@ -215,8 +217,19 @@ export default function PreparacionExogenaPage() {
                         )}
                       </td>
                       <td>
+                        {/* Cada origen se arregla en su propia pantalla. Un proveedor sin ficha
+                            de tercero no tiene dónde editarse: hay que consolidarlo primero. */}
                         {x.origen === "cliente" && (
                           <button onClick={() => router.push("/clientes")}>Editar</button>
+                        )}
+                        {x.origen === "proveedor" &&
+                          (x.terceroId ? (
+                            <button onClick={() => router.push("/terceros")}>Editar</button>
+                          ) : (
+                            <span className={styles.sub}>Sin ficha</span>
+                          ))}
+                        {x.origen === "empleado" && (
+                          <button onClick={() => router.push("/nomina")}>Editar</button>
                         )}
                       </td>
                     </tr>

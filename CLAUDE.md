@@ -105,7 +105,7 @@ también en sus submódulos):
 | **Finanzas** | Comprobantes de ingreso/egreso, Documentos soporte, Certificados de retención (tabs Tesorería/Impuestos) |
 | **Contabilidad** | Notas de contabilidad, Libro diario, Mapa de cuentas |
 | **Recursos** | Nómina |
-| **Configuración** | Clientes, Mis productos, Config. Facturación, Empresas |
+| **Configuración** | Clientes, **Terceros**, Mis productos, Config. Facturación, Empresas |
 | **Reportes** | Preparación para exógena (diagnóstico de datos + calendario de plazos) |
 
 **Operaciones vs. Contabilidad**: en Operaciones se *opera* (los documentos que originan el
@@ -118,7 +118,7 @@ clientes, productos, facturas, etc. Nada es global salvo el catálogo PUC. (Conf
 
 Modelos: `Usuario, Empresa, Cliente, Producto, ConfigFacturacion, Factura(+Item), BorradorFactura, Nota(+Item),
 Compra(+Item), DocumentoSoporte, Asiento(+Movimiento), Empleado, Nomina, CuentaPUC,
-MapaCuentas, CuentaTesoreria, ComprobanteTesoreria(+Aplicacion/Retencion), ConsecutivoDocumento,
+MapaCuentas, CuentaTesoreria, ComprobanteTesoreria(+Aplicacion/Retencion), ConsecutivoDocumento, Tercero,
 RetencionPracticada, CertificadoRetencion, NotaContabilidad(+Movimiento), Impuesto`.
 Mapeo detallado del dominio: [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
@@ -443,6 +443,39 @@ contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 
   1001 del pagador contra el 1007 del receptor: un proveedor partido en tres es un cruce que no
   cuadra.
 
+### `Tercero`: el registro de identidad
+Los proveedores eran **texto suelto** dentro de cada `Compra` y `DocumentoSoporte`. Con eso, el
+mismo proveedor escrito de dos formas eran dos terceros, y no había dónde guardar su tipo de
+documento DIAN, su dirección ni sus códigos DANE. La ley no exige una tabla de terceros; **la
+aritmética del reporte sí**.
+
+- **Los snapshots de los documentos NO se tocan.** `Compra.proveedorNombre` y compañía siguen
+  siendo la verdad de ESE documento —un documento fiscal debe poder reimprimirse como se
+  emitió—. El `Tercero` es la identidad para **agrupar y reportar**, no un reemplazo.
+- **Un solo camino para crearlos**: `resolverTercero()` en `lib/terceros.js`, llamado desde
+  `POST /api/compras` y `POST /api/soportes` dentro de su transacción. Dos rutas normalizando a
+  su manera es como se acaba con el mismo NIT en dos filas.
+- **Sin documento NO se crea tercero** y el documento queda sin enlazar: dos "Ferretería El
+  Tornillo" pueden ser dos empresas distintas, y un tercero mal fusionado es peor que uno
+  suelto. Los sueltos salen listados en el tablero.
+- `resolverTercero` **completa lo que falte pero no pisa lo que ya está**: quien editó la ficha
+  sabe más que el snapshot tecleado de afán en una compra nueva.
+- **Backfill**: `PATCH /api/terceros {accion:'consolidar'}` (`consolidarTerceros`). Idempotente
+  —solo mira los `terceroId: null`—, así que se puede repetir. En la BD local creó **70 fichas**
+  y enlazó 125 compras y 69 soportes; el único que quedó fuera fue uno sin documento.
+- **Cambiar el documento cambia la identidad**: se permite (un NIT mal digitado hay que poder
+  corregirlo) pero **no puede chocar** con otro tercero. Fusionar dos terceros **no está
+  implementado** y el endpoint lo dice en vez de fingir.
+- Un tercero **con documentos no se borra**: se desactiva. Borrarlo dejaría sus `terceroId` en
+  null y volvería a partir la agrupación.
+- **`Cliente` NO se fusionó aquí, a propósito.** Ya es una entidad y ya tiene los campos, y
+  fusionarlo obligaría a tocar la emisión de facturas. Al reportar, un tercero que es cliente y
+  proveedor a la vez se consolida por `documento` normalizado: es trabajo de la capa de
+  reportes, no del modelo. **Queda pendiente** unificarlos.
+- Los códigos de ubicación se **validan contra el catálogo** (`terceroValidation.js`): un
+  municipio que no pertenece al departamento se rechaza. Un código inventado produce una columna
+  que la DIAN rechaza, y ese error no se ve hasta que se presenta.
+
 ### Decisiones tomadas, para no rediscutirlas
 - **El XML lo genera el PREVALIDADOR de la DIAN, no nosotros.** Sparkles produce el `.xlsx` con
   las columnas del layout. Son 15 esquemas que cambian cada año (este año, cuatro veces), y un
@@ -460,9 +493,8 @@ contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 
   Tesoro). No construirlo.
 
 ### Fases
-0. **Cimientos** — DANE ✅ · tipos de documento ✅ · campos en `Cliente` ✅ · tercero normalizado
-   ✅ · **modelo `Tercero`/proveedor real: PENDIENTE** (hoy los proveedores son texto suelto en
-   `Compra.proveedorNombre` y `DocumentoSoporte.proveedorNombre`, no una entidad).
+0. **Cimientos** ✅ — DANE · tipos de documento · campos en `Cliente` y `Empleado` · tercero
+   normalizado en el asiento · **modelo `Tercero`** (ver abajo).
 1. **Tablero de preparación** ✅ — `/reportes` (hub) y `/reportes/exogena`.
    `lib/exogenaPreparacion.js` + `GET /api/reportes/exogena/preparacion?anio=` +
    `lib/reportesApi.js`. NO genera reportes ni envía nada: por eso no puede costar una sanción.

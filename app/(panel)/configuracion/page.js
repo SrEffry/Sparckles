@@ -23,6 +23,9 @@ export default function ConfiguracionPage() {
   const cards = [
     { icon: <ClientesIcon />, color: styles.cInfo, t: "Clientes", d: "Tus clientes y su configuración de retención", count: r?.clientes, href: "/clientes" },
     { icon: <ProductoIcon />, color: styles.cViolet, t: "Mis productos", d: "Catálogo de productos y servicios con IVA y retención", count: r?.productos, href: "/productos" },
+    // Proveedores y prestadores. Se crean solos al registrar compras y soportes; aquí se
+    // completan con los datos que exige la exógena (tipo de documento DIAN, códigos DANE).
+    { icon: <ClientesIcon />, color: styles.cTeal, t: "Terceros", d: "Proveedores y prestadores, con los datos de información exógena", href: "/terceros" },
     { icon: <ConfigIcon />, color: styles.cSlate, t: "Config. Facturación", d: "Datos del emisor y resolución DIAN", href: "/facturacion/configurar" },
     { icon: <ConfigIcon />, color: styles.cTeal, t: "Mapa de cuentas", d: "Qué cuenta contable usa cada concepto al generar comprobantes", href: "/configuracion/cuentas" },
     { icon: <EmpresaIcon />, color: styles.cSuccess, t: "Empresas", d: "Empresas registradas en tu cuenta", count: r?.empresas, href: "/empresas" },

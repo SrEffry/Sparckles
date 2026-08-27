@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { resolverTercero } from "@/lib/terceros";
 import { normalizarSoporte } from "@/lib/soporteValidation";
 import { hoyBogota } from "@/lib/fechas";
 import { siguienteConsecutivo, numeroFinal } from "@/lib/consecutivos";
@@ -67,8 +68,14 @@ export async function POST(request) {
         },
       });
       const numero = `DS-${anio}-${String(consecutivo).padStart(4, "0")}`;
+      // Igual que en compras: se enlaza la identidad del vendedor sin tocar el snapshot.
+      const terceroId = await resolverTercero(tx, sesion.id, {
+        nombre: data.proveedorNombre,
+        documento: data.proveedorDocumento,
+        tipoDocumento: data.proveedorTipoDocumento,
+      });
       const creado = await tx.documentoSoporte.create({
-        data: { ...data, numero, usuarioId: sesion.id, emisorSnapshot },
+        data: { ...data, numero, usuarioId: sesion.id, emisorSnapshot, terceroId },
       });
       // Siempre vinculante: el soporte no tiene contraparte en tesorería, así que no hay
       // riesgo de doble conteo y la política de causación no le aplica.

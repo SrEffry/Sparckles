@@ -2,6 +2,10 @@
 
 Guía para trabajar en este repositorio. Léela antes de tocar código.
 
+> 📌 **Lo que falta por hacer está en [`TRASPASO.md`](TRASPASO.md)**: hallazgos contables abiertos
+> (dos de ellos 🔴), fases pendientes de exógena y trampas del entorno. Este archivo dice cómo
+> está el sistema; ese dice qué queda.
+
 > ⚠️ **Next.js 16**: trae breaking changes respecto a versiones anteriores — APIs, convenciones
 > y estructura de archivos pueden diferir de lo que asumas. Consulta los docs incluidos en
 > `node_modules/next/dist/docs/` antes de dar por buena una API, y atiende los avisos de
@@ -68,9 +72,10 @@ en `lib/generated/prisma/` (ignorado por git — correr `prisma generate` tras c
 ├── app/
 │   ├── (auth)/            # login, registro (layout de 2 paneles con logo + ilustración)
 │   ├── (panel)/           # panel: layout compartido (Sidebar + guardia de sesión UNA vez)
-│   │   ├── dashboard/ empresas/ clientes/ productos/ facturacion/ notas/
+│   │   ├── dashboard/ empresas/ clientes/ terceros/ productos/ facturacion/ notas/
 │   │   ├── compras/ documentos-soportes/ comprobantes/ certificados-retencion/
 │   │   ├── notas-contabilidad/ libro-diario/ nomina/ recursos/
+│   │   ├── reportes/           # hub + exogena/ (preparación) + formatos/ (extractos)
 │   │   ├── operaciones/ finanzas/ contabilidad/ configuracion/   # hubs
 │   │   └── hubs.module.css                         # CSS compartido de los hubs
 │   ├── api/               # endpoints (route handlers)
@@ -79,8 +84,11 @@ en `lib/generated/prisma/` (ignorado por git — correr `prisma generate` tras c
 ├── components/            # Sidebar, EmpresaWizard
 ├── lib/                   # auth, session, prisma, *Validation, *Api, calc, data/, pdf/
 ├── prisma/schema.prisma
+├── scripts/               # utilidades de un solo uso (extraer_dane.py)
 ├── public/img/            # Logo.png, nina.png, fondo1.png, Fondo.png
+│   └── Formato Exógena 2025 ….xlsx   # layouts de los 15 formatos + códigos DANE
 ├── docs/                  # modelo-datos.md, migracion-nextjs.md (histórico)
+├── TRASPASO.md            # QUÉ FALTA: hallazgos abiertos y fases pendientes
 └── PUC.md, catalogo.md    # fuentes originales del PUC (comercial / ESAL)
 ```
 
@@ -546,6 +554,11 @@ aritmética del reporte sí**.
   Tesoro). No construirlo.
 
 ### Fases
+
+> ⚠️ La **re-revisión contable de las fases 1 y 2 nunca se completó** (falló por límite de gasto
+> antes de emitir hallazgos). Los arreglos del commit `9dafdc2` están probados contra la BD pero
+> **no validados por el revisor**. Volver a lanzarla es lo primero. Ver `TRASPASO.md`.
+
 0. **Cimientos** ✅ — DANE · tipos de documento · campos en `Cliente` y `Empleado` · tercero
    normalizado en el asiento · **modelo `Tercero`** (ver abajo).
 1. **Tablero de preparación** ✅ — `/reportes` (hub) y `/reportes/exogena`.
@@ -597,6 +610,22 @@ aritmética del reporte sí**.
    **no liquida**).
 
 ## Pendientes conocidos
+
+> Lista corta. El detalle, con su norma y su ejemplo numérico, está en
+> [`TRASPASO.md`](TRASPASO.md).
+
+- 🔴 **Tabla de ReteFuente a medias**: cinco conceptos de servicios siguen con base 4 UVT y dos
+  con 2 UVT. La inconsistencia es interna e innegable, pero **el valor correcto lo confirma un
+  contador humano** contra el DUT. Compras y soportes leen la misma tabla, y ahí somos el agente
+  retenedor (art. 370 E.T.: se responde con patrimonio propio).
+- 🔴 **`incPorPagar` sin cuenta**: una factura con INC **no genera asiento** —se pierde entero, no
+  solo la línea del INC—. En ESAL es una línea (`"2495"`); en **comercial hay que agregar la
+  cuenta al JSON**, porque el catálogo no tiene ninguna 249x.
+- **El PDF de la factura no discrimina INC, ReteIVA ni ReteICA**: las partidas no suman al total
+  impreso.
+- **No existe "emisor autorretenedor"**: se descuenta una retención que el cliente no practicará.
+- **`ivaGenerado`/`ivaDescontable` sugeridos** apuntan a cuentas llamadas "…19%" donde también se
+  acredita el IVA del 5%. Existen `240805`/`240810`: son dos líneas.
 - **Facturas**: retenciones fiscales manuales (ReteIVA/ReteICA modal) y medios de pago/instrumentos.
 - **Facturación electrónica DIAN** (XML UBL, firma, CUFE, QR): track aparte, vía **proveedor
   tecnológico autorizado** — no construir el protocolo desde cero. Los PDF actuales

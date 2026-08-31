@@ -138,18 +138,31 @@ restaurante no registraba **ni una sola venta**.
 - El INC **no cuelga de la 2408**: inflaría el IVA generado y rompería la conciliación contra el
   Formulario 300.
 
-> ⚠️ **Falta llevar las dos cuentas nuevas a la base de datos.** El código está listo, pero al
-> cerrar esto no había ningún Postgres corriendo en la máquina (el `DATABASE_URL` del `.env`
-> apunta a un `prisma dev` efímero, `localhost:51214/template1`, que ya no existe). Con la BD
-> arriba hay que correr un `createMany({ skipDuplicates: true })` sobre los dos JSON **sin
-> `deleteMany`** — NO `?force=1`, que solo agrega el borrado. Mientras no se haga, el mapa de
-> cuentas **rechaza** `249505` por inexistente y el hallazgo sigue vivo en la práctica.
+> ✅ **Ya sembrado y verificado end-to-end (31-ago-2026).** Las dos cuentas están en la BD de
+> desarrollo: `createMany({ skipDuplicates: true })` sobre los dos JSON, sin `deleteMany` y sin
+> `?force=1` — **873 → 875 cuentas, 2 insertadas, nada borrado**. Se configuró además
+> `mapa.incPorPagar = "249505"` (estaba en `null`, y sin eso el arreglo no surtía efecto).
+>
+> Probado emitiendo una factura del producto con INC, que es el caso que antes se perdía entero:
+> **FE-00047, INC $8.000, asiento generado, sin faltantes**, con las cuatro líneas correctas —
+> clientes 127.000 al débito contra ingresos 100.000, IVA 19.000 y el INC 8.000 en `249505`,
+> **separado del IVA**.
+>
+> ⚠️ Ojo con la nota de arriba sobre el `DATABASE_URL`: en **esta** máquina el `.env` apunta a
+> `localhost:5432/sparkles` y funciona. Si te encuentras un `prisma dev` efímero, es de otro
+> entorno.
 
 > 🟠 **Anotado de paso**: `otrosImpuestos` (bolsas, licores) se acredita a la MISMA cuenta que el
 > INC (`asientoAutomatico.js:137`, con comentario que lo reconoce). En comercial eso deja tributos
 > que no son INC bajo un auxiliar llamado "Impuesto nacional al consumo" — el mismo patrón del
 > riesgo 4 de §3.2 (las cuentas "…19%"). No se cambió porque el nombre del auxiliar es el que
 > prescribía este documento; si se quiere separar, es una cuenta más y una clave más en el mapa.
+
+> 🟡 **Lo que NO se tocó del mapa, a propósito**: `ivaGenerado` e `ivaDescontable` siguen
+> configurados en `24080501`/`24081001`, las cuentas llamadas "…19%". La SUGERENCIA por defecto
+> ya cambió a las agregadas `240805`/`240810`, pero un mapa ya configurado no se pisa: cambiarlo
+> mueve saldos de un auxiliar a otro y esa es decisión del contador, no del software. Si se
+> decide cambiarlo, es editar dos campos en Contabilidad → Mapa de cuentas.
 
 ### 3.2 🟠 Riesgos abiertos del módulo de facturas
 

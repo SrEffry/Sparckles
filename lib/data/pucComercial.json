@@ -1954,6 +1954,24 @@
   },
   {
     "sector": "comercial",
+    "codigo": "2495",
+    "nombre": "OTROS IMPUESTOS, GRAVÁMENES Y TASAS",
+    "clase": "2",
+    "nivel": 4,
+    "naturaleza": "Crédito",
+    "imputable": false
+  },
+  {
+    "sector": "comercial",
+    "codigo": "249505",
+    "nombre": "Impuesto nacional al consumo por pagar",
+    "clase": "2",
+    "nivel": 6,
+    "naturaleza": "Crédito",
+    "imputable": true
+  },
+  {
+    "sector": "comercial",
     "codigo": "25",
     "nombre": "BENEFICIOS A LOS EMPLEADOS (OBLIGACIONES LABORALES - NIIF)",
     "clase": "2",

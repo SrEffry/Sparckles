@@ -3,7 +3,7 @@
 Guía para trabajar en este repositorio. Léela antes de tocar código.
 
 > 📌 **Lo que falta por hacer está en [`TRASPASO.md`](TRASPASO.md)**: hallazgos contables abiertos
-> (dos de ellos 🔴), fases pendientes de exógena y trampas del entorno. Este archivo dice cómo
+> (uno de ellos 🔴), fases pendientes de exógena y trampas del entorno. Este archivo dice cómo
 > está el sistema; ese dice qué queda.
 
 > ⚠️ **Next.js 16**: trae breaking changes respecto a versiones anteriores — APIs, convenciones
@@ -131,7 +131,7 @@ RetencionPracticada, CertificadoRetencion, NotaContabilidad(+Movimiento), Impues
 Mapeo detallado del dominio: [`docs/modelo-datos.md`](docs/modelo-datos.md).
 
 ### PUC (catálogo global, `CuentaPUC`)
-Dos sectores **separados** (varias cuentas difieren): `comercial` (marco **NIIF/IFRS**, 434 cuentas
+Dos sectores **separados** (varias cuentas difieren): `comercial` (marco **NIIF/IFRS**, 436 cuentas
 con auxiliares de 8 dígitos; reemplazó al Decreto 2650 por decisión del cliente — Ley 1314/2009) y
 `esal` (sin ánimo de lucro, marco **NIIF para Pymes**, 439 cuentas — modelo de referencia sobre la
 Orientación Técnica 014 del CTCP; revisado por el agente `contador-tributario` antes de cargar).
@@ -250,6 +250,20 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
 - **Vigencia de la resolución**: la fecha de emisión debe caer entre `resFecha` y `resVencimiento`;
   ambas son **NOT NULL en la BD** (regla fiscal sostenida por la BD, no por convención) y el
   endpoint **falla cerrado** si faltaran. No se admiten fechas futuras ni inexistentes.
+- **La numeración autorizada es consecutiva Y CRONOLÓGICA.** El rango de la resolución se valida
+  por los **dos bordes** y **falla cerrado** si falta (`SIN_RANGO`, `ANTES_DEL_RANGO`, `RANGO`) —
+  antes, una config sin tope emitía sin límite—, y la fecha **no puede retroceder** respecto de la
+  factura de mayor número (`FECHA_RETROCEDE`). Se compara contra la de mayor NÚMERO y sin filtrar
+  estado: una anulada también gastó su consecutivo. El ancho del consecutivo sale del tope
+  autorizado con **5 como piso**, porque una serie en curso no puede cambiar de formato a mitad
+  de camino.
+- **El impreso de la factura muestra TODAS las partidas que mueven el total** (INC, otros
+  impuestos, ReteIVA, ReteICA y el total antes de retenciones). Si un renglón que mueve el total
+  no se imprime, los visibles no suman el TOTAL A COBRAR y el documento deja de ser verificable.
+- **La tabla de retefuente tiene AÑO, y se consulta**: `avisoDeVigenciaRetefuente(fecha)` avisa si
+  el documento no cae en el año que cubre la tabla cargada. No bloquea. Hoy solo va enchufado en
+  el camino de facturas; compras, comprobantes, productos y nómina leen la misma tabla y aún no
+  emiten el aviso (ver `TRASPASO.md` §3.2).
 - **Fechas en hora de Colombia** (`lib/fechas.js` → `hoyBogota()`): `toISOString()` usa UTC y
   Bogotá es UTC-5; después de las 19:00 fecharía los documentos al día siguiente.
 - **Notas D/C**: motivos DIAN (Anexo 1.9), consecutivo `NC-/ND-`, afectan `saldoAplicadoNC/ND` de
@@ -305,7 +319,9 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
   elige el usuario, que ahí manda su plan de cuentas y no el software.
 - **Huecos del catálogo PUC, ya cerrados**: en **comercial** se agregaron 5135 servicios,
   **5195 diversos** (`519505` gastos generales, `519530` ajuste al peso), `530530` GMF y
-  `530535` descuento por pronto pago. En **ESAL** se agregó `519530 Ajuste al peso` y se
+  `530535` descuento por pronto pago, y **`2495` otros impuestos** con su auxiliar
+  **`249505` Impuesto nacional al consumo por pagar** (el catálogo no tenía ninguna 249x, así que
+  una factura con INC no llegaba al libro). En **ESAL** se agregó `519530 Ajuste al peso` y se
   enchufaron cuentas que ya existían y estaban sin sugerir —entre ellas **`2205` proveedores,
   que es campo MÍNIMO**: sin él una ESAL no podía contabilizar ni una compra.
   > ⚠️ **Tocar los JSON del PUC no basta: hay que llevar el cambio a la BD.** El seed normal
@@ -394,6 +410,16 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
     jornada parcial (D. 2616/2013). Lo que **no se liquida se AVISA**: la retefuente cuando la base
     depurada pasa de 95 UVT, el salario bajo el mínimo, el mes incompleto con exoneración y los
     parámetros de un año no cargado. Los avisos llegan al cliente y se muestran en un modal.
+- **El INC tiene cuenta propia, y no puede colgar de la 2408.** `incPorPagar` va a `249505` en
+  comercial y a `2495` en ESAL. Cuando estaba en `null`, `movimientosDeFactura` acreditaba una
+  cuenta inexistente y **se perdía el asiento ENTERO** de la factura, no solo la línea del INC:
+  un bar o un restaurante no registraba ni una sola venta. Colgarlo de la 2408 tampoco sirve —
+  inflaría el IVA generado y rompería la conciliación contra el Formulario 300—: el INC se declara
+  aparte y no se compensa con el IVA descontable.
+  - ⚠️ `otrosImpuestos` (bolsas, licores) se acredita **a esa misma cuenta** mientras no tenga una
+    propia (`asientoAutomatico.js`). En comercial eso deja tributos que no son INC bajo un auxiliar
+    que se llama "Impuesto nacional al consumo": mismo patrón que el hallazgo de las cuentas
+    "…19%". Quien facture bolsas en volumen debería abrir su propio auxiliar y remapearlo.
 - **Documento soporte**: ReteFuente en % (÷100) y **ReteICA por mil ‰ (÷1000)**.
   - **Lo expide el ADQUIRENTE (nosotros)**, no el vendedor: por eso lleva `emisorSnapshot`
     congelado al emitir, igual que factura y comprobante — el impreso de un documento de hace
@@ -498,6 +524,19 @@ aritmética del reporte sí**.
 - **Las facturas ANULADAS DESPUÉS DEL CORTE sí van** (`vigentesAlCorte`): una factura de marzo de
   2025 anulada en febrero de 2026 se declaró en 2025. Filtrar por `estado:'emitida'` a secas la
   borraba del AG 2025.
+- **Hay DOS convenciones de estado conviviendo en el repo, y ya costaron un bloqueante.**
+  `DocumentoSoporte` usa mayúscula (`"Emitido"`, `"Anulado"`); `ComprobanteTesoreria`, `Factura` y
+  el resto usan minúscula (`borrador | emitido | anulado | reversado`). El 1003 filtraba
+  comprobantes con `estado: { not: "Anulado" }` —el literal copiado del modelo equivocado—, así que
+  la condición era **siempre verdadera** y entraban borradores, anulados y reversados. Filtrar
+  **en positivo** (`estado: "emitido"`) hace que el error se note; con `not` no se nota nunca.
+- **La identidad de un tercero se BUSCA, no se deduce de la longitud del documento.** `>= 9 → NIT`
+  convierte en persona jurídica a cualquier cédula moderna: las emitidas desde ~1985 tienen **10
+  dígitos**. La exógena identifica por el **par (tipo, número)** y ese par debe coincidir con el
+  RUT — un tipo inventado no falla al generar, falla cuando la DIAN no encuentra al tercero.
+  El 1003 resuelve la ficha real en `Tercero` y, si no la encuentra, **falla cerrado**: reporta con
+  el snapshot y el tipo VACÍO, que `generarFormato` ya cuenta en `incompletos`. `resolverTercero`
+  deja `tipoDocumentoDian` en **NULL** cuando nadie lo dijo, y el tablero lo saca como crítico.
 - **El plazo depende de si el informante es GRAN CONTRIBUYENTE** — estaba cableado en `false` y
   esa tabla vence **hasta cinco semanas antes**. Se lee de `Empresa.caracteristicasTributarias`;
   si no se sabe, la pantalla lo **pregunta** en vez de suponer que no lo es.
@@ -513,6 +552,21 @@ aritmética del reporte sí**.
   responsable es el cruce más fácil de detectar que existe.
 
 ### Hallazgos ya cerrados en los extractos
+- **Las notas siguen la suerte de su FACTURA** (`facturaVigenteAlCorte`, en 1005/1006/1007): una
+  NC de abril de una factura anulada en julio del mismo año no resta sobre un ingreso que ya no
+  está en el formato. Se evalúa **en memoria y no en el `where`**, para poder contarlas y
+  avisarlas. Matiz: una nota **sin factura** (`facturaId` es opcional) no entra por esa guarda
+  —no hay vigencia que comprobar— y se reporta con su propio snapshot.
+- **Las notas y las compras sin ficha caen a su SNAPSHOT**, no a un `continue` mudo
+  (`identidadDeNota`, `identidadDeCompra`). El tipo de documento va **vacío**, nunca adivinado, y
+  la fila entra en `incompletos`. Descartar compras garantizaba que el 1005 no cuadrara contra
+  las declaraciones de IVA del año, que es justo lo que su propio aviso pide comprobar.
+- **La columna J del 1005 filtra por `motivoCodigo`**: solo los motivos **1** (devolución parcial)
+  y **2** (anulación) del Anexo 1.9 son "devoluciones anuladas, rescindidas o resueltas" del
+  art. 484 lit. b. Rebaja, ajuste de precio, pronto pago y volumen ajustan la base gravable y van
+  por otro lado del formulario 300; se cuentan y se avisan.
+- **El 1007 agrupa por (tercero, CONCEPTO)**, no solo por tercero: una ND por **intereses**
+  (motivo 1) es ingreso financiero y va al concepto **4003**, en su propio renglón.
 - El **1003 lee también las retenciones de los comprobantes de INGRESO** cuando el mapa tiene
   `retencionesEnCausacion: false`. Con `true` NO las lee: ya vinieron en la factura y sumarlas
   las contaría dos veces.
@@ -555,9 +609,13 @@ aritmética del reporte sí**.
 
 ### Fases
 
-> ⚠️ La **re-revisión contable de las fases 1 y 2 nunca se completó** (falló por límite de gasto
-> antes de emitir hallazgos). Los arreglos del commit `9dafdc2` están probados contra la BD pero
-> **no validados por el revisor**. Volver a lanzarla es lo primero. Ver `TRASPASO.md`.
+> ⚠️ La re-revisión contable de las fases 1 y 2 **ya se hizo** (30-ago-2026) y el veredicto es
+> **NO CUMPLE**. Cerró los cuatro bloqueantes anteriores y validó varias decisiones contra la
+> norma, pero encontró defectos nuevos. Ya se arreglaron **B2, B3, R7, R2, R3, R4, R5** y las
+> mejoras **M1, M3, M4, M5, M6**; siguen abiertos **dos bloqueantes** —el doble conteo del 1003
+> y el juego de columnas sin verificar contra el anexo técnico— más **R1** y **R6**.
+> **La fase 2 no debe liberarse así, y la fase 3 no debe empezarse todavía.**
+> El detalle, con ejemplos numéricos, en [`TRASPASO.md`](TRASPASO.md) §3.6.
 
 0. **Cimientos** ✅ — DANE · tipos de documento · campos en `Cliente` y `Empleado` · tercero
    normalizado en el asiento · **modelo `Tercero`** (ver abajo).
@@ -572,6 +630,11 @@ aritmética del reporte sí**.
      el mismo NIT con varias grafías o varios nombres.
    - Cuando el municipio escrito a mano se resuelve **sin ambigüedad**, se ofrece el código como
      sugerencia; si hay ambigüedad no se sugiere nada.
+   - Los **empleados se evalúan con `pendientesDeTercero`**, igual que clientes y proveedores.
+     `Empleado` guarda los campos del 2276 desde la fase 0 (`tipoDocumentoDian`, los cuatro
+     nombres, dirección y códigos DANE) **y el formulario de nómina los captura**: el tablero
+     llegó a marcarlos a todos como críticos por un comentario que decía lo contrario, y con 40
+     empleados completos eso deja el tablero sin señal.
    - **Plazos en `lib/data/plazosExogena.js`**, con su norma y por año gravable. Un año sin
      resolución publicada devuelve `null` y la pantalla lo dice: **no se estiman fechas**, igual
      que con el SMLMV. Hoy solo está cargado el **AG 2025**; el AG 2026 se carga cuando salga.
@@ -618,14 +681,7 @@ aritmética del reporte sí**.
   con 2 UVT. La inconsistencia es interna e innegable, pero **el valor correcto lo confirma un
   contador humano** contra el DUT. Compras y soportes leen la misma tabla, y ahí somos el agente
   retenedor (art. 370 E.T.: se responde con patrimonio propio).
-- 🔴 **`incPorPagar` sin cuenta**: una factura con INC **no genera asiento** —se pierde entero, no
-  solo la línea del INC—. En ESAL es una línea (`"2495"`); en **comercial hay que agregar la
-  cuenta al JSON**, porque el catálogo no tiene ninguna 249x.
-- **El PDF de la factura no discrimina INC, ReteIVA ni ReteICA**: las partidas no suman al total
-  impreso.
 - **No existe "emisor autorretenedor"**: se descuenta una retención que el cliente no practicará.
-- **`ivaGenerado`/`ivaDescontable` sugeridos** apuntan a cuentas llamadas "…19%" donde también se
-  acredita el IVA del 5%. Existen `240805`/`240810`: son dos líneas.
 - **Facturas**: retenciones fiscales manuales (ReteIVA/ReteICA modal) y medios de pago/instrumentos.
 - **Facturación electrónica DIAN** (XML UBL, firma, CUFE, QR): track aparte, vía **proveedor
   tecnológico autorizado** — no construir el protocolo desde cero. Los PDF actuales

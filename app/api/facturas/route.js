@@ -120,11 +120,11 @@ export async function POST(request) {
   }
 
   try {
-    const { factura, contabilizacion } = await emitirFactura({
+    const { factura, contabilizacion, avisos } = await emitirFactura({
       usuarioId: sesion.id,
       entrada: body,
     });
-    return NextResponse.json({ factura, contabilizacion }, { status: 201 });
+    return NextResponse.json({ factura, contabilizacion, avisos }, { status: 201 });
   } catch (e) {
     const fallo = errorDeEmision(e);
     if (fallo) {

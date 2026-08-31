@@ -65,7 +65,7 @@ export async function POST(request, { params }) {
   const entrada = entradaDesdeBorrador(borrador, { fecha });
 
   try {
-    const { factura, contabilizacion } = await emitirFactura({
+    const { factura, contabilizacion, avisos } = await emitirFactura({
       usuarioId: sesion.id,
       entrada,
       alEmitir: async (tx, creada, calc) => {
@@ -100,7 +100,7 @@ export async function POST(request, { params }) {
       },
     });
 
-    return NextResponse.json({ factura, contabilizacion }, { status: 201 });
+    return NextResponse.json({ factura, contabilizacion, avisos }, { status: 201 });
   } catch (e) {
     if (e.code === "DESFASE") {
       // El borrador vuelve a `borrador`: lo que se había aprobado ya no es lo que saldría.

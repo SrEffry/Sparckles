@@ -175,6 +175,25 @@ function Editor() {
     }
   }, [cliente, productosPorId, lineas, config, descuentoGlobal, reteIvaPct, reteIcaMil]);
 
+  // Vista previa por línea, indexada por `lineId` y NO por posición.
+  //
+  // `calcularFactura` SALTA los ítems cuyo producto no está en el catálogo (`if (!p) continue`),
+  // así que `calc.lineas` puede ser más corto que `lineas` y los índices dejan de coincidir: la
+  // fila de un producto mostraba la base y el IVA de OTRO, sin ningún indicio de que algo iba
+  // mal. Se replica aquí el mismo criterio de salto para emparejarlas en orden.
+  // (Al emitir esto no puede pasar: `liquidarFactura` rechaza el documento entero con
+  // PRODUCTO_INVALIDO. Es un problema solo de la previsualización, que es donde se decide.)
+  const calcPorLinea = useMemo(() => {
+    const m = new Map();
+    if (!calc) return m;
+    lineas
+      .filter((l) => productosPorId[l.productoId])
+      .forEach((l, i) => {
+        if (calc.lineas[i]) m.set(l.lineId, calc.lineas[i]);
+      });
+    return m;
+  }, [calc, lineas, productosPorId]);
+
   function agregarProducto(id) {
     if (!id) return;
     setLineas((ls) => [...ls, { lineId: ++lineId, productoId: id, cantidad: 1, descuentoPorcentaje: 0 }]);
@@ -428,7 +447,7 @@ function Editor() {
                   <tbody>
                     {lineas.map((l) => {
                       const p = productosPorId[l.productoId];
-                      const linea = calc?.lineas.find((_, i) => lineas[i].lineId === l.lineId);
+                      const linea = calcPorLinea.get(l.lineId);
                       return (
                         <tr key={l.lineId}>
                           <td>

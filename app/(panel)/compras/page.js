@@ -189,7 +189,7 @@ function estadoInicial(c) {
     medioPago: c?.medioPago || "Transferencia",
     proveedorNombre: c?.proveedorNombre || "",
     proveedorNit: c?.proveedorNit || "",
-    proveedorTipoDocumento: c?.proveedorTipoDocumento || "NIT",
+    proveedorTipoDocumento: c?.proveedorTipoDocumento || "",
     proveedorTel: c?.proveedorTel || "",
     observaciones: c?.observaciones || "",
     items: c?.items?.length
@@ -360,13 +360,16 @@ function CompraModal({ inicial, onClose, onGuardar }) {
             <div className="form-group">
               <label>Documento</label>
               <div className={styles.docTercero}>
-                {/* El certificado de retención imprime el tipo. Dar por hecho "NIT" convertía a
-                    una persona natural con cédula en una sociedad. */}
+                {/* El certificado de retención imprime el tipo, y de aquí sale la identidad
+                    del tercero para la exógena. Sin elegir NO se preselecciona nada: dar por
+                    hecho "NIT" convertía en sociedad a una persona natural con cédula, y un
+                    default fiscal silencioso es peor que un campo vacío. */}
                 <select
                   value={form.proveedorTipoDocumento}
                   onChange={(e) => set("proveedorTipoDocumento", e.target.value)}
                   aria-label="Tipo de documento del proveedor"
                 >
+                  <option value="">(elige)</option>
                   {TIPOS_DOCUMENTO_TERCERO.map((t) => <option key={t}>{t}</option>)}
                 </select>
                 <input value={form.proveedorNit} onChange={(e) => set("proveedorNit", e.target.value)} placeholder="Número" />

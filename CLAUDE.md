@@ -481,7 +481,7 @@ contribuyentes está desactualizado** (la Res. 000012/2026 movió los NIT en 1, 
   `Cliente` guarda la **relación comercial** (agente retenedor, autorretenedor, dirección de
   facturación) y apunta a la identidad con `terceroId`.
   - Los cuatro campos de nombre **se capturan, no se deducen** partiendo el nombre completo.
-- **`AsientoMovimiento.tercero` va NORMALIZADO** con `normalizarDocumento()`
+- **`AsientoMovimiento.tercero` va NORMALIZADO EN LOS CUATRO ORÍGENES** con `normalizarDocumento()`
   (`lib/asientoAutomatico.js`). Antes se guardaba crudo y `900123456`, `900.123.456` y
   `900123456-7` eran **tres terceros**. La exógena agrupa el año por tercero y la DIAN cruza el
   1001 del pagador contra el 1007 del receptor: un proveedor partido en tres es un cruce que no
@@ -679,9 +679,19 @@ aritmética del reporte sí**.
      normalizado), **no de `RetencionPracticada`**: una compra de $400.000 no llega a la base
      mínima, no retiene, y **aun así se reporta** porque supera las 3 UVT. Derivarlo de las
      retenciones perdería todos los pagos pequeños del año.
-   - El concepto sale de la CUENTA (`MAPA_CUENTA_1001`, por prefijo más largo). Lo que no encaja
-     cae en **5016** y se cuenta. ⚠️ El mapa es un punto de partida sobre el PUC cargado y
-     **todavía no tiene pantalla** para ajustarlo.
+   - El concepto sale de la CUENTA (`MAPA_CUENTA_1001`, **por sector** y por prefijo más largo).
+     Lo que no encaja cae en **5016** y se cuenta. ⚠️ El mapa es un punto de partida sobre el PUC
+     cargado y **todavía no tiene pantalla** para ajustarlo.
+   - **La NÓMINA queda FUERA** (`CUENTAS_NOMINA_FUERA_DEL_1001`): los sueldos y prestaciones van
+     al **2276**, que este sistema no genera, y los aportes patronales (5010/5011/5012) van al
+     1001 **en cabeza de la EPS, la caja o el fondo** — pero el asiento de nómina pone el
+     documento del EMPLEADO en todas sus líneas y esas entidades son texto libre sin NIT.
+     Emitirlos reportaría la nómina del año contra las cédulas de los trabajadores.
+   - **Nunca se imprime un pago NEGATIVO**: aparece cuando el contraasiento de una anulación cae
+     en un año posterior. Eso se reporta en el concepto **5028** en positivo; como el sistema no
+     puede distinguir esa causa de un error de registro, la fila se excluye y se avisa.
+   - Un tercero identificado por **NOMBRE** no entra: la exógena identifica por el par
+     (tipo, número) y un nombre en la casilla del NIT hace rechazar la fila.
    - Cuentas reportables: clases **5, 6, 7, 14 y 15**. Se excluyen cartera y tesorería: un débito
      a bancos no es un pago a un tercero.
    - **Todo sale como DEDUCIBLE** y se avisa: el sistema no sabe si el soporte cumple el

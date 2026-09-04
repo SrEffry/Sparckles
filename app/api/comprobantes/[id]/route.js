@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { obtenerSesion } from "@/lib/session";
+import { normalizarDocumento } from "@/lib/retencionesPracticadas";
 import { validarSaldos, normalizarComprobante } from "@/lib/comprobanteValidation";
 import {
   proponerAsientoIngreso,
@@ -348,7 +349,10 @@ async function emitir(comprobante, sesion, body) {
               nombreCuenta: m.nombreCuenta,
               debito: Number(m.debito) || 0,
               credito: Number(m.credito) || 0,
-              tercero: comprobante.terceroDocumento || null,
+              // NORMALIZADO, como en `asientoAutomatico`. Guardarlo crudo partía al mismo
+              // tercero en varias filas del libro auxiliar —"900.123.456-7" y "900123456" son
+              // dos— y de ahí sale el formato 1001, que agrupa el año por documento.
+              tercero: normalizarDocumento(comprobante.terceroDocumento).numero || null,
             })),
           },
         },

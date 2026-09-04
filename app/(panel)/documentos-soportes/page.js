@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { obtenerLogoEmisor } from "@/lib/configFacturacionApi";
 import { listarSoportes, crearSoporte, anularSoporte, obtenerSoporte } from "@/lib/soportesApi";
 import { generarSoportePDF } from "@/lib/pdf/soportePdf";
 import { hoyBogota } from "@/lib/fechas";
@@ -57,6 +58,7 @@ export default function SoportesPage() {
       asiento: d.asiento,
       emisor: d.emisor,
       comprobanteOrigen: d.comprobanteOrigen,
+      logo: await obtenerLogoEmisor(),
     });
   }
 

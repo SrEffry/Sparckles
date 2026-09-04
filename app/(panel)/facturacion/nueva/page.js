@@ -122,6 +122,8 @@ function Editor() {
           lineId: ++lineId,
           productoId: i.productoId,
           cantidad: i.cantidad ?? 1,
+          // `null` = el borrador no fijó precio y debe usarse el del catálogo al emitir.
+          precioUnitario: i.precioUnitario ?? "",
           descuentoPorcentaje: i.descuentoPorcentaje ?? 0,
         }))
       );
@@ -163,6 +165,7 @@ function Editor() {
         items: lineas.map((l) => ({
           productoId: l.productoId,
           cantidad: l.cantidad,
+          precioUnitario: l.precioUnitario,
           descuentoPorcentaje: l.descuentoPorcentaje,
         })),
         emisorResponsableIva: !!config.responsableIva,
@@ -196,7 +199,18 @@ function Editor() {
 
   function agregarProducto(id) {
     if (!id) return;
-    setLineas((ls) => [...ls, { lineId: ++lineId, productoId: id, cantidad: 1, descuentoPorcentaje: 0 }]);
+    // El precio se PRECARGA del catálogo y queda editable: es el valor por defecto, no una regla.
+    const cat = productosPorId[id];
+    setLineas((ls) => [
+      ...ls,
+      {
+        lineId: ++lineId,
+        productoId: id,
+        cantidad: 1,
+        precioUnitario: cat ? Number(cat.precioVenta) : "",
+        descuentoPorcentaje: 0,
+      },
+    ]);
     setAddProd("");
   }
   function actualizarLinea(lid, campo, valor) {
@@ -234,6 +248,8 @@ function Editor() {
       items: lineas.map((l) => ({
         productoId: l.productoId,
         cantidad: Number(l.cantidad) || 0,
+        // Vacío se manda como `null`: significa "usa el del catálogo", que no es lo mismo que 0.
+        precioUnitario: l.precioUnitario === "" || l.precioUnitario == null ? null : Number(l.precioUnitario),
         descuentoPorcentaje: Number(l.descuentoPorcentaje) || 0,
       })),
       fecha,
@@ -438,6 +454,7 @@ function Editor() {
                     <tr>
                       <th>Producto</th>
                       <th>Cant.</th>
+                      <th title="Precargado del catálogo. Puedes cambiarlo solo para esta factura.">P. unit.</th>
                       <th>Desc.%</th>
                       <th>Base</th>
                       <th>IVA</th>
@@ -457,6 +474,21 @@ function Editor() {
                           <td>
                             <input type="number" min="1" className={styles.mini} value={l.cantidad}
                               onChange={(e) => actualizarLinea(l.lineId, "cantidad", e.target.value)} />
+                          </td>
+                          {/* PRECIO PACTADO. Se precarga del catálogo y se puede cambiar solo
+                              para esta factura: el catálogo NO se toca. Vaciarlo vuelve a usar
+                              el precio de lista al emitir. */}
+                          <td>
+                            <input type="number" min="0" step="0.01" className={styles.precio}
+                              value={l.precioUnitario ?? ""}
+                              placeholder={p ? String(Number(p.precioVenta)) : ""}
+                              onChange={(e) => actualizarLinea(l.lineId, "precioUnitario", e.target.value)} />
+                            {p && l.precioUnitario !== "" && l.precioUnitario != null &&
+                              Number(l.precioUnitario) !== Number(p.precioVenta) && (
+                                <div className={styles.precioAviso} title="Solo afecta esta factura; el catálogo no cambia.">
+                                  lista {fmt(p.precioVenta)}
+                                </div>
+                              )}
                           </td>
                           <td>
                             <input type="number" min="0" max="100" className={styles.mini} value={l.descuentoPorcentaje}

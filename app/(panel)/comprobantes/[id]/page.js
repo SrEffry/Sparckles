@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { obtenerLogoEmisor } from "@/lib/configFacturacionApi";
 import { useParams, useRouter } from "next/navigation";
 import { obtenerComprobante, obtenerPropuesta, emitirComprobante } from "@/lib/comprobantesApi";
 import { generarComprobantePDF } from "@/lib/pdf/comprobantePdf";
@@ -149,7 +150,7 @@ export default function ComprobanteDetallePage() {
           {!esBorrador && (
             <button
               className="btn-secondary"
-              onClick={() => generarComprobantePDF(c, { asiento: datos.asiento })}
+              onClick={async () => generarComprobantePDF(c, { asiento: datos.asiento, logo: await obtenerLogoEmisor() })}
             >
               Descargar PDF
             </button>

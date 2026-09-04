@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { obtenerLogoEmisor } from "@/lib/configFacturacionApi";
 import { useRouter } from "next/navigation";
 import { listarFacturas, obtenerFactura, anularFactura } from "@/lib/facturasApi";
 import { generarFacturaPDF } from "@/lib/pdf/facturaPdf";
@@ -267,7 +268,7 @@ function FacturaDetalle({ factura: f, onClose }) {
           {f.observaciones && <p className={styles.obs}>Obs: {f.observaciones}</p>}
         </div>
         <div className="modal-footer">
-          <button className="btn-primary" onClick={() => generarFacturaPDF(f)}>Descargar PDF</button>
+          <button className="btn-primary" onClick={async () => generarFacturaPDF(f, { logo: await obtenerLogoEmisor() })}>Descargar PDF</button>
         </div>
       </div>
     </div>

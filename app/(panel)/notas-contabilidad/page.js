@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { obtenerLogoEmisor } from "@/lib/configFacturacionApi";
 import { useRouter } from "next/navigation";
 import {
   listarNotasContabilidad,
@@ -60,7 +61,7 @@ export default function NotasContabilidadPage() {
     // El detalle trae el asiento, que la lista no carga y el pie del PDF necesita.
     const d = await obtenerNotaContabilidad(n.id);
     if (!d) return avisar("No se pudo cargar la nota.", "error");
-    generarNotaContabilidadPDF(d.nota, { asiento: d.asiento });
+    generarNotaContabilidadPDF(d.nota, { asiento: d.asiento, logo: await obtenerLogoEmisor() });
   }
 
   async function reversar(n) {

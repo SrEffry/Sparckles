@@ -481,9 +481,9 @@ model BorradorFactura {
   descuentoGlobalPorcentaje Decimal @default(0) @db.Decimal(6, 3)
   reteIvaPorcentaje         Decimal @default(0) @db.Decimal(6, 3)
   reteIcaPorMil             Decimal @default(0) @db.Decimal(8, 4)
-  // [{ productoId, cantidad, descuentoPorcentaje }]. Sin precio: el de la línea SIEMPRE sale
-  // del catálogo al emitir, así que guardarlo aquí prometería un "precio pactado" que el
-  // sistema no honra. En JSON y no en tabla
+  // [{ productoId, cantidad, precioUnitario, descuentoPorcentaje }]. El precio SÍ se guarda:
+  // `calcularFactura` lo honra y el del catálogo es solo el valor por defecto. Vacío = usar el
+  // del catálogo al emitir. En JSON y no en tabla
   // hija a propósito: `FacturaItem` guarda columnas CALCULADAS (base, valorIva, subtotal,
   // tipoIva) que en un borrador serían aritmética caducada. Además el borrador se reescribe
   // entero en cada guardado, y una tabla hija obligaría a borrar y recrear filas cada vez.

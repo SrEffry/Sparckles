@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { obtenerConfig, guardarConfig } from "@/lib/configFacturacionApi";
+import { obtenerConfig, guardarConfig, olvidarLogoEmisor } from "@/lib/configFacturacionApi";
 import styles from "./config.module.css";
 
 // Términos vigentes (los antiguos "Común"/"Simplificado" ya no se usan en la norma).
@@ -102,6 +102,8 @@ export default function ConfigurarFacturacionPage() {
     setOk(false);
     setGuardando(true);
     const res = await guardarConfig(form);
+    // El logo pudo cambiar: se invalida la caché para que los PDF usen el nuevo.
+    olvidarLogoEmisor();
     setGuardando(false);
     if (res.error) {
       setError(res.error);

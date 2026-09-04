@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { obtenerLogoEmisor } from "@/lib/configFacturacionApi";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   listarComprobantes,
@@ -66,7 +67,7 @@ export default function ComprobantesPage() {
   async function descargarPDF(c) {
     const d = await obtenerComprobante(c.id);
     if (!d) return avisar("No se pudo cargar el comprobante.", "error");
-    generarComprobantePDF(d.comprobante, { asiento: d.asiento });
+    generarComprobantePDF(d.comprobante, { asiento: d.asiento, logo: await obtenerLogoEmisor() });
   }
 
   async function descartar(c) {

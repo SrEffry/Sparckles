@@ -309,3 +309,20 @@
   background: var(--danger-tint);
   border-color: var(--danger-tint);
 }
+
+/* Precio pactado por línea: más ancho que `mini` porque lleva miles. */
+.precio {
+  width: 110px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: right;
+}
+/* Se avisa cuándo el precio difiere del de lista, para que el cambio no pase inadvertido. */
+.precioAviso {
+  font-size: 11px;
+  color: var(--warning);
+  margin-top: 3px;
+  white-space: nowrap;
+}

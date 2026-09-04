@@ -17,6 +17,11 @@ import { obtenerConfig } from "@/lib/configFacturacionApi";
 import { calcularFactura } from "@/lib/facturaCalc";
 import { hoyBogota } from "@/lib/fechas";
 import { MEDIOS_PAGO } from "@/lib/data/mediosPago";
+import BuscadorEntidad from "@/components/BuscadorEntidad";
+import ClienteModal from "@/components/ClienteModal";
+import ProductoModal from "@/components/ProductoModal";
+import { crearCliente } from "@/lib/clientesApi";
+import { crearProducto } from "@/lib/productosApi";
 import styles from "./nueva.module.css";
 
 const fmt = (v) =>
@@ -82,6 +87,11 @@ function Editor() {
   const [observaciones, setObservaciones] = useState("");
   const [error, setError] = useState("");
   const [emitiendo, setEmitiendo] = useState(false);
+  // Creación rápida sin salir del borrador: el modal se abre aquí mismo, y lo creado entra en la
+  // lista y queda elegido. Navegar a /clientes o /productos habría perdido lo que se lleva
+  // escrito, que es justo lo que hacía incómodo el flujo anterior.
+  const [creandoCliente, setCreandoCliente] = useState(false);
+  const [creandoProducto, setCreandoProducto] = useState(false);
 
   useEffect(() => {
     listarClientes().then(setClientes);
@@ -289,6 +299,42 @@ function Editor() {
 
   const soloLectura = estado === "emitido";
 
+  /**
+   * Crea el cliente y lo DEJA ELEGIDO en la factura que se está armando.
+   *
+   * Se agrega a la lista local en vez de recargarla del servidor: recargar reordenaría la lista
+   * y, sobre todo, no hace falta — el endpoint devuelve el cliente creado tal como quedó
+   * (incluidos `esAgenteRetenedor` y `esAutorretenedor`, que son los que dirigen la retención).
+   */
+  async function guardarClienteNuevo(form) {
+    const res = await crearCliente(form);
+    if (res.error) return res;
+    setClientes((cs) => [...cs, res.cliente]);
+    setClienteId(res.cliente.id);
+    setCreandoCliente(false);
+    return res;
+  }
+
+  /** Crea el producto y AGREGA LA LÍNEA de una vez, con su precio de lista precargado. */
+  async function guardarProductoNuevo(form) {
+    const res = await crearProducto(form);
+    if (res.error) return res;
+    const p = res.producto;
+    setProductos((ps) => [...ps, p]);
+    setLineas((ls) => [
+      ...ls,
+      {
+        lineId: ++lineId,
+        productoId: p.id,
+        cantidad: 1,
+        precioUnitario: Number(p.precioVenta),
+        descuentoPorcentaje: 0,
+      },
+    ]);
+    setCreandoProducto(false);
+    return res;
+  }
+
   async function guardar() {
     setError("");
     setAviso("");
@@ -415,14 +461,16 @@ function Editor() {
         <div className={styles.left}>
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Cliente</h2>
-            <select className={styles.select} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-              <option value="">Seleccione un cliente...</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombreCompleto} — {c.tipo === "natural" ? c.numeroDocumento : `NIT ${c.nit}`}
-                </option>
-              ))}
-            </select>
+            <BuscadorEntidad
+              items={clientes}
+              texto={(c) => c.nombreCompleto}
+              sub={(c) => (c.tipo === "natural" ? c.numeroDocumento : `NIT ${c.nit}`)}
+              valorInicial={cliente?.nombreCompleto || ""}
+              onElegir={(c) => setClienteId(c.id)}
+              onCrear={() => setCreandoCliente(true)}
+              etiquetaCrear="+ Nuevo cliente"
+              placeholder="Buscar cliente por nombre o documento..."
+            />
             {cliente && (
               <div className={styles.clienteInfo}>
                 {cliente.esAgenteRetenedor && <span className="badge-estado activo">Agente retenedor</span>}
@@ -436,14 +484,18 @@ function Editor() {
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Productos</h2>
-            <select className={styles.select} value={addProd} onChange={(e) => agregarProducto(e.target.value)}>
-              <option value="">+ Agregar producto...</option>
-              {productos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.codigo} — {p.descripcion} ({fmt(p.precioVenta)})
-                </option>
-              ))}
-            </select>
+            {/* `limpiarAlElegir`: tras agregar la línea el campo vuelve a cero, para poder
+                encadenar varios productos sin borrar a mano. */}
+            <BuscadorEntidad
+              items={productos}
+              texto={(p) => p.descripcion}
+              sub={(p) => `${p.codigo} · ${fmt(p.precioVenta)}`}
+              onElegir={(p) => agregarProducto(p.id)}
+              onCrear={() => setCreandoProducto(true)}
+              etiquetaCrear="+ Nuevo producto"
+              placeholder="Buscar producto por nombre o código..."
+              limpiarAlElegir
+            />
 
             {lineas.length === 0 ? (
               <p className={styles.vacio}>Aún no hay productos en la factura.</p>
@@ -700,6 +752,20 @@ function Row({ label, valor, verde }) {
     <div className={styles.row}>
       <span>{label}</span>
       <span style={verde ? { color: "var(--success)" } : undefined}>{valor}</span>
+      {creandoCliente && (
+        <ClienteModal
+          inicial={null}
+          onGuardar={guardarClienteNuevo}
+          onClose={() => setCreandoCliente(false)}
+        />
+      )}
+      {creandoProducto && (
+        <ProductoModal
+          inicial={null}
+          onGuardar={guardarProductoNuevo}
+          onClose={() => setCreandoProducto(false)}
+        />
+      )}
     </div>
   );
 }

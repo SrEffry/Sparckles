@@ -1,0 +1,102 @@
+.caja {
+  position: relative;
+}
+.fila {
+  display: flex;
+  gap: 8px;
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.crear {
+  flex-shrink: 0;
+  background: var(--primary-tint);
+  color: var(--primary);
+  border: none;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.crear:hover {
+  filter: brightness(0.96);
+}
+
+/* La lista flota sobre el formulario: si empujara el contenido, la pantalla saltaría con cada
+   tecla mientras se busca. */
+.lista {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.opcion,
+.opcionActiva {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+.opcionActiva {
+  background: var(--primary-tint);
+}
+.opcion:last-child,
+.opcionActiva:last-child {
+  border-bottom: none;
+}
+.opcionTexto {
+  font-weight: 600;
+}
+.opcionSub {
+  font-size: 12px;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+.vacio {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 16px 14px;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+.crearVacio {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}

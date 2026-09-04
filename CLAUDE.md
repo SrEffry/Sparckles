@@ -191,6 +191,15 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
 - **IVA según el emisor**: si `ConfigFacturacion.responsableIva` es false, la factura se liquida
   con **IVA 0** aunque el producto tenga tarifa. `calcularFactura` **exige** el parámetro (sin
   default) para que la vista previa nunca muestre un total distinto al que se emite.
+- **Cliente y producto se eligen BUSCANDO, y se pueden crear sin salir de la factura**
+  (`components/BuscadorEntidad.jsx` + `ClienteModal` / `ProductoModal`). Los dos modales viven en
+  `components/` y los comparten la pantalla de la entidad y la de nueva factura: **duplicar esos
+  formularios sería duplicar reglas fiscales** —en ellos se decide si el cliente es agente
+  retenedor y cuál es el tratamiento de IVA del producto—, y dos copias se desincronizan a la
+  primera regla nueva.
+  - La creación es un **modal, no una navegación**: salir a `/clientes` perdía el borrador a
+    medias. Lo creado entra en la lista y queda elegido (el producto, además, agrega su línea con
+    el precio de lista precargado).
 - **El precio de la línea se PACTA en la factura.** El del catálogo es el valor por defecto;
   el usuario puede cambiarlo solo para ese documento, sin tocar `Producto.precioVenta`. Esto no
   afloja la regla del servidor autoritativo: lo que fija la NORMA —tarifa de IVA, tratamiento,

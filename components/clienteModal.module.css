@@ -1,0 +1,51 @@
+/* Estilos del modal de cliente. Copiados de `clientes.module.css` al extraer el componente:
+   el modal se usa también desde la pantalla de nueva factura, y un CSS module es local al
+   archivo que lo importa. */
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.retBox {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.retBox > strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.tipoOn {
+  border-color: var(--primary) !important;
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+
+.tipoToggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tipoToggle label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

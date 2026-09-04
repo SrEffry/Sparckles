@@ -73,28 +73,6 @@ export default function FormatosExogenaPage() {
         </select>
       </header>
 
-      <div className={styles.alerta}>
-        <strong>Esto es un borrador para revisión, no el archivo de presentación.</strong>
-        <ul>
-          <li>
-            Sparkles <strong>no genera el XML</strong>. Estas columnas van al prevalidador oficial
-            de la DIAN, que es el que produce el archivo que se presenta.
-          </li>
-          <li>
-            Las cifras salen de los documentos registrados y <strong>no las ha revisado un
-            contador</strong>. La información errónea se sanciona por el art. 651 E.T. igual que
-            la que falta.
-          </li>
-          <li>
-            Están los <strong>cinco formatos</strong> que el sistema puede alimentar. El{" "}
-            <strong>1001</strong> sale del <strong>libro auxiliar</strong> por cuenta y tercero,
-            no de las retenciones: un pago que no llega a la base mínima no retiene y aun así se
-            reporta. Su clasificación por cuenta es un punto de partida y todavía{" "}
-            <strong>no tiene pantalla para ajustarla</strong> — revisa sus avisos.
-          </li>
-        </ul>
-      </div>
-
       {error && <div className="mensaje-error">{error}</div>}
 
       {cargando ? (
@@ -133,17 +111,6 @@ export default function FormatosExogenaPage() {
                   )}
                   <span className={styles.pill}>{p?.columnas?.length ?? 0} columnas</span>
                 </div>
-
-                {p?.incompletos > 0 && (
-                  <p className={styles.nota}>
-                    Esas filas les faltan el documento, el tipo de documento o el nombre, y el
-                    prevalidador las va a rechazar. Complétalas en{" "}
-                    <button className={styles.enlace} onClick={() => router.push("/reportes/exogena")}>
-                      Preparación
-                    </button>{" "}
-                    antes de presentar.
-                  </p>
-                )}
 
                 {p?.avisos?.length > 0 && (
                   <ul className={styles.avisos}>

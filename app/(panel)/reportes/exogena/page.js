@@ -137,22 +137,6 @@ export default function PreparacionExogenaPage() {
             </label>
           </div>
 
-          {grupo === "proveedores" && (
-            <p className={styles.nota}>
-              Se agrupan por documento a partir de las compras y los documentos soporte del año.
-              Los que ya tienen <strong>ficha de tercero</strong> se evalúan contra ella; los que
-              no, hay que consolidarlos primero en Configuración → Terceros, que es donde se
-              guardan la dirección y los códigos DANE.
-            </p>
-          )}
-          {grupo === "empleados" && (
-            <p className={styles.nota}>
-              El formato 2276 (rentas de trabajo) pide tipo de documento, apellidos y nombres
-              separados, dirección y ubicación del empleado. Los campos ya existen en la ficha del
-              empleado; falta capturarlos.
-            </p>
-          )}
-
           {lista.length === 0 ? (
             <div className={styles.empty}>
               {soloProblemas

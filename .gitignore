@@ -55,3 +55,6 @@ secrets.json
 next-env.d.ts
 
 /lib/generated/prisma
+
+# Script temporal de un solo uso (lee los layouts del .xlsx de exógena).
+_leer_tmp.mjs

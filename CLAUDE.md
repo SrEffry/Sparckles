@@ -191,6 +191,16 @@ Devuelve un veredicto (CUMPLE / CUMPLE CON OBSERVACIONES / NO CUMPLE) y hallazgo
 - **IVA según el emisor**: si `ConfigFacturacion.responsableIva` es false, la factura se liquida
   con **IVA 0** aunque el producto tenga tarifa. `calcularFactura` **exige** el parámetro (sin
   default) para que la vista previa nunca muestre un total distinto al que se emite.
+- **El precio de la línea se PACTA en la factura.** El del catálogo es el valor por defecto;
+  el usuario puede cambiarlo solo para ese documento, sin tocar `Producto.precioVenta`. Esto no
+  afloja la regla del servidor autoritativo: lo que fija la NORMA —tarifa de IVA, tratamiento,
+  concepto y tarifa de retención— sigue saliendo del catálogo. El precio es un dato **comercial**.
+  Vacío = usar el del catálogo al emitir (no es lo mismo que 0); negativo se rechaza.
+- **El logo sale de `ConfigFacturacion.logo` AL IMPRIMIR, no del `emisorSnapshot`.** Es marca, no
+  dato fiscal: la razón social y la resolución se congelan porque el impreso de hace dos años
+  debe decir lo que decía entonces, pero nadie reclama porque salga con el logo nuevo. Y
+  congelarlo metería una imagen base64 en cada factura. `lib/pdf/logo.js` **nunca lanza**: un
+  logo roto imprime sin logo, no rompe el documento.
 - **TODA factura nace como BORRADOR** (`BorradorFactura`, tabla aparte). Ciclo
   `borrador → revisado → emitido`; emitir es siempre un acto deliberado y aparte.
   - **Tabla aparte, no un estado más de `Factura`.** Media aplicación consulta `facturas` dando
@@ -664,9 +674,24 @@ aritmética del reporte sí**.
    - Las compras **sin ficha de tercero quedan FUERA** del 1005 y el aviso lo dice con el conteo:
      hay que consolidar primero.
 3. Motor de saldos a fecha de corte → **1008, 1009**.
-4. **1001** — pendiente. **No se deriva de `RetencionPracticada`**: falta el mapa
-   `cuenta PUC → concepto` y el discriminante activo fijo/movible en `CompraItem`. Sacarlo
-   incompleto sería peor que no sacarlo (art. 651: la información errónea también se sanciona).
+4. **1001** ✅ (primera versión) — `lib/exogena1001.js` + `lib/data/conceptos1001.js`.
+   - **Sale del LIBRO AUXILIAR** (`AsientoMovimiento`, que ya guarda `cuenta` y `tercero`
+     normalizado), **no de `RetencionPracticada`**: una compra de $400.000 no llega a la base
+     mínima, no retiene, y **aun así se reporta** porque supera las 3 UVT. Derivarlo de las
+     retenciones perdería todos los pagos pequeños del año.
+   - El concepto sale de la CUENTA (`MAPA_CUENTA_1001`, por prefijo más largo). Lo que no encaja
+     cae en **5016** y se cuenta. ⚠️ El mapa es un punto de partida sobre el PUC cargado y
+     **todavía no tiene pantalla** para ajustarlo.
+   - Cuentas reportables: clases **5, 6, 7, 14 y 15**. Se excluyen cartera y tesorería: un débito
+     a bancos no es un pago a un tercero.
+   - **Todo sale como DEDUCIBLE** y se avisa: el sistema no sabe si el soporte cumple el
+     art. 771-2. Las columnas de IVA mayor valor del costo van en cero (mismo hueco del art. 490).
+   - Una retención **sin documento del tercero NO se acumula en cuantías menores**: a quien se le
+     retiene se le expide certificado del art. 381 con su NIT, así que un documento faltante es un
+     defecto de datos, no un tercero no identificable. Se cuenta, se avisa con su valor y se dice
+     que el total queda por debajo de la declaración de retenciones.
+   - Probado: el deducible cuadra **exacto** con el libro auxiliar (2.383.693.870,23) y la
+     retefuente con la tabla salvo la fila sin documento, que es justo la que se avisa.
 5. **Nunca sin decisión expresa**: XML directo, y los formatos 1004, 1010, 1011, 1012, 1647,
    2275 y 2276 completos (requieren modelos que no existen: socios, balance fiscal, cuentas
    bancarias con NIT del banco, y la retención por rentas de trabajo del art. 383 que nómina

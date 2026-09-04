@@ -14,6 +14,7 @@ import { previaFormatoExogena, descargarFormatoExogena } from "@/lib/reportesApi
 import styles from "../exogena/exogena.module.css";
 
 const FORMATOS = [
+  ["1001", "Pagos y retenciones practicadas", "Lo que pagamos a terceros, del libro auxiliar por cuenta"],
   ["1003", "Retenciones que le practicaron", "Lo que los clientes nos retuvieron, por concepto"],
   ["1005", "IVA descontable", "El IVA de las compras, por proveedor"],
   ["1006", "IVA generado e impuesto al consumo", "El IVA y el INC de las ventas, por cliente"],
@@ -85,10 +86,11 @@ export default function FormatosExogenaPage() {
             la que falta.
           </li>
           <li>
-            Solo están los <strong>cuatro formatos</strong> que el sistema puede alimentar de
-            verdad. El <strong>1001 no está</strong>: se deriva del gasto y no de las
-            retenciones, y necesita un mapa de cuentas que todavía no existe. Sacarlo incompleto
-            sería peor que no sacarlo.
+            Están los <strong>cinco formatos</strong> que el sistema puede alimentar. El{" "}
+            <strong>1001</strong> sale del <strong>libro auxiliar</strong> por cuenta y tercero,
+            no de las retenciones: un pago que no llega a la base mínima no retiene y aun así se
+            reporta. Su clasificación por cuenta es un punto de partida y todavía{" "}
+            <strong>no tiene pantalla para ajustarla</strong> — revisa sus avisos.
           </li>
         </ul>
       </div>
